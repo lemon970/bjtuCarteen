@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北京交通大学食堂就餐仿真系统 - 前端可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans SC', system-ui, sans-serif; }
+        .tab-active { border-bottom: 3px solid #1e40af; color: #1e40af; font-weight: 700; }
+        .card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .timeline-thumb { accent-color: #1e40af; }
+        .data-panel { border: 2px dashed #1e40af; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto">
+        <!-- 顶部标题栏 -->
+        <div class="bg-white shadow-sm border-b">
+            <div class="px-8 py-6 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-3xl font-bold text-[#1e40af]">北京交通大学</div>
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-800">食堂就餐仿真系统</h1>
+                        <p class="text-sm text-gray-500">仿真回放 & 统计分析可视化平台（成员B）</p>
+                    </div>
+                </div>
+
+                
+                <div class="flex items-center gap-4">
+                    
+                    <!-- 1. 数据接收状态按钮 -->
+                    <div onclick="showReceivePanel()" id="data-status"
+                         class="top-btn status-btn flex items-center gap-2 px-5 py-2.5 rounded-3xl text-sm font-medium cursor-pointer">
+                        <div class="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-2xl text-xl shadow-inner">
+                            📥
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-emerald-600">✅</span>
+                            <span id="receive-text" class="font-semibold">已接收 • 91个快照</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 2. 场景切换按钮：单独开设打包窗口 -->
+                    <div onclick="switchScenario(0)" id="scenario-0"
+                         class="top-btn scenario-btn active px-6 py-2.5 rounded-3xl text-sm font-medium cursor-pointer flex items-center gap-2">
+                        <span class="text-xl">📦</span>
+                        <span>单独开设打包窗口</span>
+                    </div>
+                    
+                    <!-- 3. 场景切换按钮：不单独开设打包窗口 -->
+                    <div onclick="switchScenario(1)" id="scenario-1"
+                         class="top-btn scenario-btn px-6 py-2.5 rounded-3xl text-sm font-medium cursor-pointer flex items-center gap-2">
+                        <span class="text-xl">🍽️</span>
+                        <span>不单独开设打包窗口</span>
+                    </div>
+
+                    
+                    <div onclick="toggleLegend()" 
+                         class="top-btn icon-btn w-10 h-10 flex items-center justify-center rounded-3xl cursor-pointer text-2xl shadow-inner">
+                        📊
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-500 flex items-center gap-2 bg-white px-4 py-2 rounded-3xl border border-gray-200">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    仿真已完成 • 90分钟
+                </div>
+            </div>
+        </div>
+
+        <!-- 【新增】数据接收接口面板（可折叠） -->
+        <div id="receive-panel" class="hidden bg-white mx-8 mt-4 rounded-3xl shadow p-6 data-panel">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-lg flex items-center gap-2">
+                    📥 后端数据接收接口（成员D → 成员B）
+                </h3>
+                <button onclick="hideReceivePanel()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-8">
+                <!-- 基础输入参数（从前端D模块POST后返回） -->
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-3">1. 基础输入参数（JSON）</p>
+                    <textarea id="input-json" rows="6" class="w-full font-mono text-xs p-4 border rounded-2xl bg-gray-50"
+                    >{
+  "duration": 1.5,
+  "flowRate": 180,
+  "takeoutRatio": 0.42,
+  "totalSeats": 300,
+  "takeoutWindows": 1,
+  "normalWindows": 5,
+  "scenario": 0
+}</textarea>
+                </div>
+                
+                <!-- 仿真结果数据（成员A快照 + 成员C统计） -->
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-3">2. 仿真结果 & 统计数据（JSON）</p>
+                    <textarea id="result-json" rows="6" class="w-full font-mono text-xs p-4 border rounded-2xl bg-gray-50"
+                    >{
+  "snapshots": [ /* 91个时间点数据，由成员A返回 */ ],
+  "peakOccupancy": 83,
+  "crowdedMinutes": 23,
+  "crowdedPercentage": 25.6,
+  "trendData": { /* 全局趋势 */ }
+}</textarea>
+                </div>
+            </div>
+            
+            <div class="flex gap-4 mt-6">
+                <button onclick="loadDemoData()" 
+                        class="flex-1 bg-[#1e40af] hover:bg-[#2a5ad1] text-white py-4 rounded-3xl font-medium flex items-center justify-center gap-2">
+                    📥 模拟接收真实后端数据（开发测试用）
+                </button>
+                <button onclick="receiveRealData()" 
+                        class="flex-1 border border-gray-300 hover:bg-gray-100 py-4 rounded-3xl font-medium">
+                    ✅ 正式接收后端API数据（生产模式）
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-3 text-center">
+                接口格式已在代码中定义，可直接被后端成员A/C的JSON替换
+            </p>
+        </div>
+
+        <!-- Tab 导航 -->
+        <div class="flex border-b bg-white sticky top-0 z-10">
+            <button onclick="showTab(0)" id="tab-0"
+                    class="tab-active flex-1 py-5 text-center text-lg font-medium flex items-center justify-center gap-2">
+                <span>📺 仿真回放看板</span>
+            </button>
+            <button onclick="showTab(1)" id="tab-1"
+                    class="flex-1 py-5 text-center text-lg font-medium flex items-center justify-center gap-2">
+                <span>📊 统计分析报告</span>
+            </button>
+        </div>
+
+        <!-- TAB 0: 仿真回放看板 -->
+        <div id="panel-0" class="p-8">
+            <div class="grid grid-cols-12 gap-8">
+                <!-- 左侧：当前时刻窗口排队分布 + 全局趋势 -->
+                <div class="col-span-7 space-y-8">
+                    <!-- 时间轴控制台 -->
+                    <div class="bg-white rounded-3xl shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <span class="font-semibold text-lg">仿真时间轴</span>
+                                <span id="current-time-display" class="text-4xl font-bold text-[#1e40af] tabular-nums">00:00</span>
+                                <span class="text-gray-400">/ 01:30</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm">
+                                <button onclick="playPause()" id="play-btn"
+                                        class="px-6 py-2 bg-[#1e40af] hover:bg-[#2a5ad1] text-white rounded-2xl flex items-center gap-2">
+                                    ▶️ 播放
+                                </button>
+                                <button onclick="resetTimeline()" 
+                                        class="px-6 py-2 border border-gray-300 rounded-2xl hover:bg-gray-100">重置</button>
+                            </div>
+                        </div>
+                        
+                        <input type="range" id="timeline" min="0" max="90" value="0" 
+                               class="timeline-thumb w-full accent-[#1e40af] cursor-pointer" 
+                               oninput="updateFromSlider()">
+                        <div class="flex justify-between text-xs text-gray-400 mt-1">
+                            <div>开始</div>
+                            <div>30min</div>
+                            <div>60min</div>
+                            <div>90min（结束）</div>
+                        </div>
+                    </div>
+
+                    <!-- 当前时刻窗口排队长度分布 -->
+                    <div class="bg-white rounded-3xl shadow p-6">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <span>📍 当前时刻窗口排队长度</span>
+                            <span id="current-minute" class="text-sm font-normal text-gray-500">(第 0 分钟)</span>
+                        </h3>
+                        <div id="queue-chart" class="h-80"></div>
+                    </div>
+
+                    <!-- 全局趋势分析 -->
+                    <div class="bg-white rounded-3xl shadow p-6">
+                        <h3 class="font-semibold mb-4">📈 全局趋势分析（随时间变化）</h3>
+                        <div id="trend-chart" class="h-80"></div>
+                    </div>
+                </div>
+
+                <!-- 右侧：实时卡片统计 -->
+                <div class="col-span-5 space-y-6">
+                    <!-- 当前时刻占用座位数 -->
+                    <div class="bg-white rounded-3xl shadow p-6 card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">当前占用座位数</p>
+                                <div id="occupied-seats" class="text-6xl font-bold text-gray-800 mt-2">142</div>
+                                <p id="occupied-seats-sub" class="text-sm text-emerald-600">共 300 个座位</p>
+                            </div>
+                            <div class="text-6xl">🪑</div>
+                        </div>
+                    </div>
+
+                    <!-- 当前工作窗口数 -->
+                    <div class="bg-white rounded-3xl shadow p-6 card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">当前工作窗口数</p>
+                                <div id="active-windows" class="text-6xl font-bold text-gray-800 mt-2">6</div>
+                                <p id="active-windows-sub" class="text-sm text-amber-600">打包窗口 1 + 普通窗口 5</p>
+                            </div>
+                            <div class="text-6xl">🪟</div>
+                        </div>
+                    </div>
+
+                    <!-- 食堂空间占用率（拥挤 > 70%） -->
+                    <div class="bg-white rounded-3xl shadow p-6 card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500">食堂空间占用率</p>
+                                <div id="occupancy-rate" class="text-6xl font-bold text-[#1e40af] mt-2">47%</div>
+                                <p id="occupancy-status" class="mt-1 px-4 py-1 inline-block text-sm font-medium rounded-3xl bg-emerald-100 text-emerald-700">正常</p>
+                            </div>
+                            <div class="text-6xl">📍</div>
+                        </div>
+                        <div class="mt-6 h-3 bg-gray-100 rounded-3xl overflow-hidden">
+                            <div id="occupancy-bar" class="h-3 bg-gradient-to-r from-emerald-400 to-red-400 w-1/2 rounded-3xl"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                            <span>&lt;40% 宽松</span>
+                            <span>40~70% 正常</span>
+                            <span>&gt;70% 拥挤</span>
+                        </div>
+                    </div>
+
+                    <!-- 当前人流量 & 峰值提示 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white rounded-3xl shadow p-6 card">
+                            <p class="text-sm text-gray-500">当前时刻人流量</p>
+                            <div id="current-flow" class="text-5xl font-bold">28 人/分钟</div>
+                            <div class="text-xs text-gray-400 mt-4">峰值出现在 <span id="peak-time" class="font-medium">第 42 分钟</span></div>
+                        </div>
+                        <div class="bg-white rounded-3xl shadow p-6 card">
+                            <p class="text-sm text-gray-500">当前时刻平均等待时间</p>
+                            <div id="avg-wait" class="text-5xl font-bold">4.8 min</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: 统计分析报告 -->
+        <div id="panel-1" class="p-8 hidden">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center gap-3">
+                    <span>📋 当前仿真初始参数</span>
+                </h2>
+                
+                <!-- 参数表格 -->
+                <div class="bg-white rounded-3xl shadow overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="py-5 px-8 text-left font-medium text-gray-500">参数</th>
+                                <th class="py-5 px-8 text-left font-medium text-gray-500">数值</th>
+                                <th class="py-5 px-8 text-left font-medium text-gray-500">单位</th>
+                            </tr>
+                        </thead>
+                        <tbody id="param-table" class="divide-y">
+                            <!-- JS 动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 mt-10">
+                    <!-- 关键指标卡片 -->
+                    <div class="bg-white rounded-3xl shadow p-8">
+                        <h3 class="text-lg font-semibold mb-6">最终食堂空间占用率峰值</h3>
+                        <div class="flex items-baseline gap-4">
+                            <div id="peak-occupancy" class="text-7xl font-bold text-red-500">83%</div>
+                            <div>
+                                <div id="peak-status" class="px-4 py-1 bg-red-100 text-red-600 rounded-3xl text-sm font-medium inline-block">已进入拥挤状态</div>
+                                <p class="text-sm text-gray-500 mt-2">峰值出现在第 <span id="peak-minute" class="font-semibold">42</span> 分钟</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl shadow p-8">
+                        <h3 class="text-lg font-semibold mb-6">食堂处于拥挤状态的总时长（&gt;70%）</h3>
+                        <div class="flex items-baseline gap-4">
+                            <div id="crowded-time" class="text-7xl font-bold text-amber-500">23</div>
+                            <div class="text-3xl text-gray-400">分钟</div>
+                            <div class="text-sm leading-tight">
+                                占总仿真时长的<br>
+                                <span id="crowded-percentage" class="font-semibold">25.6%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 【核心数据结构】供后端直接注入 ====================
+        let globalData = {
+            // 1. 基础输入参数（成员D传输）
+            params: {
+                duration: 1.5,           // 小时
+                flowRate: 180,           // 人/小时
+                takeoutRatio: 0.42,      // 打包占比
+                totalSeats: 300,         // 总座位
+                takeoutWindows: 1,       // 打包窗口数
+                normalWindows: 5,        // 普通窗口数
+                scenario: 0              // 0=单独打包窗口，1=不单独
+            },
+            
+            // 2. 仿真结果（成员A + 成员C）
+            snapshots: [],           // 长度91的数组，每项为当前分钟状态
+            trendData: {
+                time: [],
+                occupancy: [],
+                totalQueue: [],
+                flow: []
+            },
+            peakOccupancy: 83,       // 峰值占用率
+            peakMinute: 42,
+            crowdedMinutes: 23,      // >70% 的分钟数
+            crowdedPercentage: 25.6
+        };
+
+        // 当前播放状态
+        let currentScenario = 0;
+        let isPlaying = false;
+        let currentMinute = 0;
+        let totalMinutes = 90;
+        let timer = null;
+
+        let queueChartInstance = null;
+        let trendChartInstance = null;
+
+        // ==================== 数据接收接口（供后端直接调用） ====================
+        /**
+         * 正式接收后端完整JSON数据
+         * @param {Object} backendJson 后端返回的完整数据包
+         */
+        function receiveSimulationData(backendJson) {
+            console.log('%c📥 接收到后端完整数据包', 'color:#1e40af; font-weight:700');
+            
+            // 1. 更新基础参数
+            if (backendJson.params) {
+                globalData.params = { ...globalData.params, ...backendJson.params };
+            }
+            
+            // 2. 更新快照序列（成员A）
+            if (backendJson.snapshots && Array.isArray(backendJson.snapshots)) {
+                globalData.snapshots = backendJson.snapshots;
+                totalMinutes = globalData.snapshots.length - 1;
+                document.getElementById('timeline').max = totalMinutes;
+            }
+            
+            // 3. 更新趋势数据 & 统计结果（成员C）
+            if (backendJson.trendData) globalData.trendData = backendJson.trendData;
+            if (backendJson.peakOccupancy !== undefined) globalData.peakOccupancy = backendJson.peakOccupancy;
+            if (backendJson.peakMinute !== undefined) globalData.peakMinute = backendJson.peakMinute;
+            if (backendJson.crowdedMinutes !== undefined) globalData.crowdedMinutes = backendJson.crowdedMinutes;
+            if (backendJson.crowdedPercentage !== undefined) globalData.crowdedPercentage = backendJson.crowdedPercentage;
+            
+            // 自动切换场景
+            currentScenario = globalData.params.scenario || 0;
+            updateScenarioButtons();
+            
+            // 刷新所有界面
+            document.getElementById('data-status').classList.add('bg-emerald-100', 'text-emerald-700');
+            document.getElementById('receive-text').innerHTML = `✅ 已接收 • ${globalData.snapshots.length}个快照`;
+            
+            if (document.getElementById('panel-0').classList.contains('hidden') === false) {
+                initQueueChart();
+                initTrendChart();
+            }
+            updateUI();
+            renderParamTable();
+            
+            console.log('✅ 数据已成功注入全局变量 globalData，可直接用于ECharts渲染');
+        }
+
+        // ==================== 模拟数据加载（开发测试） ====================
+        function loadDemoData() {
+            // 模拟真实后端返回的JSON
+            const demoBackendJson = {
+                params: {
+                    duration: 1.5,
+                    flowRate: 180,
+                    takeoutRatio: 0.42,
+                    totalSeats: 300,
+                    takeoutWindows: currentScenario === 0 ? 1 : 0,
+                    normalWindows: currentScenario === 0 ? 5 : 6,
+                    scenario: currentScenario
+                },
+                snapshots: Array.from({length: 91}, (_, i) => ({
+                    minute: i,
+                    queueLengths: currentScenario === 0 
+                        ? [Math.max(0, Math.floor(6 + Math.sin(i/8)*6)), ...Array(5).fill().map(() => Math.max(0, Math.floor(10 + Math.random()*18)))]
+                        : Array(6).fill().map(() => Math.max(0, Math.floor(15 + Math.random()*22))),
+                    occupiedSeats: Math.floor(110 + Math.sin(i/9)*95),
+                    totalSeats: 300,
+                    occupancyRate: Math.floor(32 + Math.random()*58),
+                    activeWindows: currentScenario === 0 ? 6 : 6,
+                    footFlow: Math.floor(14 + Math.random()*28),
+                    avgWait: (2.8 + Math.random()*3.5).toFixed(1)
+                })),
+                trendData: {
+                    time: Array.from({length: 91}, (_, i) => i),
+                    occupancy: Array.from({length: 91}, (_, i) => Math.max(28, Math.floor(38 + Math.sin(i/11)*38))),
+                    totalQueue: Array.from({length: 91}, (_, i) => Math.floor(40 + Math.random()*45)),
+                    flow: Array.from({length: 91}, (_, i) => Math.floor(18 + Math.sin(i/14)*16))
+                },
+                peakOccupancy: currentScenario === 0 ? 83 : 91,
+                peakMinute: currentScenario === 0 ? 42 : 38,
+                crowdedMinutes: currentScenario === 0 ? 23 : 31,
+                crowdedPercentage: currentScenario === 0 ? 25.6 : 34.4
+            };
+            
+            receiveSimulationData(demoBackendJson);
+            hideReceivePanel();
+        }
+
+        // 生产模式占位（实际项目中替换为 fetch('/api/simulation/result')）
+        function receiveRealData() {
+            alert('🚀 生产模式：已调用后端API接口 /api/simulation/result\n（请在真实项目中实现 fetch + receiveSimulationData）');
+            // 实际使用示例：
+            // fetch('/api/simulation/result', { method: 'POST', body: JSON.stringify({requestId: 'xxx'}) })
+            //   .then(r => r.json())
+            //   .then(data => receiveSimulationData(data));
+            loadDemoData(); // 演示用
+        }
+
+        // ==================== ECharts & UI 更新（完全基于 globalData） ====================
+        function initQueueChart() {
+            const container = document.getElementById('queue-chart');
+            if (queueChartInstance) queueChartInstance.dispose();
+            queueChartInstance = echarts.init(container);
+            
+            const snap = globalData.snapshots[currentMinute] || globalData.snapshots[0];
+            const windowLabels = currentScenario === 0 
+                ? ['打包窗口', '窗口1', '窗口2', '窗口3', '窗口4', '窗口5']
+                : ['窗口1', '窗口2', '窗口3', '窗口4', '窗口5', '窗口6'];
+            
+            const option = {
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '4%', bottom: '10%', top: '15%' },
+                xAxis: { type: 'category', data: windowLabels },
+                yAxis: { type: 'value', name: '排队人数' },
+                series: [{
+                    name: '排队长度',
+                    type: 'bar',
+                    barWidth: '45%',
+                    data: snap ? snap.queueLengths : [],
+                    itemStyle: { color: (p) => p.dataIndex === 0 && currentScenario === 0 ? '#f59e0b' : '#1e40af' }
+                }]
+            };
+            queueChartInstance.setOption(option);
+        }
+
+        function initTrendChart() {
+            const container = document.getElementById('trend-chart');
+            if (trendChartInstance) trendChartInstance.dispose();
+            trendChartInstance = echarts.init(container);
+            
+            const option = {
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['空间占用率', '总排队人数', '人流量'], bottom: 0 },
+                xAxis: { type: 'category', data: globalData.trendData.time.map(t => t + 'min') },
+                yAxis: [
+                    { type: 'value', name: '占用率(%)' },
+                    { type: 'value', name: '人数' }
+                ],
+                series: [
+                    { name: '空间占用率', type: 'line', smooth: true, data: globalData.trendData.occupancy, color: '#1e40af' },
+                    { name: '总排队人数', type: 'line', smooth: true, data: globalData.trendData.totalQueue, yAxisIndex: 1, color: '#f59e0b' },
+                    { name: '人流量', type: 'line', smooth: true, data: globalData.trendData.flow, yAxisIndex: 1, color: '#10b981' }
+                ]
+            };
+            trendChartInstance.setOption(option);
+        }
+
+        function updateUI() {
+            const snap = globalData.snapshots[currentMinute] || {};
+            
+            // 时间
+            const mm = String(currentMinute).padStart(2, '0');
+            document.getElementById('current-time-display').textContent = `00:${mm}`;
+            document.getElementById('current-minute').textContent = `（第 ${currentMinute} 分钟）`;
+            
+            // 卡片
+            document.getElementById('occupied-seats').textContent = snap.occupiedSeats || 142;
+            document.getElementById('occupied-seats-sub').innerHTML = `共 ${globalData.params.totalSeats} 个座位`;
+            
+            document.getElementById('active-windows').textContent = snap.activeWindows || 6;
+            document.getElementById('active-windows-sub').innerHTML = 
+                currentScenario === 0 ? `打包窗口 ${globalData.params.takeoutWindows} + 普通窗口 ${globalData.params.normalWindows}` 
+                                      : `普通窗口 ${globalData.params.normalWindows}`;
+            
+            const rate = snap.occupancyRate || 47;
+            document.getElementById('occupancy-rate').textContent = `${rate}%`;
+            
+            const statusEl = document.getElementById('occupancy-status');
+            if (rate > 70) {
+                statusEl.textContent = '拥挤';
+                statusEl.className = 'mt-1 px-4 py-1 inline-block text-sm font-medium rounded-3xl bg-red-100 text-red-700';
+            } else if (rate > 40) {
+                statusEl.textContent = '正常';
+                statusEl.className = 'mt-1 px-4 py-1 inline-block text-sm font-medium rounded-3xl bg-emerald-100 text-emerald-700';
+            } else {
+                statusEl.textContent = '宽松';
+                statusEl.className = 'mt-1 px-4 py-1 inline-block text-sm font-medium rounded-3xl bg-sky-100 text-sky-700';
+            }
+            document.getElementById('occupancy-bar').style.width = `${rate}%`;
+            
+            document.getElementById('current-flow').textContent = `${snap.footFlow || 28} 人/分钟`;
+            document.getElementById('avg-wait').textContent = `${snap.avgWait || 4.8} min`;
+            
+            // 更新柱状图
+            if (queueChartInstance && snap.queueLengths) {
+                queueChartInstance.setOption({
+                    xAxis: { data: currentScenario === 0 
+                        ? ['打包窗口','窗口1','窗口2','窗口3','窗口4','窗口5'] 
+                        : ['窗口1','窗口2','窗口3','窗口4','窗口5','窗口6'] },
+                    series: [{ data: snap.queueLengths }]
+                });
+            }
+        }
+
+        function updateFromSlider() {
+            currentMinute = parseInt(document.getElementById('timeline').value);
+            updateUI();
+        }
+
+        function playPause() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                clearInterval(timer);
+                btn.innerHTML = `▶️ 播放`;
+                isPlaying = false;
+            } else {
+                timer = setInterval(() => {
+                    currentMinute = Math.min(currentMinute + 1, totalMinutes);
+                    document.getElementById('timeline').value = currentMinute;
+                    updateUI();
+                    if (currentMinute >= totalMinutes) { clearInterval(timer); isPlaying = false; btn.innerHTML = `🔄 重新播放`; }
+                }, 80);
+                btn.innerHTML = `⏸️ 暂停`;
+                isPlaying = true;
+            }
+        }
+
+        function resetTimeline() {
+            clearInterval(timer); isPlaying = false;
+            currentMinute = 0;
+            document.getElementById('timeline').value = 0;
+            document.getElementById('play-btn').innerHTML = `▶️ 播放`;
+            updateUI();
+        }
+
+        function switchScenario(n) {
+            currentScenario = n;
+            globalData.params.scenario = n;
+            globalData.params.takeoutWindows = n === 0 ? 1 : 0;
+            globalData.params.normalWindows = n === 0 ? 5 : 6;
+            updateScenarioButtons();
+            loadDemoData(); // 切换后自动刷新演示数据
+        }
+
+        function updateScenarioButtons() {
+            document.querySelectorAll('.scenario-btn').forEach((el, idx) => {
+                if (idx === currentScenario) {
+                    el.classList.add('bg-[#1e40af]', 'text-white');
+                    el.classList.remove('bg-white', 'border', 'border-gray-300');
+                } else {
+                    el.classList.remove('bg-[#1e40af]', 'text-white');
+                    el.classList.add('bg-white', 'border', 'border-gray-300');
+                }
+            });
+        }
+
+        function showTab(n) {
+            document.querySelectorAll('.tab-active').forEach(el => el.classList.remove('tab-active'));
+            document.getElementById(`tab-${n}`).classList.add('tab-active');
+            
+            document.getElementById('panel-0').classList.toggle('hidden', n !== 0);
+            document.getElementById('panel-1').classList.toggle('hidden', n !== 1);
+            
+            if (n === 0) {
+                setTimeout(() => { initQueueChart(); initTrendChart(); updateUI(); }, 50);
+            } else {
+                renderParamTable();
+            }
+        }
+
+        function renderParamTable() {
+            const p = globalData.params;
+            const tbody = document.getElementById('param-table');
+            tbody.innerHTML = `
+                <tr><td class="py-5 px-8 font-medium">仿真时长</td><td class="py-5 px-8">${p.duration}</td><td class="py-5 px-8 text-gray-500">小时</td></tr>
+                <tr><td class="py-5 px-8 font-medium">学生人流量</td><td class="py-5 px-8">${p.flowRate}</td><td class="py-5 px-8 text-gray-500">人/小时</td></tr>
+                <tr><td class="py-5 px-8 font-medium">打包同学占比</td><td class="py-5 px-8">${(p.takeoutRatio*100).toFixed(0)}%</td><td class="py-5 px-8 text-gray-500"></td></tr>
+                <tr><td class="py-5 px-8 font-medium">食堂座位总数</td><td class="py-5 px-8">${p.totalSeats}</td><td class="py-5 px-8 text-gray-500">个</td></tr>
+                <tr><td class="py-5 px-8 font-medium">打包窗口数量</td><td class="py-5 px-8">${p.takeoutWindows}</td><td class="py-5 px-8 text-gray-500">个</td></tr>
+                <tr><td class="py-5 px-8 font-medium">普通窗口数量</td><td class="py-5 px-8">${p.normalWindows}</td><td class="py-5 px-8 text-gray-500">个</td></tr>
+            `;
+            
+            document.getElementById('peak-occupancy').textContent = `${globalData.peakOccupancy}%`;
+            document.getElementById('peak-minute').textContent = globalData.peakMinute;
+            document.getElementById('crowded-time').textContent = globalData.crowdedMinutes;
+            document.getElementById('crowded-percentage').textContent = `${globalData.crowdedPercentage}%`;
+            
+            const peakStatus = document.getElementById('peak-status');
+            peakStatus.textContent = globalData.peakOccupancy > 70 ? '已进入拥挤状态' : '正常';
+            peakStatus.className = globalData.peakOccupancy > 70 
+                ? 'px-4 py-1 bg-red-100 text-red-600 rounded-3xl text-sm font-medium inline-block' 
+                : 'px-4 py-1 bg-emerald-100 text-emerald-600 rounded-3xl text-sm font-medium inline-block';
+        }
+
+        function showReceivePanel() { document.getElementById('receive-panel').classList.remove('hidden'); }
+        function hideReceivePanel() { document.getElementById('receive-panel').classList.add('hidden'); }
+
+        // ==================== 初始化 ====================
+        window.onload = function() {
+            // 默认加载一次演示数据（实际项目中可删除此行，等待后端调用 receiveSimulationData）
+            loadDemoData();
+            showTab(0);
+            
+            console.log('%c✅ 食堂仿真前端初始版 已就绪！\n📡 数据接收接口：receiveSimulationData(backendJson)', 'color:#1e40af; font-size:16px; font-weight:700');
+        };
+    </script>
+</body>
+</html>

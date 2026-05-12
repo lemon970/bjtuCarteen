@@ -2,8 +2,11 @@ package com.bjtu.simulation.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,25 @@ class SimulationApiIntegrationTest {
     private MockMvc mockMvc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void staticFrontendEntryShouldBeServed() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("index.html"));
+
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/frontend/")));
+
+        mockMvc.perform(get("/frontend/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/frontend/index.html"));
+
+        mockMvc.perform(get("/frontend/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Canteen Simulation Console")));
+    }
 
     @Test
     void invalidPackProbabilityShouldReturn400Envelope() throws Exception {
