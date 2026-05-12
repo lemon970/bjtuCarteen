@@ -1,0 +1,240 @@
+package com.bjtu.simulation.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.bjtu.simulation.dto.SimulationResult;
+import com.bjtu.simulation.dto.SimulationTimePoint;
+
+public class SimulationTimelineBuilder {
+    private static final int MAX_TIMELINE_POINTS = 1000;
+
+    public List<SimulationTimePoint> build(List<SimulationResult> history,
+                                           int windowCount,
+                                           int totalSeats,
+                                           List<String> windowTypes,
+                                           int normalWindowCount,
+                                           int takeawayWindowCount) {
+        List<SimulationTimePoint> timeline = new ArrayList<>();
+        List<String> normalizedWindowTypes = normalizeWindowTypes(windowTypes, windowCount, normalWindowCount);
+        if (history == null || history.isEmpty()) {
+            timeline.add(emptyTimePoint(0, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
+            return timeline;
+        }
+
+        long endMinute = history.get(history.size() - 1).getTime() / 60;
+        int cursor = 0;
+        SimulationResult last = null;
+
+        long stepMinutes = Math.max(1L, (long) Math.ceil((endMinute + 1) / (double) MAX_TIMELINE_POINTS));
+        for (long minute = 0; minute <= endMinute; minute += stepMinutes) {
+            long minuteEndExclusive = (minute * 60) + 60;
+            while (cursor < history.size() && history.get(cursor).getTime() < minuteEndExclusive) {
+                last = history.get(cursor);
+                cursor++;
+            }
+
+            if (last == null) {
+                timeline.add(emptyTimePoint(minute, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
+            } else {
+                timeline.add(toTimePoint(minute, last, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
+            }
+        }
+        return timeline;
+    }
+
+    private SimulationTimePoint emptyTimePoint(long minute,
+                                               int windowCount,
+                                               int totalSeats,
+                                               List<String> windowTypes,
+                                               int normalWindowCount,
+                                               int takeawayWindowCount) {
+        int safeTotalSeats = Math.max(0, totalSeats);
+        return new SimulationTimePoint(
+                minute * 60,
+                minute,
+                zeroQueues(windowCount),
+                windowTypes,
+                Math.max(0, windowCount),
+                Math.max(0, normalWindowCount),
+                Math.max(0, takeawayWindowCount),
+                0,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                safeTotalSeats,
+                0,
+                0,
+                safeTotalSeats,
+                0,
+                "",
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0.0,
+                0.0,
+                List.of());
+    }
+
+    private SimulationTimePoint toTimePoint(long minute,
+                                            SimulationResult last,
+                                            int windowCount,
+                                            int totalSeats,
+                                            List<String> windowTypes,
+                                            int normalWindowCount,
+                                            int takeawayWindowCount) {
+        List<Integer> queues = normalizeQueues(last.getQueueSizes(), windowCount);
+        int totalQueueSize = sum(queues);
+        int normalWindowQueueSize = sumRange(queues, 0, normalWindowCount);
+        int takeawayWindowQueueSize = sumRange(queues, normalWindowCount, normalWindowCount + takeawayWindowCount);
+        int occupiedSeats = Math.max(0, last.getOccupiedSeats());
+        int safeTotalSeats = Math.max(0, totalSeats);
+        int emptySeats = Math.max(0, safeTotalSeats - occupiedSeats);
+        double seatUtilizationRate = safeTotalSeats == 0 ? 0 : round3((double) occupiedSeats / safeTotalSeats);
+
+        return new SimulationTimePoint(
+                last.getTime(),
+                minute,
+                queues,
+                windowTypes,
+                queues.size(),
+                Math.max(0, normalWindowCount),
+                Math.max(0, takeawayWindowCount),
+                totalQueueSize,
+                normalWindowQueueSize,
+                takeawayWindowQueueSize,
+                totalQueueSize,
+                busiestWindowId(queues),
+                busiestWindowQueueSize(queues),
+                safeTotalSeats,
+                occupiedSeats,
+                occupiedSeats,
+                emptySeats,
+                seatUtilizationRate,
+                last.getEventMessage(),
+                last.getArrivedCount(),
+                last.getNormalArrivalCount(),
+                last.getClassPeakArrivalCount(),
+                last.getRainPeakArrivalCount(),
+                last.getAbandonedCount(),
+                last.getAbandonedByQueueCount(),
+                last.getServedCount(),
+                last.getDineInCount(),
+                last.getTakeawayCount(),
+                last.getPendingSeatDecisionCount(),
+                last.getNoSeatSwitchToTakeawayCount(),
+                last.getWeatherDrivenTakeawayCount(),
+                last.getLeaveCount(),
+                last.getMovementSampleCount(),
+                round3(last.getTotalMovementTimeMinutes()),
+                round3(last.getAvgMovementTimeMinutes()),
+                List.of());
+    }
+
+    private List<Integer> normalizeQueues(List<Integer> source, int windowCount) {
+        List<Integer> queues = new ArrayList<>();
+        int safeWindowCount = Math.max(0, windowCount);
+        if (source != null) {
+            for (int i = 0; i < Math.min(source.size(), safeWindowCount); i++) {
+                queues.add(Math.max(0, source.get(i)));
+            }
+        }
+        while (queues.size() < safeWindowCount) {
+            queues.add(0);
+        }
+        return queues;
+    }
+
+    private List<String> normalizeWindowTypes(List<String> source, int windowCount, int normalWindowCount) {
+        List<String> types = new ArrayList<>();
+        int safeWindowCount = Math.max(0, windowCount);
+        if (source != null) {
+            for (int i = 0; i < Math.min(source.size(), safeWindowCount); i++) {
+                String type = source.get(i);
+                types.add(type == null || type.isBlank() ? fallbackWindowType(i, normalWindowCount) : type);
+            }
+        }
+        while (types.size() < safeWindowCount) {
+            types.add(fallbackWindowType(types.size(), normalWindowCount));
+        }
+        return types;
+    }
+
+    private String fallbackWindowType(int windowId, int normalWindowCount) {
+        return windowId >= Math.max(0, normalWindowCount) ? "TAKEAWAY" : "NORMAL";
+    }
+
+    private int sum(List<Integer> values) {
+        int total = 0;
+        for (int value : values) {
+            total += value;
+        }
+        return total;
+    }
+
+    private int sumRange(List<Integer> values, int fromInclusive, int toExclusive) {
+        if (values == null || values.isEmpty()) {
+            return 0;
+        }
+        int total = 0;
+        int from = Math.max(0, fromInclusive);
+        int to = Math.min(values.size(), Math.max(from, toExclusive));
+        for (int i = from; i < to; i++) {
+            total += Math.max(0, values.get(i));
+        }
+        return total;
+    }
+
+    private int busiestWindowId(List<Integer> queues) {
+        if (queues == null || queues.isEmpty()) {
+            return -1;
+        }
+        int busiestId = 0;
+        int busiestSize = queues.get(0);
+        for (int i = 1; i < queues.size(); i++) {
+            if (queues.get(i) > busiestSize) {
+                busiestSize = queues.get(i);
+                busiestId = i;
+            }
+        }
+        return busiestSize == 0 ? -1 : busiestId;
+    }
+
+    private int busiestWindowQueueSize(List<Integer> queues) {
+        int busiestSize = 0;
+        if (queues != null) {
+            for (int queueSize : queues) {
+                busiestSize = Math.max(busiestSize, queueSize);
+            }
+        }
+        return busiestSize;
+    }
+
+    private List<Integer> zeroQueues(int windowCount) {
+        List<Integer> queues = new ArrayList<>();
+        for (int i = 0; i < Math.max(0, windowCount); i++) {
+            queues.add(0);
+        }
+        return queues;
+    }
+
+    private double round3(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return Math.round(value * 1000.0) / 1000.0;
+    }
+}

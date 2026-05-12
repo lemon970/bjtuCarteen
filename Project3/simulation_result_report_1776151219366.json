@@ -1,0 +1,28 @@
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "report_version": "1.0.0",
+    "report_id": "report_1776151219366",
+    "effective_seed": 12345,
+    "generated_at": "2026-04-14T15:20:19",
+    "generated_at_epoch_millis": 1776151219369,
+    "summary": {
+      "arrived_count": 60,
+      "abandoned_count": 0,
+      "served_count": 59,
+      "dine_in_count": 43,
+      "takeaway_count": 16,
+      "leave_count": 0,
+      "avg_wait_time_minutes": 2.81158,
+      "max_queue_size": 3,
+      "peak_time_minutes": 46,
+      "peak_window_id": 2,
+      "max_total_queue_size": 4,
+      "avg_total_queue_size": 2.31148,
+      "occupied_seats": 44,
+      "empty_seats": 6,
+      "seat_utilization_rate": 0.437377
+    }
+  }
+}

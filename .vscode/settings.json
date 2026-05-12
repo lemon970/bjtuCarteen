@@ -1,0 +1,14 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.project.resourceFilters": [
+        "target",
+        "reports",
+        ".github/appmod",
+        ".github/modernize"
+    ],
+    "search.exclude": {
+        "target": true,
+        "reports": true
+    }
+}

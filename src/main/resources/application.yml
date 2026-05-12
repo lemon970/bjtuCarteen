@@ -1,0 +1,9 @@
+server:
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/json
+
+spring:
+  jackson:
+    default-property-inclusion: non_empty
