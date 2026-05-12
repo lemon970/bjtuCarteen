@@ -5,7 +5,7 @@ import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
 
 public class ServiceFinishEvent extends BaseEvent {
-    private static final double MAX_QUEUE_FEEDBACK_PACK_BONUS = 0.30;
+    private static final double MAX_MODEL_PACK_PROBABILITY = 0.95;
 
     private final String studentId;
     private final int windowId;
@@ -36,16 +36,21 @@ public class ServiceFinishEvent extends BaseEvent {
             weatherFactor = clamp(config.getWeatherConfig().getWeatherImpactFactor(), 0.0, 5.0);
         }
 
-        double queueFeedbackProbability = resolveQueueFeedbackProbability(engine);
-        double decisionPackProbability = clamp(
-                0.35 * basePackProbability + 0.65 * studentPackPreference + queueFeedbackProbability,
-                0.0,
-                1.0);
-        double finalPackProbability = clamp(decisionPackProbability * weatherFactor, 0.0, 1.0);
+        double queuePressure = engine.currentQueuePressure();
+        double seatUtilization = engine.currentSeatUtilizationRate();
+        double waitMinutes = Math.max(0.0, (engine.getCurrentTime() - arriveTime) / 60.0);
+        double finalPackProbability = resolveDecisionPackProbability(
+                basePackProbability,
+                studentPackPreference,
+                queuePressure,
+                seatUtilization,
+                waitMinutes,
+                weatherFactor);
 
         engine.setStudentState(studentId, StudentState.DECIDE_DINE_IN_OR_PACK);
 
         if (engine.isTakeawayWindow(this.windowId)) {
+            engine.recordTakeawayDecision(studentId, "TAKEAWAY_WINDOW", 1.0, 0.0, waitMinutes, studentPackPreference, true, partySize);
             engine.recordTakeaway(partySize);
             engine.setStudentState(studentId, StudentState.PACK_LEAVE);
             engine.setStudentState(studentId, StudentState.LEAVE);
@@ -55,8 +60,9 @@ public class ServiceFinishEvent extends BaseEvent {
 
         double roll = engine.nextDouble();
         if (roll < finalPackProbability) {
+            engine.recordTakeawayDecision(studentId, "MODEL_TRIGGER", finalPackProbability, roll, waitMinutes, studentPackPreference, true, partySize);
             engine.recordTakeaway(partySize);
-            if (roll >= decisionPackProbability && weatherFactor > 1.0) {
+            if (weatherFactor > 1.0 && roll >= finalPackProbability / weatherFactor) {
                 engine.recordWeatherDrivenTakeaway(partySize);
             }
             engine.setStudentState(studentId, StudentState.PACK_LEAVE);
@@ -65,6 +71,7 @@ public class ServiceFinishEvent extends BaseEvent {
             return;
         }
 
+        engine.recordTakeawayDecision(studentId, "DINE_IN_MODEL", finalPackProbability, roll, waitMinutes, studentPackPreference, false, partySize);
         engine.setStudentState(studentId, StudentState.WALKING_TO_SEAT);
         engine.recordSeatDecisionPending(partySize);
         long movementTime = engine.resolveMovementTimeSeconds();
@@ -76,20 +83,21 @@ public class ServiceFinishEvent extends BaseEvent {
         engine.recordState(studentId + " finished service and started walking to dining area with partySize=" + partySize);
     }
 
-    private double resolveQueueFeedbackProbability(SimulationEngine engine) {
-        if (engine == null || engine.getCanteenState() == null || engine.getCanteenState().getWindowQueues().isEmpty()) {
-            return 0.0;
-        }
-
-        int totalQueueSize = 0;
-        for (int queueSize : engine.getCanteenState().getWindowQueues()) {
-            totalQueueSize += Math.max(0, queueSize);
-        }
-
-        int windowCount = Math.max(1, engine.getCanteenState().getWindowCount());
-        int queueLimit = engine.getConfig() == null ? 10 : Math.max(1, engine.getConfig().getQueueLimit());
-        double pressure = (double) totalQueueSize / (windowCount * queueLimit);
-        return clamp(pressure, 0.0, 1.0) * MAX_QUEUE_FEEDBACK_PACK_BONUS;
+    private double resolveDecisionPackProbability(double basePackProbability,
+                                                  double studentPackPreference,
+                                                  double queuePressure,
+                                                  double seatUtilization,
+                                                  double waitMinutes,
+                                                  double weatherFactor) {
+        double waitPressure = clamp(waitMinutes / 12.0, 0.0, 1.0);
+        double seatPressureBonus = seatUtilization >= 0.90 ? 0.18 : 0.08 * seatUtilization;
+        double modelProbability =
+                0.18 * clamp(basePackProbability, 0.0, 1.0)
+                        + 0.34 * clamp(studentPackPreference, 0.0, 1.0)
+                        + 0.32 * clamp(queuePressure, 0.0, 1.0)
+                        + 0.16 * waitPressure
+                        + seatPressureBonus;
+        return clamp(modelProbability * clamp(weatherFactor, 0.0, 5.0), 0.0, MAX_MODEL_PACK_PROBABILITY);
     }
 
     private double clamp(double value, double min, double max) {

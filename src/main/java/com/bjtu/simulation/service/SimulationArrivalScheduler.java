@@ -1,5 +1,9 @@
 package com.bjtu.simulation.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.engine.StudentArriveEvent;
@@ -19,13 +23,12 @@ public class SimulationArrivalScheduler {
         int maxStudents = effectiveStudentLimit(config);
         long durationMinutes = Math.max(1L, (long) Math.ceil(durationSeconds / 60.0));
         int studentIndex = 1;
+        long lastArrivalTime = 0L;
 
         for (long minute = 0; minute < durationMinutes; minute++) {
-            double effectiveRatePerHour = config.getArrivalRate();
-            if (isClassPeakEnabled(config)) {
-                effectiveRatePerHour *= arrivalFactorAtMinute(minute, config);
-            }
+            double effectiveRatePerHour = effectiveArrivalRatePerHour(minute, durationMinutes, config);
             int arrivalsThisMinute = engine.sampleArrivalCountForMinute(effectiveRatePerHour);
+            List<Long> offsets = exponentialOffsetsWithinMinute(engine, arrivalsThisMinute, effectiveRatePerHour);
 
             for (int j = 0; j < arrivalsThisMinute; j++) {
                 int partySize = engine.samplePartySize();
@@ -39,14 +42,17 @@ public class SimulationArrivalScheduler {
                     return;
                 }
 
-                long offset = engine.nextLong(1L, 61L);
+                long offset = offsets.isEmpty() ? engine.nextLong(1L, 61L) : offsets.get(Math.min(j, offsets.size() - 1));
                 long arriveTime = Math.min(durationSeconds, minute * 60 + offset);
                 if (arriveTime <= 0 || arriveTime > durationSeconds) {
                     continue;
                 }
 
                 ArrivalGroup arrivalGroup = resolveArrivalGroupByTime(arriveTime, durationSeconds, config);
+                long intervalSeconds = lastArrivalTime <= 0 ? arriveTime : Math.max(1L, arriveTime - lastArrivalTime);
+                engine.recordArrivalSample(arriveTime, intervalSeconds, effectiveRatePerHour, arrivalGroup, partySize);
                 engine.scheduleEvent(new StudentArriveEvent(arriveTime, "student-" + studentIndex, arrivalGroup, partySize));
+                lastArrivalTime = arriveTime;
                 studentIndex += partySize;
             }
         }
@@ -56,6 +62,7 @@ public class SimulationArrivalScheduler {
         int intervalSeconds = Math.max(1, config.getRandomBounds().getArrivalInterval());
         int maxStudents = effectiveStudentLimit(config);
         int studentIndex = 1;
+        long lastArrivalTime = 0L;
 
         for (long arriveTime = intervalSeconds; arriveTime <= durationSeconds; arriveTime += intervalSeconds) {
             int partySize = engine.samplePartySize();
@@ -69,7 +76,10 @@ public class SimulationArrivalScheduler {
                 return;
             }
             ArrivalGroup arrivalGroup = resolveArrivalGroupByTime(arriveTime, durationSeconds, config);
+            long interval = lastArrivalTime <= 0 ? arriveTime : Math.max(1L, arriveTime - lastArrivalTime);
+            engine.recordArrivalSample(arriveTime, interval, config.getArrivalRate(), arrivalGroup, partySize);
             engine.scheduleEvent(new StudentArriveEvent(arriveTime, "student-" + studentIndex, arrivalGroup, partySize));
+            lastArrivalTime = arriveTime;
             studentIndex += partySize;
         }
     }
@@ -99,6 +109,56 @@ public class SimulationArrivalScheduler {
         int start = peakConfig.getClassPeakStartMinute();
         int end = Math.max(start + 1, peakConfig.getClassPeakEndMinute());
         return peakWindowFactorAtMinute(minute, start, end, peakConfig.getClassPeakMultiplier());
+    }
+
+    private double effectiveArrivalRatePerHour(long minute, long durationMinutes, SimConfig config) {
+        double effectiveRatePerHour = Math.max(0.0, config.getArrivalRate()) * naturalMealFactor(minute, durationMinutes);
+        if (isClassPeakEnabled(config)) {
+            effectiveRatePerHour *= arrivalFactorAtMinute(minute, config);
+        }
+        return Math.max(0.0, effectiveRatePerHour);
+    }
+
+    private double naturalMealFactor(long minute, long durationMinutes) {
+        double safeDuration = Math.max(1.0, durationMinutes - 1.0);
+        double progress = Math.max(0.0, Math.min(1.0, minute / safeDuration));
+        double lunchPeak = gaussian(progress, 0.34, 0.13);
+        double classBreakPeak = gaussian(progress, 0.58, 0.10);
+        double dinnerPeak = gaussian(progress, 0.76, 0.16);
+        return Math.max(0.35, Math.min(1.85, 0.45 + 0.72 * lunchPeak + 0.38 * classBreakPeak + 0.62 * dinnerPeak));
+    }
+
+    private double gaussian(double x, double center, double width) {
+        double safeWidth = Math.max(0.001, width);
+        double z = (x - center) / safeWidth;
+        return Math.exp(-0.5 * z * z);
+    }
+
+    private List<Long> exponentialOffsetsWithinMinute(SimulationEngine engine, int count, double effectiveRatePerHour) {
+        if (count <= 0) {
+            return List.of();
+        }
+        List<Long> rawOffsets = new ArrayList<>();
+        long cursor = 0L;
+        for (int i = 0; i < count; i++) {
+            cursor += engine.sampleExponentialInterarrivalSeconds(effectiveRatePerHour);
+            rawOffsets.add(cursor);
+        }
+
+        long lastRaw = Math.max(1L, rawOffsets.get(rawOffsets.size() - 1));
+        double scale = lastRaw > 59L ? 59.0 / lastRaw : 1.0;
+        List<Long> normalized = new ArrayList<>();
+        long previous = 0L;
+        for (long raw : rawOffsets) {
+            long offset = Math.max(1L, Math.min(59L, Math.round(raw * scale)));
+            if (offset < previous) {
+                offset = previous;
+            }
+            normalized.add(offset);
+            previous = offset;
+        }
+        Collections.sort(normalized);
+        return normalized;
     }
 
     private double peakWindowFactorAtMinute(long minute, int start, int end, double multiplier) {

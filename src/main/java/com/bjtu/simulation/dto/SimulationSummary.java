@@ -2,7 +2,10 @@ package com.bjtu.simulation.dto;
 
 import java.util.List;
 
+import com.bjtu.simulation.model.ArrivalSample;
+import com.bjtu.simulation.model.SeatCellSnapshot;
 import com.bjtu.simulation.model.TableSnapshot;
+import com.bjtu.simulation.model.TakeawayDecisionRecord;
 
 public class SimulationSummary {
     private final List<SimulationResult> history;
@@ -60,6 +63,10 @@ public class SimulationSummary {
     private final int occupiedSeats;
     private final int emptySeats;
     private final List<TableSnapshot> tableSnapshots;
+    private final List<SeatCellSnapshot> seatCells;
+    private final List<ArrivalSample> arrivalSamples;
+    private final List<TakeawayDecisionRecord> takeawayDecisionRecords;
+    private final ProbabilityModelSummary probabilityModel;
     private final QueueTheoryMetrics queueTheoryMetrics;
 
     public SimulationSummary(List<SimulationResult> history,
@@ -107,6 +114,10 @@ public class SimulationSummary {
                              int occupiedSeats,
                              int emptySeats,
                              List<TableSnapshot> tableSnapshots,
+                             List<SeatCellSnapshot> seatCells,
+                             List<ArrivalSample> arrivalSamples,
+                             List<TakeawayDecisionRecord> takeawayDecisionRecords,
+                             ProbabilityModelSummary probabilityModel,
                              QueueTheoryMetrics queueTheoryMetrics) {
         this.history = history;
         this.timeline = timeline;
@@ -153,6 +164,10 @@ public class SimulationSummary {
         this.occupiedSeats = occupiedSeats;
         this.emptySeats = emptySeats;
         this.tableSnapshots = tableSnapshots;
+        this.seatCells = seatCells;
+        this.arrivalSamples = arrivalSamples;
+        this.takeawayDecisionRecords = takeawayDecisionRecords;
+        this.probabilityModel = probabilityModel;
         this.queueTheoryMetrics = queueTheoryMetrics;
     }
 
@@ -334,6 +349,22 @@ public class SimulationSummary {
 
     public List<TableSnapshot> getTableSnapshots() {
         return tableSnapshots;
+    }
+
+    public List<SeatCellSnapshot> getSeatCells() {
+        return seatCells;
+    }
+
+    public List<ArrivalSample> getArrivalSamples() {
+        return arrivalSamples;
+    }
+
+    public List<TakeawayDecisionRecord> getTakeawayDecisionRecords() {
+        return takeawayDecisionRecords;
+    }
+
+    public ProbabilityModelSummary getProbabilityModel() {
+        return probabilityModel;
     }
 
     public QueueTheoryMetrics getQueueTheoryMetrics() {

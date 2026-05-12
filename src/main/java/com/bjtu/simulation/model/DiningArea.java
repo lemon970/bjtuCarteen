@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class DiningArea {
+    private static final long CLEANING_SECONDS = 90L;
+    private static final int SEATS_PER_GRID_ROW = 12;
+
     private final List<DiningTable> tables;
 
     public DiningArea(int totalSeats) {
@@ -27,13 +30,14 @@ public class DiningArea {
 
     public SeatAllocation tryOccupySeats(int requestedSeats, long currentTime) {
         int seats = Math.max(1, requestedSeats);
-        Optional<DiningTable> table = findTableForParty(seats);
+        Optional<DiningTable> table = findTableForParty(seats, currentTime);
         if (table.isEmpty()) {
             return null;
         }
 
         DiningTable selected = table.get();
         selected.updateDurations(currentTime);
+        selected.cleaningUntilTime = 0L;
         selected.occupiedSeats += seats;
         return new SeatAllocation(selected.tableId, seats);
     }
@@ -55,6 +59,9 @@ public class DiningArea {
             if (table.tableId == allocation.tableId()) {
                 table.updateDurations(currentTime);
                 table.occupiedSeats = Math.max(0, table.occupiedSeats - Math.max(1, allocation.seatCount()));
+                if (table.occupiedSeats == 0) {
+                    table.cleaningUntilTime = Math.max(currentTime, 0L) + CLEANING_SECONDS;
+                }
                 return;
             }
         }
@@ -96,13 +103,56 @@ public class DiningArea {
         return Collections.unmodifiableList(snapshots);
     }
 
-    private Optional<DiningTable> findTableForParty(int seats) {
+    public List<SeatCellSnapshot> getSeatCells(long currentTime) {
+        List<SeatCellSnapshot> cells = new ArrayList<>();
+        int seatId = 0;
+        for (DiningTable table : tables) {
+            for (int seatIndex = 0; seatIndex < table.capacity; seatIndex++) {
+                int row = seatId / SEATS_PER_GRID_ROW;
+                int column = seatId % SEATS_PER_GRID_ROW;
+                String status = seatStatus(table, seatIndex, currentTime);
+                cells.add(new SeatCellSnapshot(
+                        seatId,
+                        table.tableId,
+                        row,
+                        column,
+                        areaForTable(table.tableId),
+                        status));
+                seatId++;
+            }
+        }
+        return Collections.unmodifiableList(cells);
+    }
+
+    private Optional<DiningTable> findTableForParty(int seats, long currentTime) {
         return tables.stream()
+                .filter(table -> table.cleaningUntilTime <= Math.max(0L, currentTime))
                 .filter(table -> table.getEmptySeats() >= seats)
                 .min(Comparator
                         .comparingInt((DiningTable table) -> table.capacity >= seats ? table.capacity : Integer.MAX_VALUE)
                         .thenComparingInt(table -> table.getEmptySeats())
                         .thenComparingInt(table -> table.tableId));
+    }
+
+    private String seatStatus(DiningTable table, int seatIndex, long currentTime) {
+        if (seatIndex < table.occupiedSeats) {
+            return "OCCUPIED";
+        }
+        if (table.occupiedSeats == 0 && table.cleaningUntilTime > Math.max(0L, currentTime)) {
+            return "CLEANING";
+        }
+        return "FREE";
+    }
+
+    private String areaForTable(int tableId) {
+        int normalized = Math.max(0, tableId);
+        if (normalized % 3 == 0) {
+            return "A";
+        }
+        if (normalized % 3 == 1) {
+            return "B";
+        }
+        return "C";
     }
 
     private List<DiningTable> buildTables(int totalSeats,
@@ -163,6 +213,7 @@ public class DiningArea {
         private long lastUpdatedTime;
         private long occupiedSeconds;
         private long occupiedSeatSeconds;
+        private long cleaningUntilTime;
 
         private DiningTable(int tableId, int capacity) {
             this.tableId = tableId;
@@ -171,6 +222,7 @@ public class DiningArea {
             this.lastUpdatedTime = 0L;
             this.occupiedSeconds = 0L;
             this.occupiedSeatSeconds = 0L;
+            this.cleaningUntilTime = 0L;
         }
 
         private int getEmptySeats() {

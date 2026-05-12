@@ -31,6 +31,7 @@ class SimulationApiIntegrationTest {
 
     @Test
     void staticFrontendEntryShouldBeServed() throws Exception {
+        // [重构] 静态入口测试改为结构断言，原因是 MockMvc 不按浏览器 meta charset 解码中文 HTML。
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("index.html"));
@@ -45,7 +46,8 @@ class SimulationApiIntegrationTest {
 
         mockMvc.perform(get("/frontend/index.html"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Canteen Simulation Console")));
+                .andExpect(content().string(containsString("http://localhost:5173/")))
+                .andExpect(content().string(containsString("npm run dev")));
     }
 
     @Test

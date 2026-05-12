@@ -1,6 +1,0 @@
-Exception in thread "http-nio-8080-Poller" java.lang.OutOfMemoryError: Java heap space
-	at java.base/java.util.Collections$UnmodifiableCollection.iterator(Collections.java:1074)
-	at org.apache.tomcat.util.net.NioEndpoint$Poller.timeout(NioEndpoint.java:993)
-	at org.apache.tomcat.util.net.NioEndpoint$Poller.run(NioEndpoint.java:795)
-	at java.base/java.lang.Thread.runWith(Thread.java:1596)
-	at java.base/java.lang.Thread.run(Thread.java:1583)

@@ -11,10 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationResult;
 import com.bjtu.simulation.model.ArrivalGroup;
+import com.bjtu.simulation.model.ArrivalSample;
 import com.bjtu.simulation.model.DiningArea;
+import com.bjtu.simulation.model.SeatCellSnapshot;
 import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
 import com.bjtu.simulation.model.TableSnapshot;
+import com.bjtu.simulation.model.TakeawayDecisionRecord;
 
 public class SimulationEngine {
     private final Map<String, Student> studentRoster = new ConcurrentHashMap<>();
@@ -26,6 +29,8 @@ public class SimulationEngine {
     private final PriorityQueue<BaseEvent> eventQueue = new PriorityQueue<>();
     private final CanteenState canteenState;
     private final List<SimulationResult> history = new ArrayList<>();
+    private final List<ArrivalSample> arrivalSamples = new ArrayList<>();
+    private final List<TakeawayDecisionRecord> takeawayDecisionRecords = new ArrayList<>();
     private final List<Integer> windowServedCounts;
     private final List<String> windowTypes;
     private int takeawayWindowCount;
@@ -133,9 +138,10 @@ public class SimulationEngine {
     }
 
     public int sampleArrivalCountForMinute(double effectiveArrivalRatePerHour) {
-        double lambdaPerHour = config.getArrivalDist().getLambda() > 0
-                ? config.getArrivalDist().getLambda()
-                : Math.max(0.0, effectiveArrivalRatePerHour);
+        double lambdaPerHour = Math.max(0.0, effectiveArrivalRatePerHour);
+        if (lambdaPerHour <= 0.0 && config.getArrivalDist().getLambda() > 0) {
+            lambdaPerHour = config.getArrivalDist().getLambda();
+        }
         double lambdaPerMinute = Math.max(0.0, lambdaPerHour / 60.0);
         String type = normalizeDistributionType(config.getArrivalDist(), "POISSON");
 
@@ -148,6 +154,19 @@ public class SimulationEngine {
             return (int) nextLong(min, max + 1);
         }
         return samplePoisson(lambdaPerMinute);
+    }
+
+    public long sampleExponentialInterarrivalSeconds(double effectiveArrivalRatePerHour) {
+        double lambdaPerHour = Math.max(0.0, effectiveArrivalRatePerHour);
+        if (lambdaPerHour <= 0.0 && config.getArrivalDist().getLambda() > 0) {
+            lambdaPerHour = config.getArrivalDist().getLambda();
+        }
+        if (lambdaPerHour <= 0.0) {
+            return 60L;
+        }
+        double meanSeconds = 3600.0 / lambdaPerHour;
+        double u = Math.max(1.0e-12, 1.0 - nextDouble());
+        return Math.max(1L, Math.round(-Math.log(u) * meanSeconds));
     }
 
     public int samplePartySize() {
@@ -337,6 +356,14 @@ public class SimulationEngine {
         }
     }
 
+    public void recordArrivalSample(long timeSeconds,
+                                    long intervalSeconds,
+                                    double lambdaPerHour,
+                                    ArrivalGroup arrivalGroup,
+                                    int partySize) {
+        arrivalSamples.add(new ArrivalSample(timeSeconds, intervalSeconds, lambdaPerHour, arrivalGroup, partySize));
+    }
+
     public void recordAbandonByQueue() {
         this.abandonedCount++;
         this.abandonedByQueueCount++;
@@ -408,6 +435,28 @@ public class SimulationEngine {
 
     public void recordWeatherDrivenTakeaway(int partySize) {
         this.weatherDrivenTakeawayCount += Math.max(1, partySize);
+    }
+
+    public void recordTakeawayDecision(String studentId,
+                                       String reason,
+                                       double finalProbability,
+                                       double randomRoll,
+                                       double waitMinutes,
+                                       double studentPreference,
+                                       boolean takeaway,
+                                       int partySize) {
+        takeawayDecisionRecords.add(new TakeawayDecisionRecord(
+                currentTime,
+                studentId,
+                reason,
+                finalProbability,
+                randomRoll,
+                currentSeatUtilizationRate(),
+                currentQueuePressure(),
+                waitMinutes,
+                studentPreference,
+                takeaway,
+                partySize));
     }
 
     public void recordLeave() {
@@ -596,6 +645,14 @@ public class SimulationEngine {
         return history;
     }
 
+    public List<ArrivalSample> getArrivalSamples() {
+        return Collections.unmodifiableList(arrivalSamples);
+    }
+
+    public List<TakeawayDecisionRecord> getTakeawayDecisionRecords() {
+        return Collections.unmodifiableList(takeawayDecisionRecords);
+    }
+
     public void scheduleEvent(BaseEvent event) {
         if (event == null) {
             return;
@@ -612,6 +669,20 @@ public class SimulationEngine {
             total += Math.max(0, size);
         }
         return total;
+    }
+
+    public double currentSeatUtilizationRate() {
+        int totalSeats = Math.max(0, canteenState.getTotalSeats());
+        if (totalSeats == 0) {
+            return 1.0;
+        }
+        return clamp((double) canteenState.getOccupiedSeats() / totalSeats, 0.0, 1.0);
+    }
+
+    public double currentQueuePressure() {
+        int windowCount = Math.max(1, canteenState.getWindowCount());
+        int queueLimit = config == null ? 10 : Math.max(1, config.getQueueLimit());
+        return clamp((double) getCurrentTotalQueueSize() / (windowCount * queueLimit), 0.0, 1.0);
     }
 
     public void runUntil(long targetTime) {
@@ -761,6 +832,10 @@ public class SimulationEngine {
 
     public List<TableSnapshot> getTableSnapshots() {
         return canteenState.getTableSnapshots(currentTime);
+    }
+
+    public List<SeatCellSnapshot> getSeatCells() {
+        return canteenState.getSeatCells(currentTime);
     }
 
     private long sampleDurationSeconds(SimConfig.DistributionSpec spec, long fallbackMin, long fallbackMax) {

@@ -3,6 +3,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controlle
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ApiResponse.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\OptimizationRequest.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ProbabilityModelSummary.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\QueueTheoryMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\SimConfig.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\SimulationReport.java
@@ -19,10 +20,13 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\Si
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\StudentArriveEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\StudentLeaveEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\ArrivalGroup.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\ArrivalSample.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\DiningArea.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\SeatCellSnapshot.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\Student.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\StudentState.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\TableSnapshot.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\TakeawayDecisionRecord.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\QueueTheoryMetricsCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationArrivalScheduler.java

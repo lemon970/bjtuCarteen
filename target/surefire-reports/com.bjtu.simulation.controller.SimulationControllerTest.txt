@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.bjtu.simulation.controller.SimulationControllerTest
 -------------------------------------------------------------------------------
-Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.890 s -- in com.bjtu.simulation.controller.SimulationControllerTest
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.265 s -- in com.bjtu.simulation.controller.SimulationControllerTest

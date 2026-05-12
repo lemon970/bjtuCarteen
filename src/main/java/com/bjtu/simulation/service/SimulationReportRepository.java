@@ -3,6 +3,7 @@ package com.bjtu.simulation.service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -37,9 +38,9 @@ public class SimulationReportRepository {
             JsonNode fullReport = reportMapper.valueToTree(report);
             writeHistory(report.getReportId(), fullReport.path("summary").path("history"));
             JsonNode compactReport = compactReportNode(fullReport);
-            reportMapper.writeValue(reportPath.toFile(), compactReport);
+            writeJsonWithRetry(reportPath, compactReport);
             Path latestPath = REPORTS_DIR.resolve(LATEST_REPORT_FILE);
-            reportMapper.writeValue(latestPath.toFile(), compactReport);
+            writeJsonWithRetry(latestPath, compactReport);
         } catch (IOException e) {
             throw new IllegalStateException("failed to write simulation report", e);
         }
@@ -132,7 +133,34 @@ public class SimulationReportRepository {
     private void writeHistory(String reportId, JsonNode history) throws IOException {
         JsonNode safeHistory = history != null && history.isArray() ? history : reportMapper.createArrayNode();
         Path historyPath = REPORTS_DIR.resolve(HISTORY_FILE_PREFIX + reportId + JSON_SUFFIX);
-        reportMapper.writeValue(historyPath.toFile(), safeHistory);
+        writeJsonWithRetry(historyPath, safeHistory);
+    }
+
+    // [重构] 报告写入改为临时文件替换并短暂重试，原因是 Windows 上 latest 文件偶发被映射锁占用。
+    private void writeJsonWithRetry(Path target, JsonNode data) throws IOException {
+        IOException last = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            Path tempPath = target.resolveSibling(target.getFileName() + ".tmp-" + Thread.currentThread().getId() + "-" + attempt);
+            try {
+                reportMapper.writeValue(tempPath.toFile(), data);
+                Files.move(tempPath, target, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            } catch (IOException e) {
+                last = e;
+                Files.deleteIfExists(tempPath);
+                sleepBeforeRetry(attempt);
+            }
+        }
+        throw last == null ? new IOException("failed to write json file") : last;
+    }
+
+    private void sleepBeforeRetry(int attempt) throws IOException {
+        try {
+            Thread.sleep(40L * (attempt + 1));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while retrying report write", e);
+        }
     }
 
     private JsonNode compactReportNode(JsonNode reportNode) {

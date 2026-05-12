@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:backend": "set INTEGRATED_BUILD=true&& vite build",
     "preview": "vite preview"
   },
   "dependencies": {

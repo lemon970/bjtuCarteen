@@ -41,6 +41,15 @@ public class SeatSearchEvent extends BaseEvent {
         double roll = engine.nextDouble();
 
         engine.resolveSeatDecisionPending(partySize);
+        engine.recordTakeawayDecision(
+                studentId,
+                "NO_SEAT_SWITCH",
+                Math.max(0.50, studentPackPreference),
+                roll,
+                0.0,
+                studentPackPreference,
+                true,
+                partySize);
         engine.recordTakeaway(partySize);
         engine.recordNoSeatSwitchToTakeaway(partySize);
         engine.setStudentState(studentId, StudentState.PACK_LEAVE);

@@ -118,4 +118,8 @@ public class CanteenState {
     public List<TableSnapshot> getTableSnapshots(long currentTime) {
         return diningArea.getTableSnapshots(currentTime);
     }
+
+    public List<com.bjtu.simulation.model.SeatCellSnapshot> getSeatCells(long currentTime) {
+        return diningArea.getSeatCells(currentTime);
+    }
 }

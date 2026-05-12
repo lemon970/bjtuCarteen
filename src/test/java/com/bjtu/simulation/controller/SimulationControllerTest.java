@@ -183,6 +183,38 @@ class SimulationControllerTest {
     }
 
     @Test
+    void probabilityModelShouldExposePoissonExponentialSamplesAndSeatGrid() {
+        JsonNode summary = runAndGetSummary(highLoadConfig());
+
+        JsonNode model = summary.path("probability_model");
+        assertEquals("POISSON", model.path("arrival_count_distribution").asText());
+        assertEquals("NEGATIVE_EXPONENTIAL", model.path("interarrival_distribution").asText());
+        assertTrue(model.path("arrival_sample_count").asInt() > 0);
+        assertTrue(summary.path("arrival_samples").isArray());
+        assertTrue(summary.path("arrival_samples").get(0).path("interval_seconds").asLong() >= 0);
+        assertTrue(summary.path("takeaway_decision_records").isArray());
+        assertEquals(summary.path("total_seats").asInt(), summary.path("seat_cells").size());
+        assertTrue(summary.path("seat_cells").get(0).has("row"));
+        assertTrue(summary.path("seat_cells").get(0).has("column"));
+        assertTrue(summary.path("seat_cells").get(0).has("status"));
+    }
+
+    @Test
+    void csvExportShouldContainArrivalDecisionAndHistorySections() {
+        JsonNode report = runAndGetReport(highLoadConfig());
+        String reportId = report.path("report_id").asText();
+
+        ResponseEntity<String> csv = controller.exportReportCsv(reportId);
+
+        assertEquals(HttpStatus.OK, csv.getStatusCode());
+        assertNotNull(csv.getBody());
+        assertTrue(csv.getBody().contains("section,report_id,time_seconds"));
+        assertTrue(csv.getBody().contains("arrival,"));
+        assertTrue(csv.getBody().contains("takeaway_decision,"));
+        assertTrue(csv.getBody().contains("history,"));
+    }
+
+    @Test
     void queuePressureShouldRaiseTakeawayDecisionProbability() {
         SimConfig config = baseConfig();
         config.setPackProbability(0.0);

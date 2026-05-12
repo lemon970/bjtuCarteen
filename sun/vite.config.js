@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendBuild = process.env.INTEGRATED_BUILD === 'true'
+
 export default defineConfig({
   plugins: [react()],
-  base: '/frontend/',
+  base: backendBuild ? '/frontend/' : '/',
   build: {
-    outDir: '../src/main/resources/static/frontend',
+    outDir: backendBuild ? '../src/main/resources/static/frontend' : 'dist',
     emptyOutDir: true,
   },
   server: {

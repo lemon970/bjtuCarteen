@@ -3,6 +3,8 @@ package com.bjtu.simulation.controller;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -176,6 +178,32 @@ public class SimulationController {
         return getReportSummaryArrayPage(reportId, "history", page, pageSize);
     }
 
+    @GetMapping(value = "/report/{id}/csv", produces = "text/csv")
+    public ResponseEntity<String> exportReportCsv(@PathVariable("id") String reportId) {
+        if (!reportRepository.isSafeReportId(reportId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("invalid report id");
+        }
+
+        try {
+            Optional<JsonNode> report = reportRepository.readById(reportId);
+            if (report.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body("report not found");
+            }
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"simulation-" + reportId + ".csv\"")
+                    .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                    .body(buildCsv(report.get(), reportRepository.readHistoryById(reportId).orElse(reportMapper.createArrayNode()), reportId));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(e.getMessage());
+        }
+    }
+
     private ResponseEntity<ApiResponse<JsonNode>> getReportSummaryArrayPage(String reportId,
                                                                            String collectionName,
                                                                            int page,
@@ -241,6 +269,82 @@ public class SimulationController {
         data.put("has_previous", page > 1 && totalPages > 0);
         data.set("items", items);
         return data;
+    }
+
+    private String buildCsv(JsonNode report, JsonNode history, String reportId) {
+        StringBuilder csv = new StringBuilder();
+        csv.append("section,report_id,time_seconds,minute,metric_a,metric_b,metric_c,metric_d,metric_e,result\n");
+        JsonNode summary = report.path("summary");
+        appendArrivalRows(csv, reportId, summary.path("arrival_samples"));
+        appendDecisionRows(csv, reportId, summary.path("takeaway_decision_records"));
+        JsonNode historySource = history != null && history.isArray() ? history : summary.path("history");
+        appendHistoryRows(csv, reportId, historySource);
+        return csv.toString();
+    }
+
+    private void appendArrivalRows(StringBuilder csv, String reportId, JsonNode samples) {
+        if (!samples.isArray()) {
+            return;
+        }
+        for (JsonNode sample : samples) {
+            csv.append("arrival,")
+                    .append(csv(reportId)).append(',')
+                    .append(sample.path("time_seconds").asLong()).append(',')
+                    .append(sample.path("minute").asLong()).append(',')
+                    .append(sample.path("interval_seconds").asLong()).append(',')
+                    .append(sample.path("lambda_per_hour").asDouble()).append(',')
+                    .append(csv(sample.path("arrival_group").asText(""))).append(',')
+                    .append(sample.path("party_size").asInt()).append(',')
+                    .append(',')
+                    .append("scheduled")
+                    .append('\n');
+        }
+    }
+
+    private void appendDecisionRows(StringBuilder csv, String reportId, JsonNode decisions) {
+        if (!decisions.isArray()) {
+            return;
+        }
+        for (JsonNode decision : decisions) {
+            csv.append("takeaway_decision,")
+                    .append(csv(reportId)).append(',')
+                    .append(decision.path("time_seconds").asLong()).append(',')
+                    .append(decision.path("time_seconds").asLong() / 60).append(',')
+                    .append(decision.path("final_probability").asDouble()).append(',')
+                    .append(decision.path("random_roll").asDouble()).append(',')
+                    .append(decision.path("seat_utilization_rate").asDouble()).append(',')
+                    .append(decision.path("queue_pressure").asDouble()).append(',')
+                    .append(decision.path("wait_minutes").asDouble()).append(',')
+                    .append(decision.path("takeaway").asBoolean() ? "takeaway" : "dine_in")
+                    .append('\n');
+        }
+    }
+
+    private void appendHistoryRows(StringBuilder csv, String reportId, JsonNode history) {
+        if (!history.isArray()) {
+            return;
+        }
+        for (JsonNode point : history) {
+            csv.append("history,")
+                    .append(csv(reportId)).append(',')
+                    .append(point.path("time").asLong()).append(',')
+                    .append(point.path("time").asLong() / 60).append(',')
+                    .append(point.path("total_queue_size").asInt()).append(',')
+                    .append(point.path("occupied_seats").asInt()).append(',')
+                    .append(point.path("takeaway_count").asInt()).append(',')
+                    .append(point.path("served_count").asInt()).append(',')
+                    .append(point.path("arrived_count").asInt()).append(',')
+                    .append(csv(point.path("event_message").asText("")))
+                    .append('\n');
+        }
+    }
+
+    private String csv(String value) {
+        String safe = value == null ? "" : value;
+        if (safe.contains(",") || safe.contains("\"") || safe.contains("\n")) {
+            return "\"" + safe.replace("\"", "\"\"") + "\"";
+        }
+        return safe;
     }
 
     private JsonNode responseReportNode(JsonNode reportNode, boolean includeHistory) {

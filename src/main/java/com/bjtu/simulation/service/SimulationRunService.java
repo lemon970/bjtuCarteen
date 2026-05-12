@@ -12,6 +12,7 @@ import com.bjtu.simulation.dto.SimulationReport;
 import com.bjtu.simulation.dto.SimulationSummary;
 import com.bjtu.simulation.dto.SimulationTimePoint;
 import com.bjtu.simulation.engine.SimulationEngine;
+import com.bjtu.simulation.model.ArrivalSample;
 
 public class SimulationRunService {
     private static final String REPORT_VERSION = "1.8.0";
@@ -74,6 +75,8 @@ public class SimulationRunService {
         int normalWindowServedCount = engine.getNormalWindowServedCount();
         int takeawayWindowServedCount = engine.getTakeawayWindowServedCount();
         QueueTheoryMetrics queueTheoryMetrics = queueTheoryMetricsCalculator.build(config, windowCount);
+        var arrivalSamples = new ArrayList<>(engine.getArrivalSamples());
+        var takeawayDecisionRecords = new ArrayList<>(engine.getTakeawayDecisionRecords());
 
         List<SimulationTimePoint> timeline = timelineBuilder.build(
                 engine.getHistory(),
@@ -129,7 +132,82 @@ public class SimulationRunService {
                 occupiedSeats,
                 emptySeats,
                 engine.getTableSnapshots(),
+                engine.getSeatCells(),
+                arrivalSamples,
+                takeawayDecisionRecords,
+                buildProbabilityModel(config, arrivalSamples, takeawayDecisionRecords.size()),
                 queueTheoryMetrics);
+    }
+
+    private com.bjtu.simulation.dto.ProbabilityModelSummary buildProbabilityModel(SimConfig config,
+                                                                                  List<ArrivalSample> arrivalSamples,
+                                                                                  int takeawayDecisionSampleCount) {
+        double lambdaPerHour = config.getArrivalDist().getLambda() > 0
+                ? config.getArrivalDist().getLambda()
+                : Math.max(0.0, config.getArrivalRate());
+        double expectedMeanInterval = lambdaPerHour <= 0 ? 0.0 : 3600.0 / lambdaPerHour;
+        double observedMeanInterval = averageInterval(arrivalSamples);
+        double accuracy = expectedMeanInterval <= 0 || observedMeanInterval <= 0
+                ? 0.0
+                : Math.max(0.0, 1.0 - Math.abs(observedMeanInterval - expectedMeanInterval) / expectedMeanInterval);
+        return new com.bjtu.simulation.dto.ProbabilityModelSummary(
+                normalizeDistributionName(config.getArrivalDist(), "POISSON"),
+                "NEGATIVE_EXPONENTIAL",
+                normalizeDistributionName(config.getNormalServiceDist(), "EXPONENTIAL"),
+                normalizeDistributionName(config.getDiningTimeDist(), "UNIFORM"),
+                lambdaPerHour,
+                expectedMeanInterval,
+                observedMeanInterval,
+                accuracy,
+                minuteVarianceMeanRatio(arrivalSamples),
+                arrivalSamples.size(),
+                takeawayDecisionSampleCount);
+    }
+
+    private double averageInterval(List<ArrivalSample> arrivalSamples) {
+        if (arrivalSamples == null || arrivalSamples.isEmpty()) {
+            return 0.0;
+        }
+        long sum = 0L;
+        for (ArrivalSample sample : arrivalSamples) {
+            sum += Math.max(0L, sample.getIntervalSeconds());
+        }
+        return (double) sum / arrivalSamples.size();
+    }
+
+    private double minuteVarianceMeanRatio(List<ArrivalSample> arrivalSamples) {
+        if (arrivalSamples == null || arrivalSamples.isEmpty()) {
+            return 0.0;
+        }
+        java.util.Map<Long, Integer> counts = new java.util.HashMap<>();
+        long maxMinute = 0L;
+        for (ArrivalSample sample : arrivalSamples) {
+            counts.merge(sample.getMinute(), sample.getPartySize(), Integer::sum);
+            maxMinute = Math.max(maxMinute, sample.getMinute());
+        }
+        int buckets = (int) Math.max(1L, maxMinute + 1L);
+        double mean = 0.0;
+        for (int minute = 0; minute < buckets; minute++) {
+            mean += counts.getOrDefault((long) minute, 0);
+        }
+        mean /= buckets;
+        if (mean <= 0.0) {
+            return 0.0;
+        }
+        double variance = 0.0;
+        for (int minute = 0; minute < buckets; minute++) {
+            double diff = counts.getOrDefault((long) minute, 0) - mean;
+            variance += diff * diff;
+        }
+        variance /= buckets;
+        return variance / mean;
+    }
+
+    private String normalizeDistributionName(SimConfig.DistributionSpec spec, String fallback) {
+        if (spec == null || spec.getType() == null || spec.getType().isBlank()) {
+            return fallback;
+        }
+        return spec.getType().trim().toUpperCase();
     }
 
     private double rate(int numerator, int denominator) {
