@@ -115,12 +115,14 @@ public class SimulationConfigNormalizer {
         config.getPeakConfig().setClassPeakWindows(normalizePeakWindows(config.getPeakConfig().getClassPeakWindows()));
 
         config.getRandomBounds().setArrivalInterval(Math.max(0, config.getRandomBounds().getArrivalInterval()));
-        config.getRandomBounds().setServiceRange(normalizeIntRange(config.getRandomBounds().getServiceRange(), 60, 300));
-        config.getRandomBounds().setDiningRange(normalizeIntRange(config.getRandomBounds().getDiningRange(), 600, 1800));
+        config.getRandomBounds().setServiceRange(normalizeIntRange(config.getRandomBounds().getServiceRange(), 45, 180));
+        config.getRandomBounds().setDiningRange(normalizeIntRange(config.getRandomBounds().getDiningRange(), 900, 2400));
         normalizeDistributionSpec(config.getArrivalDist(), "POISSON");
         normalizeDistributionSpec(config.getWindowServiceDist(), "EXPONENTIAL");
         normalizeDistributionSpec(config.getNormalServiceDist(), "EXPONENTIAL");
         normalizeDistributionSpec(config.getDiningTimeDist(), "UNIFORM");
+        // [重构] 到达率由 arrivalRate 统一定义，原因是前端旧 lambda 与到达率不同步会直接造成总人数偏差。
+        config.getArrivalDist().setLambda(Math.max(0.0, config.getArrivalRate()));
     }
 
     private void normalizeDistributionSpec(SimConfig.DistributionSpec spec, String defaultType) {

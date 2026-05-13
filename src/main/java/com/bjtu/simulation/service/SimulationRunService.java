@@ -68,7 +68,12 @@ public class SimulationRunService {
         int emptySeats = Math.max(0, totalSeats - occupiedSeats);
         long endTimeSeconds = engine.getCurrentTime();
         long endTimeMinutes = endTimeSeconds / 60;
-        double seatUtilizationRate = totalSeats == 0 ? 0 : engine.getAvgOccupiedSeats() / totalSeats;
+        long utilizationWindowSeconds = Math.max(1L, Math.round(config.getDuration() * 3600.0));
+        double integratedAvgOccupiedSeats = endTimeSeconds <= 0
+                ? engine.getAvgOccupiedSeats()
+                : engine.getOccupiedSeatSeconds() / (double) utilizationWindowSeconds;
+        integratedAvgOccupiedSeats = Math.min(totalSeats, Math.max(0.0, integratedAvgOccupiedSeats));
+        double seatUtilizationRate = totalSeats == 0 ? 0 : Math.min(1.0, integratedAvgOccupiedSeats / totalSeats);
         int windowCount = config.getBaseConfig().getWindowCount();
         int normalWindowCount = engine.getNormalWindowCount();
         int takeawayWindowCount = engine.getTakeawayWindowCount();
@@ -113,7 +118,7 @@ public class SimulationRunService {
                 engine.getMaxTotalQueueSize(),
                 round3(engine.getAvgTotalQueueSize()),
                 engine.getMaxOccupiedSeats(),
-                round3(engine.getAvgOccupiedSeats()),
+                round3(integratedAvgOccupiedSeats),
                 round3(seatUtilizationRate),
                 new ArrayList<>(engine.getWindowServedCounts()),
                 new ArrayList<>(engine.getWindowTypes()),
@@ -142,9 +147,7 @@ public class SimulationRunService {
     private com.bjtu.simulation.dto.ProbabilityModelSummary buildProbabilityModel(SimConfig config,
                                                                                   List<ArrivalSample> arrivalSamples,
                                                                                   int takeawayDecisionSampleCount) {
-        double lambdaPerHour = config.getArrivalDist().getLambda() > 0
-                ? config.getArrivalDist().getLambda()
-                : Math.max(0.0, config.getArrivalRate());
+        double lambdaPerHour = Math.max(0.0, config.getArrivalRate());
         double expectedMeanInterval = lambdaPerHour <= 0 ? 0.0 : 3600.0 / lambdaPerHour;
         double observedMeanInterval = averageInterval(arrivalSamples);
         double accuracy = expectedMeanInterval <= 0 || observedMeanInterval <= 0
@@ -152,7 +155,7 @@ public class SimulationRunService {
                 : Math.max(0.0, 1.0 - Math.abs(observedMeanInterval - expectedMeanInterval) / expectedMeanInterval);
         return new com.bjtu.simulation.dto.ProbabilityModelSummary(
                 normalizeDistributionName(config.getArrivalDist(), "POISSON"),
-                "NEGATIVE_EXPONENTIAL",
+                interarrivalDistributionName(config),
                 normalizeDistributionName(config.getNormalServiceDist(), "EXPONENTIAL"),
                 normalizeDistributionName(config.getDiningTimeDist(), "UNIFORM"),
                 lambdaPerHour,
@@ -162,6 +165,26 @@ public class SimulationRunService {
                 minuteVarianceMeanRatio(arrivalSamples),
                 arrivalSamples.size(),
                 takeawayDecisionSampleCount);
+    }
+
+    private String interarrivalDistributionName(SimConfig config) {
+        if (config != null
+                && config.getRandomBounds() != null
+                && config.getRandomBounds().getArrivalInterval() > 0) {
+            return "FIXED_INTERVAL";
+        }
+        return "NEGATIVE_EXPONENTIAL";
+    }
+
+    private double averageLambdaPerHour(List<ArrivalSample> arrivalSamples) {
+        if (arrivalSamples == null || arrivalSamples.isEmpty()) {
+            return 0.0;
+        }
+        double sum = 0.0;
+        for (ArrivalSample sample : arrivalSamples) {
+            sum += Math.max(0.0, sample.getLambdaPerHour());
+        }
+        return sum / arrivalSamples.size();
     }
 
     private double averageInterval(List<ArrivalSample> arrivalSamples) {

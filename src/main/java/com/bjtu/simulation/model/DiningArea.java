@@ -103,6 +103,15 @@ public class DiningArea {
         return Collections.unmodifiableList(snapshots);
     }
 
+    public long getOccupiedSeatSeconds(long currentTime) {
+        long total = 0L;
+        for (DiningTable table : tables) {
+            long elapsed = Math.max(0L, currentTime - table.lastUpdatedTime);
+            total += table.occupiedSeatSeconds + elapsed * table.occupiedSeats;
+        }
+        return total;
+    }
+
     public List<SeatCellSnapshot> getSeatCells(long currentTime) {
         List<SeatCellSnapshot> cells = new ArrayList<>();
         int seatId = 0;

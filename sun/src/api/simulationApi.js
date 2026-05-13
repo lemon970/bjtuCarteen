@@ -3,7 +3,13 @@ import { API_BASE, HISTORY_PAGE_SIZE } from '../constants'
 // [重构] 把所有后端请求集中在 API 层，页面组件不直接拼接接口地址，便于前后端契约统一维护。
 async function requestJson(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, options)
-  const body = await response.json()
+  const text = await response.text()
+  let body
+  try {
+    body = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(`后端返回了非 JSON 内容（HTTP ${response.status}），请确认服务接口正常运行`)
+  }
   if (!response.ok || body.code !== 0) {
     throw new Error(body.message || `HTTP ${response.status}`)
   }

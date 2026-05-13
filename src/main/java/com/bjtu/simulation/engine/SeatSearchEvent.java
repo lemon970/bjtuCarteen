@@ -52,6 +52,7 @@ public class SeatSearchEvent extends BaseEvent {
                 partySize);
         engine.recordTakeaway(partySize);
         engine.recordNoSeatSwitchToTakeaway(partySize);
+        engine.recordLeave(partySize);
         engine.setStudentState(studentId, StudentState.PACK_LEAVE);
         engine.setStudentState(studentId, StudentState.LEAVE);
 

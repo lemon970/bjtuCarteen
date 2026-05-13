@@ -32,7 +32,12 @@ function App() {
   }
 
   const setField = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      if (field === 'arrivalRate') {
+        return { ...prev, arrivalRate: value, arrivalLambda: value }
+      }
+      return { ...prev, [field]: value }
+    })
   }
 
   const handleRun = async (event) => {

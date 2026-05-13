@@ -17,26 +17,32 @@ public class SimulationArrivalScheduler {
             scheduleFixedIntervalArrivalEvents(engine, config, durationSeconds);
             return;
         }
-        if (config.getArrivalRate() <= 0) {
+        int targetStudents = targetArrivalCount(config, durationSeconds);
+        if (targetStudents <= 0) {
             return;
         }
-        int maxStudents = effectiveStudentLimit(config);
         long durationMinutes = Math.max(1L, (long) Math.ceil(durationSeconds / 60.0));
+        List<Double> minuteWeights = normalizedMinuteWeights(durationMinutes, config);
+        List<Integer> minutePersonCounts = sampleMinutePersonCounts(engine, minuteWeights, targetStudents);
         int studentIndex = 1;
         long lastArrivalTime = 0L;
 
         for (long minute = 0; minute < durationMinutes; minute++) {
-            double effectiveRatePerHour = effectiveArrivalRatePerHour(minute, durationMinutes, config);
-            int arrivalsThisMinute = engine.sampleArrivalCountForMinute(effectiveRatePerHour);
-            List<Long> offsets = exponentialOffsetsWithinMinute(engine, arrivalsThisMinute, effectiveRatePerHour);
+            int personsThisMinute = minutePersonCounts.get((int) minute);
+            if (personsThisMinute <= 0) {
+                continue;
+            }
+            double effectiveRatePerHour = minuteWeights.get((int) minute) * targetStudents * 60.0;
+            List<Integer> partySizes = buildPartySizes(engine, personsThisMinute);
+            List<Long> offsets = exponentialOffsetsWithinMinute(engine, partySizes.size(), effectiveRatePerHour);
 
-            for (int j = 0; j < arrivalsThisMinute; j++) {
-                int partySize = engine.samplePartySize();
-                if (studentIndex > maxStudents) {
+            for (int j = 0; j < partySizes.size(); j++) {
+                int partySize = partySizes.get(j);
+                if (studentIndex > targetStudents) {
                     return;
                 }
-                if (studentIndex + partySize - 1 > maxStudents) {
-                    partySize = maxStudents - studentIndex + 1;
+                if (studentIndex + partySize - 1 > targetStudents) {
+                    partySize = targetStudents - studentIndex + 1;
                 }
                 if (partySize <= 0) {
                     return;
@@ -56,6 +62,111 @@ public class SimulationArrivalScheduler {
                 studentIndex += partySize;
             }
         }
+    }
+
+    private int targetArrivalCount(SimConfig config, long durationSeconds) {
+        double arrivalRatePerHour = configuredArrivalRatePerHour(config);
+        if (arrivalRatePerHour <= 0.0 || durationSeconds <= 0L) {
+            return 0;
+        }
+        int expectedStudents = (int) Math.round(arrivalRatePerHour * durationSeconds / 3600.0);
+        return Math.min(Math.max(0, expectedStudents), effectiveStudentLimit(config));
+    }
+
+    private List<Double> normalizedMinuteWeights(long durationMinutes, SimConfig config) {
+        List<Double> rawWeights = new ArrayList<>();
+        double sum = 0.0;
+        for (long minute = 0; minute < durationMinutes; minute++) {
+            double weight = minuteArrivalWeight(minute, durationMinutes, config);
+            rawWeights.add(weight);
+            sum += weight;
+        }
+
+        if (sum <= 0.0) {
+            double uniform = 1.0 / Math.max(1L, durationMinutes);
+            return new ArrayList<>(Collections.nCopies((int) durationMinutes, uniform));
+        }
+
+        List<Double> normalized = new ArrayList<>();
+        for (double weight : rawWeights) {
+            normalized.add(weight / sum);
+        }
+        return normalized;
+    }
+
+    private List<Integer> sampleMinutePersonCounts(SimulationEngine engine, List<Double> minuteWeights, int targetStudents) {
+        List<Integer> counts = new ArrayList<>();
+        int total = 0;
+        for (double weight : minuteWeights) {
+            double expectedPersonsThisMinute = Math.max(0.0, targetStudents * weight);
+            int sampled = engine.sampleArrivalCountForMinute(expectedPersonsThisMinute * 60.0);
+            counts.add(sampled);
+            total += sampled;
+        }
+
+        rebalanceMinuteCounts(engine, counts, minuteWeights, targetStudents, total);
+        return counts;
+    }
+
+    private void rebalanceMinuteCounts(SimulationEngine engine,
+                                       List<Integer> counts,
+                                       List<Double> minuteWeights,
+                                       int targetStudents,
+                                       int currentTotal) {
+        int total = currentTotal;
+        while (total < targetStudents) {
+            int minute = pickWeightedMinute(engine, minuteWeights);
+            counts.set(minute, counts.get(minute) + 1);
+            total++;
+        }
+
+        while (total > targetStudents) {
+            int minute = pickNonEmptyMinute(engine, counts);
+            counts.set(minute, counts.get(minute) - 1);
+            total--;
+        }
+    }
+
+    private int pickWeightedMinute(SimulationEngine engine, List<Double> minuteWeights) {
+        double roll = engine.nextDouble();
+        double cumulative = 0.0;
+        for (int i = 0; i < minuteWeights.size(); i++) {
+            cumulative += minuteWeights.get(i);
+            if (roll <= cumulative) {
+                return i;
+            }
+        }
+        return Math.max(0, minuteWeights.size() - 1);
+    }
+
+    private int pickNonEmptyMinute(SimulationEngine engine, List<Integer> counts) {
+        int total = 0;
+        for (int count : counts) {
+            total += Math.max(0, count);
+        }
+        if (total <= 0) {
+            return 0;
+        }
+        int roll = engine.nextInt(1, total);
+        int cumulative = 0;
+        for (int i = 0; i < counts.size(); i++) {
+            cumulative += Math.max(0, counts.get(i));
+            if (roll <= cumulative) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private List<Integer> buildPartySizes(SimulationEngine engine, int personsThisMinute) {
+        List<Integer> partySizes = new ArrayList<>();
+        int remaining = Math.max(0, personsThisMinute);
+        while (remaining > 0) {
+            int partySize = Math.min(remaining, Math.max(1, engine.samplePartySize()));
+            partySizes.add(partySize);
+            remaining -= partySize;
+        }
+        return partySizes;
     }
 
     private void scheduleFixedIntervalArrivalEvents(SimulationEngine engine, SimConfig config, long durationSeconds) {
@@ -103,7 +214,8 @@ public class SimulationArrivalScheduler {
                         peakWindow.getMultiplier());
                 combinedFactor += Math.max(0.0, windowFactor - 1.0);
             }
-            return Math.max(1.0, combinedFactor);
+            // [重构] 多峰叠加使用上限保护，原因是重叠课间峰值不能无限线性放大到达率。
+            return Math.max(1.0, Math.min(4.5, combinedFactor));
         }
 
         int start = peakConfig.getClassPeakStartMinute();
@@ -111,12 +223,16 @@ public class SimulationArrivalScheduler {
         return peakWindowFactorAtMinute(minute, start, end, peakConfig.getClassPeakMultiplier());
     }
 
-    private double effectiveArrivalRatePerHour(long minute, long durationMinutes, SimConfig config) {
-        double effectiveRatePerHour = Math.max(0.0, config.getArrivalRate()) * naturalMealFactor(minute, durationMinutes);
+    private double minuteArrivalWeight(long minute, long durationMinutes, SimConfig config) {
+        double weight = naturalMealFactor(minute, durationMinutes);
         if (isClassPeakEnabled(config)) {
-            effectiveRatePerHour *= arrivalFactorAtMinute(minute, config);
+            weight *= arrivalFactorAtMinute(minute, config);
         }
-        return Math.max(0.0, effectiveRatePerHour);
+        return Math.max(0.001, weight);
+    }
+
+    private double configuredArrivalRatePerHour(SimConfig config) {
+        return config == null ? 0.0 : Math.max(0.0, config.getArrivalRate());
     }
 
     private double naturalMealFactor(long minute, long durationMinutes) {
@@ -169,7 +285,9 @@ public class SimulationArrivalScheduler {
 
         double progress = (minute - start) / (double) Math.max(1, normalizedEnd - start);
         double safeMultiplier = Math.max(1.0, multiplier);
-        return Math.exp(progress * Math.log(safeMultiplier));
+        // [重构] 峰值窗口改为余弦钟形曲线，原因是指数爬升会在窗口末端产生不真实的陡降。
+        double smoothPeak = 0.5 - 0.5 * Math.cos(2.0 * Math.PI * progress);
+        return 1.0 + (safeMultiplier - 1.0) * smoothPeak;
     }
 
     private boolean isClassPeakEnabled(SimConfig config) {

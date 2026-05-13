@@ -46,8 +46,8 @@ class SimulationApiIntegrationTest {
 
         mockMvc.perform(get("/frontend/index.html"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("http://localhost:5173/")))
-                .andExpect(content().string(containsString("npm run dev")));
+                .andExpect(content().string(containsString("/frontend/assets/")))
+                .andExpect(content().string(containsString("<div id=\"root\"></div>")));
     }
 
     @Test

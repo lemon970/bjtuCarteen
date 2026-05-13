@@ -2,6 +2,7 @@ import HistoryTable from '../components/HistoryTable'
 import MetricCard from '../components/MetricCard'
 import ReplayPanel from '../components/ReplayPanel'
 import TimelineChart from '../components/TimelineChart'
+import UtilizationChart from '../components/UtilizationChart'
 import { csvExportUrl } from '../api/simulationApi'
 import { formatNumber, formatPercent, read } from '../utils/simulation'
 
@@ -49,6 +50,16 @@ function DisplayPage({ report, historyPage, historyLoading, onLoadHistory, onLoa
           </div>
         </div>
         <TimelineChart timeline={timeline} />
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>座位占用率</h2>
+            <p>按百分比展示每分钟座位压力，避免排队人数和座位数混用同一量纲。</p>
+          </div>
+        </div>
+        <UtilizationChart timeline={timeline} />
       </section>
 
       <section className="panel">

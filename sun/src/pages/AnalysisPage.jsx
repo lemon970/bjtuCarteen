@@ -1,6 +1,7 @@
 import MetricCard from '../components/MetricCard'
 import ProbabilityPanel from '../components/ProbabilityPanel'
 import TimelineChart from '../components/TimelineChart'
+import UtilizationChart from '../components/UtilizationChart'
 import { buildAnalysis, formatNumber, formatPercent, read } from '../utils/simulation'
 
 // [重构] 数据分析页从展示页拆出，原因是统计结论、参数复盘和拥挤分析属于独立视图。
@@ -10,6 +11,23 @@ function AnalysisPage({ report, payload, onLoadLatest }) {
   const base = config?.base_config || config?.baseConfig || {}
   const model = read(summary, 'probability_model', 'probabilityModel') || {}
   const analysis = buildAnalysis(summary)
+
+  if (!report) {
+    return (
+      <section className="dashboard">
+        <div className="section-head">
+          <div>
+            <h2>数据分析</h2>
+            <p>请先运行仿真或读取最新报告，系统会基于当前报告生成概率分布、座位压力和打包原因分析。</p>
+          </div>
+          <button type="button" className="secondary" onClick={onLoadLatest}>
+            读取最新报告
+          </button>
+        </div>
+        <div className="empty-state">暂无可分析的仿真报告。</div>
+      </section>
+    )
+  }
 
   return (
     <section className="dashboard">
@@ -71,8 +89,18 @@ function AnalysisPage({ report, payload, onLoadLatest }) {
       <section className="panel">
         <div className="panel-head">
           <div>
-            <h2>趋势分析</h2>
-            <p>蓝线表示总排队人数，绿线表示占用座位数。</p>
+            <h2>座位压力趋势</h2>
+            <p>用百分比口径观察座位占用峰值、持续拥挤区间和释放速度。</p>
+          </div>
+        </div>
+        <UtilizationChart timeline={summary.timeline || []} />
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>队列与占座对照</h2>
+            <p>蓝线表示总排队人数，绿线表示占用座位数，用于判断窗口瓶颈是否传导到座位区。</p>
           </div>
         </div>
         <TimelineChart timeline={summary.timeline || []} />

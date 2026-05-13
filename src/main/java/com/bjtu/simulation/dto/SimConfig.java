@@ -312,10 +312,10 @@ public class SimConfig {
         private int arrivalInterval = 0;
 
         @JsonAlias({"service_range", "service_range_seconds"})
-        private List<Integer> serviceRange = new ArrayList<>(List.of(60, 300));
+        private List<Integer> serviceRange = new ArrayList<>(List.of(45, 180));
 
         @JsonAlias({"dining_range", "dining_range_seconds"})
-        private List<Integer> diningRange = new ArrayList<>(List.of(600, 1800));
+        private List<Integer> diningRange = new ArrayList<>(List.of(900, 2400));
 
         @JsonAlias("preference_range")
         private List<Double> preferenceRange = new ArrayList<>(List.of(0.1, 0.3));

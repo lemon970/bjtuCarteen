@@ -3,6 +3,8 @@ import { buildSeatCells, formatPercent, read, summarizeSeatAreas } from '../util
 function SeatHeatmap({ point, fallbackCells }) {
   const cells = buildSeatCells(point, fallbackCells)
   const areas = summarizeSeatAreas(cells)
+  const totalSeats = read(point, 'total_seats', 'totalSeats') || read(cells[0], 'total_seats', 'totalSeats') || cells.length
+  const sampled = cells.some((cell) => read(cell, 'sampled') === true)
 
   if (!cells.length) {
     return <div className="empty-state">暂无座位数据，请先运行仿真。</div>
@@ -27,6 +29,7 @@ function SeatHeatmap({ point, fallbackCells }) {
         <span><i className="seat-cell occupied" />占用</span>
         <span><i className="seat-cell free" />空闲</span>
         <span><i className="seat-cell cleaning" />待清理</span>
+        {sampled && <span>已按 {cells.length}/{totalSeats} 抽样渲染</span>}
       </div>
 
       <div className="area-bars">

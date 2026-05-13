@@ -1,4 +1,4 @@
-import { DEFAULT_FORM, MAX_STUDENTS } from '../constants'
+import { DEFAULT_FORM, MAX_RENDERED_SEATS, MAX_SEATS, MAX_STUDENTS } from '../constants'
 
 // [重构] 前后端字段存在 camelCase/snake_case 两套命名，统一在工具层读取，页面组件只处理展示。
 export function read(obj, ...keys) {
@@ -36,23 +36,23 @@ export function formatClock(seconds) {
 }
 
 export function buildSeatCells(point, fallbackCells = []) {
+  const totalSeats = Math.max(0, Math.floor(toNumber(read(point, 'total_seats', 'totalSeats'), 0)))
+  const occupiedSeats = Math.max(0, Math.floor(toNumber(read(point, 'occupied_seats', 'occupiedSeats', 'dining_student_count', 'diningStudentCount'), 0)))
   const sourceCells = read(point, 'seat_cells', 'seatCells')
   if (Array.isArray(sourceCells) && sourceCells.length > 0) {
-    return sourceCells
+    return compactSeatCells(sourceCells, totalSeats || sourceCells.length, occupiedSeats)
   }
   if (Array.isArray(fallbackCells) && fallbackCells.length > 0) {
-    const occupiedSeats = read(point, 'occupied_seats', 'occupiedSeats', 'dining_student_count', 'diningStudentCount')
     const occupiedLimit = Math.max(0, Math.floor(toNumber(occupiedSeats, 0)))
-    return fallbackCells.map((cell, index) => ({
+    const projected = fallbackCells.map((cell, index) => ({
       ...cell,
       status: index < occupiedLimit ? 'OCCUPIED' : read(cell, 'status') || 'FREE',
       occupied: index < occupiedLimit
     }))
+    return compactSeatCells(projected, totalSeats || fallbackCells.length, occupiedLimit)
   }
 
-  const totalSeats = Math.max(0, Math.floor(toNumber(read(point, 'total_seats', 'totalSeats'), 0)))
-  const occupiedSeats = Math.max(0, Math.floor(toNumber(read(point, 'occupied_seats', 'occupiedSeats'), 0)))
-  return Array.from({ length: totalSeats }, (_, index) => ({
+  return compactSeatCells(Array.from({ length: totalSeats }, (_, index) => ({
     seat_id: index,
     table_id: Math.floor(index / 4),
     row: Math.floor(index / 12),
@@ -60,7 +60,36 @@ export function buildSeatCells(point, fallbackCells = []) {
     area: ['A', 'B', 'C'][Math.floor(index / 36) % 3],
     status: index < occupiedSeats ? 'OCCUPIED' : 'FREE',
     occupied: index < occupiedSeats
-  }))
+  })), totalSeats, occupiedSeats)
+}
+
+function compactSeatCells(cells, totalSeats, occupiedSeats) {
+  const source = Array.isArray(cells) ? cells : []
+  const safeTotal = Math.max(source.length, Math.floor(toNumber(totalSeats, source.length)))
+  if (source.length <= MAX_RENDERED_SEATS) {
+    return source
+  }
+
+  // [重构] 大座位图按比例抽样渲染，原因是 10^3 量级座位不能直接生成上千个 DOM 节点影响回放流畅度。
+  const renderedCount = Math.min(MAX_RENDERED_SEATS, source.length)
+  const occupiedRatio = safeTotal === 0 ? 0 : clamp(toNumber(occupiedSeats, 0) / safeTotal, 0, 1)
+  const renderedOccupied = Math.round(renderedCount * occupiedRatio)
+  const step = source.length / renderedCount
+
+  return Array.from({ length: renderedCount }, (_, index) => {
+    const sampled = source[Math.min(source.length - 1, Math.floor(index * step))] || {}
+    return {
+      ...sampled,
+      seat_id: read(sampled, 'seat_id', 'seatId') ?? index,
+      row: Math.floor(index / 20),
+      column: index % 20,
+      area: read(sampled, 'area') || ['A', 'B', 'C', 'D'][Math.floor(index / 90) % 4],
+      status: index < renderedOccupied ? 'OCCUPIED' : 'FREE',
+      occupied: index < renderedOccupied,
+      sampled: true,
+      total_seats: safeTotal
+    }
+  })
 }
 
 export function summarizeSeatAreas(cells) {
@@ -86,6 +115,7 @@ export function summarizeSeatAreas(cells) {
 
 export function buildPayload(form) {
   const windowCount = Math.max(1, Math.floor(toNumber(form.windowCount, 1)))
+  const arrivalRate = Math.max(0, toNumber(form.arrivalRate, DEFAULT_FORM.arrivalRate))
   const takeawayWindowCount = Math.min(
     windowCount,
     Math.max(0, Math.floor(toNumber(form.takeawayWindowCount, 0)))
@@ -101,7 +131,7 @@ export function buildPayload(form) {
   const payload = {
     simulation_name: String(form.simulationName || DEFAULT_FORM.simulationName),
     duration: Math.max(0.1, toNumber(form.duration, DEFAULT_FORM.duration)),
-    arrival_rate: Math.max(0, toNumber(form.arrivalRate, DEFAULT_FORM.arrivalRate)),
+    arrival_rate: arrivalRate,
     queue_limit: Math.max(0, Math.floor(toNumber(form.queueLimit, DEFAULT_FORM.queueLimit))),
     pack_probability: clamp(toNumber(form.packProbability, DEFAULT_FORM.packProbability), 0, 1),
     group_arrival_prob: clamp(toNumber(form.groupArrivalProb, DEFAULT_FORM.groupArrivalProb), 0, 1),
@@ -115,7 +145,7 @@ export function buildPayload(form) {
         1,
         toNumber(form.takeawayServiceTimeMultiplier, DEFAULT_FORM.takeawayServiceTimeMultiplier)
       ),
-      total_seats: Math.max(0, Math.floor(toNumber(form.totalSeats, DEFAULT_FORM.totalSeats))),
+      total_seats: Math.min(MAX_SEATS, Math.max(0, Math.floor(toNumber(form.totalSeats, DEFAULT_FORM.totalSeats)))),
       total_students: Math.min(
         MAX_STUDENTS,
         Math.max(0, Math.floor(toNumber(form.totalStudents, DEFAULT_FORM.totalStudents)))
@@ -133,23 +163,26 @@ export function buildPayload(form) {
     },
     arrival_dist: {
       type: 'POISSON',
-      lambda: Math.max(0, toNumber(form.arrivalLambda, form.arrivalRate))
+      lambda: arrivalRate
     },
     normal_service_dist: {
-      type: 'EXPONENTIAL',
+      type: 'NORMAL',
       mean: Math.max(1, toNumber(form.serviceMean, (serviceMin + serviceMax) / 2)),
+      std: Math.max(1, (Math.max(serviceMin, serviceMax) - Math.min(serviceMin, serviceMax)) / 6),
       min: Math.min(serviceMin, serviceMax),
       max: Math.max(serviceMin, serviceMax)
     },
     window_service_dist: {
-      type: 'EXPONENTIAL',
+      type: 'NORMAL',
       mean: Math.max(1, toNumber(form.serviceMean, (serviceMin + serviceMax) / 2)),
+      std: Math.max(1, (Math.max(serviceMin, serviceMax) - Math.min(serviceMin, serviceMax)) / 6),
       min: Math.min(serviceMin, serviceMax),
       max: Math.max(serviceMin, serviceMax)
     },
     dining_time_dist: {
-      type: 'EXPONENTIAL',
+      type: 'NORMAL',
       mean: Math.max(1, toNumber(form.diningMean, (diningMin + diningMax) / 2)),
+      std: Math.max(1, (Math.max(diningMin, diningMax) - Math.min(diningMin, diningMax)) / 6),
       min: Math.min(diningMin, diningMax),
       max: Math.max(diningMin, diningMax)
     },
@@ -223,7 +256,7 @@ export function applyPayloadToForm(payload) {
       DEFAULT_FORM.takeawayServiceTimeMultiplier,
     totalSeats: read(base, 'totalSeats', 'total_seats') ?? DEFAULT_FORM.totalSeats,
     totalStudents: read(base, 'totalStudents', 'total_students') ?? DEFAULT_FORM.totalStudents,
-    arrivalLambda: read(arrivalDist, 'lambda', 'rate') ?? read(payload, 'arrivalRate', 'arrival_rate') ?? DEFAULT_FORM.arrivalLambda,
+    arrivalLambda: read(payload, 'arrivalRate', 'arrival_rate') ?? read(arrivalDist, 'lambda', 'rate') ?? DEFAULT_FORM.arrivalLambda,
     serviceMean: read(normalServiceDist, 'mean', 'mu') ?? DEFAULT_FORM.serviceMean,
     diningMean: read(diningTimeDist, 'mean', 'mu') ?? DEFAULT_FORM.diningMean,
     peakEnabled: read(peak, 'classPeakEnabled', 'class_peak_enabled') ?? DEFAULT_FORM.peakEnabled,

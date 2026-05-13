@@ -100,7 +100,7 @@ class SimulationControllerTest {
         assertTrue(served <= arrived);
         assertEquals(served, dineIn + takeaway + pendingSeatDecision);
         assertEquals(0, pendingSeatDecision);
-        assertTrue(leave <= served);
+        assertEquals(served, leave);
         assertTrue(occupied >= 0);
         assertTrue(occupied <= total);
         assertTrue(empty >= 0);
@@ -139,7 +139,7 @@ class SimulationControllerTest {
     }
 
     @Test
-    void classPeakModeShouldIncreaseArrivalsAndMarkClassPeakGroup() {
+    void classPeakModeShouldRedistributeArrivalsAndMarkClassPeakGroup() {
         SimConfig baseline = baseConfig();
         baseline.setDuration(0.5);
         baseline.setArrivalRate(60);
@@ -155,12 +155,12 @@ class SimulationControllerTest {
         JsonNode baselineSummary = runAndGetSummary(baseline);
         JsonNode peakSummary = runAndGetSummary(peak);
 
-        assertTrue(peakSummary.path("arrived_count").asInt() > baselineSummary.path("arrived_count").asInt());
+        assertEquals(baselineSummary.path("arrived_count").asInt(), peakSummary.path("arrived_count").asInt());
         assertTrue(peakSummary.path("class_peak_arrival_count").asInt() > 0);
     }
 
     @Test
-    void overlappingClassPeakWindowsShouldIncreaseArrivalsAndBeReturnedInConfig() {
+    void overlappingClassPeakWindowsShouldRedistributeArrivalsAndBeReturnedInConfig() {
         SimConfig baseline = baseConfig();
         baseline.setDuration(0.6);
         baseline.setArrivalRate(60);
@@ -177,9 +177,28 @@ class SimulationControllerTest {
         JsonNode peakReport = runAndGetReport(peak);
         JsonNode peakSummary = peakReport.path("summary");
 
-        assertTrue(peakSummary.path("arrived_count").asInt() > baselineSummary.path("arrived_count").asInt());
+        assertEquals(baselineSummary.path("arrived_count").asInt(), peakSummary.path("arrived_count").asInt());
         assertTrue(peakSummary.path("class_peak_arrival_count").asInt() > 0);
         assertEquals(2, peakReport.path("config").path("peak_config").path("class_peak_windows").size());
+    }
+
+    @Test
+    void arrivalRateShouldControlTotalArrivalsWhenLegacyLambdaDiffers() {
+        SimConfig config = baseConfig();
+        config.setDuration(2.0);
+        config.setArrivalRate(300);
+        config.getArrivalDist().setLambda(180);
+        config.getBaseConfig().setTotalStudents(1000);
+        config.getBaseConfig().setWindowCount(8);
+        config.getBaseConfig().setTotalSeats(250);
+        config.setQueueLimit(40);
+        config.setSeed(20260512L);
+
+        JsonNode report = runAndGetReport(config);
+        JsonNode summary = report.path("summary");
+
+        assertEquals(600, summary.path("arrived_count").asInt());
+        assertEquals(300.0, report.path("config").path("arrival_dist").path("lambda").asDouble(), 0.000001);
     }
 
     @Test
@@ -197,6 +216,92 @@ class SimulationControllerTest {
         assertTrue(summary.path("seat_cells").get(0).has("row"));
         assertTrue(summary.path("seat_cells").get(0).has("column"));
         assertTrue(summary.path("seat_cells").get(0).has("status"));
+    }
+
+    @Test
+    void fixedIntervalArrivalShouldReportFixedInterarrivalModel() {
+        SimConfig config = baseConfig();
+        config.setDuration(0.1);
+        config.setArrivalRate(60);
+        config.getRandomBounds().setArrivalInterval(60);
+        config.getBaseConfig().setTotalStudents(3);
+
+        JsonNode summary = runAndGetSummary(config);
+
+        assertEquals("FIXED_INTERVAL", summary.path("probability_model").path("interarrival_distribution").asText());
+        assertEquals(3, summary.path("arrived_count").asInt());
+    }
+
+    @Test
+    void normalDemandShouldKeepTakeawayRateControlled() {
+        SimConfig config = baseConfig();
+        config.setDuration(0.5);
+        config.setArrivalRate(120);
+        config.setPackProbability(0.2);
+        config.setQueueLimit(12);
+        config.getBaseConfig().setWindowCount(5);
+        config.getBaseConfig().setTakeawayWindowCount(0);
+        config.getBaseConfig().setTotalSeats(80);
+        config.getRandomBounds().setPreferenceRange(java.util.List.of(0.1, 0.3));
+        config.getRandomBounds().setServiceRange(java.util.List.of(30, 60));
+        config.getRandomBounds().setDiningRange(java.util.List.of(600, 900));
+        config.setSeed(20260512L);
+
+        JsonNode summary = runAndGetSummary(config);
+
+        assertTrue(summary.path("dine_in_count").asInt() > summary.path("takeaway_count").asInt());
+        assertTrue(summary.path("takeaway_rate").asDouble() < 0.5);
+        assertEquals(summary.path("served_count").asInt(), summary.path("leave_count").asInt());
+    }
+
+    @Test
+    void sunnyHighPeakScenarioShouldMeetCountTakeawayAndSeatUtilizationTargets() {
+        SimConfig config = baseConfig();
+        config.setDuration(2.0);
+        config.setArrivalRate(300);
+        config.getArrivalDist().setLambda(180);
+        config.setPackProbability(0.15);
+        config.setQueueLimit(40);
+        config.getBaseConfig().setWindowCount(8);
+        config.getBaseConfig().setTakeawayWindowCount(1);
+        config.getBaseConfig().setTakeawayServiceTimeMultiplier(1.2);
+        config.getBaseConfig().setTotalSeats(250);
+        config.getBaseConfig().setTotalStudents(1000);
+        config.getRandomBounds().setPreferenceRange(java.util.List.of(0.05, 0.20));
+        config.getRandomBounds().setServiceRange(java.util.List.of(45, 180));
+        config.getRandomBounds().setDiningRange(java.util.List.of(900, 2400));
+        config.getPeakConfig().setClassPeakEnabled(true);
+        config.getPeakConfig().setClassPeakWindows(java.util.List.of(
+                new SimConfig.PeakConfig.PeakWindow(12, 24, 3.2),
+                new SimConfig.PeakConfig.PeakWindow(34, 48, 2.4)));
+        config.setSeed(20260512L);
+
+        SimConfig.DistributionSpec service = new SimConfig.DistributionSpec();
+        service.setType("NORMAL");
+        service.setMean(90);
+        service.setStd(22);
+        service.setMin(45);
+        service.setMax(180);
+        config.setNormalServiceDist(service);
+        config.setWindowServiceDist(service);
+
+        SimConfig.DistributionSpec dining = new SimConfig.DistributionSpec();
+        dining.setType("NORMAL");
+        dining.setMean(1500);
+        dining.setStd(250);
+        dining.setMin(900);
+        dining.setMax(2400);
+        config.setDiningTimeDist(dining);
+
+        JsonNode summary = runAndGetSummary(config);
+
+        assertEquals(600, summary.path("arrived_count").asInt());
+        assertTrue(summary.path("takeaway_rate").asDouble() >= 0.12);
+        assertTrue(summary.path("takeaway_rate").asDouble() <= 0.20);
+        assertTrue(summary.path("seat_utilization_rate").asDouble() >= 0.40);
+        assertTrue(summary.path("seat_utilization_rate").asDouble() <= 0.70);
+        assertTrue(summary.path("takeaway_decision_records").get(0).has("base_probability"));
+        assertTrue(summary.path("takeaway_decision_records").get(0).has("decision_reason"));
     }
 
     @Test
@@ -228,13 +333,17 @@ class SimulationControllerTest {
         engine.getCanteenState().joinQueue(0);
         engine.getCanteenState().joinQueue(1);
         engine.getCanteenState().joinQueue(1);
+        engine.getCanteenState().joinQueue(0);
+        engine.getCanteenState().joinQueue(1);
         engine.scheduleEvent(new ServiceFinishEvent(0L, "student-feedback", 0, 0L));
 
         engine.runAll();
 
         assertEquals(1, engine.getServedCount());
-        assertEquals(1, engine.getTakeawayCount());
-        assertEquals(0, engine.getDineInCount());
+        assertEquals(1, engine.getTakeawayDecisionRecords().size());
+        assertTrue(engine.getTakeawayDecisionRecords().get(0).getFinalProbability() <= 0.75);
+        assertTrue(engine.getTakeawayDecisionRecords().get(0).getQueuePressureFactor() > 0.0);
+        assertTrue(!engine.getTakeawayDecisionRecords().get(0).getDecisionReason().isBlank());
     }
 
     @Test
@@ -255,6 +364,7 @@ class SimulationControllerTest {
         assertEquals(0, summary.path("normal_window_count").asInt());
         assertEquals(summary.path("served_count").asInt(), summary.path("takeaway_count").asInt());
         assertEquals(summary.path("served_count").asInt(), summary.path("takeaway_window_served_count").asInt());
+        assertEquals(summary.path("served_count").asInt(), summary.path("leave_count").asInt());
         assertEquals(0, summary.path("dine_in_count").asInt());
         assertEquals(1.0, summary.path("takeaway_rate").asDouble(), 0.000001);
         assertEquals(1.0, summary.path("takeaway_window_ratio").asDouble(), 0.000001);
@@ -263,28 +373,25 @@ class SimulationControllerTest {
     }
 
     @Test
-    void takeawayWindowServiceMultiplierShouldIncreaseWaitTime() {
+    void takeawayWindowServiceMultiplierShouldIncreaseServiceTime() {
         SimConfig config = baseConfig();
-        config.setDuration(0.1);
-        config.setArrivalRate(60);
-        config.setPackProbability(1.0);
-        config.getBaseConfig().setWindowCount(1);
+        config.getBaseConfig().setWindowCount(2);
         config.getBaseConfig().setTakeawayWindowCount(1);
         config.getBaseConfig().setTakeawayServiceTimeMultiplier(2.0);
-        config.getBaseConfig().setTotalStudents(1);
-        config.getRandomBounds().setPreferenceRange(java.util.List.of(1.0, 1.0));
         config.getRandomBounds().setServiceRange(java.util.List.of(60, 61));
         SimConfig.DistributionSpec fixedService = new SimConfig.DistributionSpec();
         fixedService.setType("FIXED");
         fixedService.setMean(60);
+        config.setNormalServiceDist(fixedService);
         config.setWindowServiceDist(fixedService);
-        config.setSeed(20260421L);
 
-        JsonNode summary = runAndGetSummary(config);
+        SimulationEngine engine = new SimulationEngine(config);
 
-        assertEquals(1, summary.path("served_count").asInt());
-        assertEquals(2.0, summary.path("avg_wait_time_minutes").asDouble(), 0.000001);
-        assertEquals(1.0, summary.path("takeaway_window_served_rate").asDouble(), 0.000001);
+        long normalServiceTime = engine.resolveServiceTimeSeconds(0);
+        long takeawayServiceTime = engine.resolveServiceTimeSeconds(1);
+
+        assertEquals(60L, normalServiceTime);
+        assertEquals(120L, takeawayServiceTime);
     }
 
     @Test
@@ -334,6 +441,7 @@ class SimulationControllerTest {
         assertEquals(0, engine.getPendingSeatDecisionCount());
         assertEquals(1, engine.getTakeawayCount());
         assertEquals(1, engine.getNoSeatSwitchToTakeawayCount());
+        assertEquals(1, engine.getLeaveCount());
     }
 
     @Test

@@ -33,6 +33,7 @@ public class SimulationEngine {
     private final List<TakeawayDecisionRecord> takeawayDecisionRecords = new ArrayList<>();
     private final List<Integer> windowServedCounts;
     private final List<String> windowTypes;
+    private final List<Long> windowAvailableAtSeconds;
     private int takeawayWindowCount;
     private int normalWindowCount;
 
@@ -106,9 +107,11 @@ public class SimulationEngine {
                 safeConfig.getBaseConfig().getLargeTableRatio());
         this.windowServedCounts = new ArrayList<>();
         this.windowTypes = new ArrayList<>();
+        this.windowAvailableAtSeconds = new ArrayList<>();
         for (int i = 0; i < windowCount; i++) {
             windowServedCounts.add(0);
             windowTypes.add(i >= this.normalWindowCount ? "TAKEAWAY" : "NORMAL");
+            windowAvailableAtSeconds.add(0L);
         }
         recalculateWindowTypeCounts();
         this.currentTime = 0;
@@ -192,6 +195,24 @@ public class SimulationEngine {
         }
         multiplier = Double.isNaN(multiplier) || Double.isInfinite(multiplier) ? 1.15 : Math.max(1.0, multiplier);
         return Math.max(sampled, Math.round(sampled * multiplier));
+    }
+
+    public long reserveWindowService(int windowId, long queueEnterTime, long serviceTimeSeconds) {
+        if (windowId < 0 || windowId >= windowAvailableAtSeconds.size()) {
+            return Math.max(0L, queueEnterTime);
+        }
+        long safeQueueEnter = Math.max(0L, queueEnterTime);
+        long serviceStartTime = Math.max(safeQueueEnter, windowAvailableAtSeconds.get(windowId));
+        long serviceFinishTime = serviceStartTime + Math.max(0L, serviceTimeSeconds);
+        windowAvailableAtSeconds.set(windowId, serviceFinishTime);
+        return serviceStartTime;
+    }
+
+    private long projectedWindowDelaySeconds(int windowId) {
+        if (windowId < 0 || windowId >= windowAvailableAtSeconds.size()) {
+            return 0L;
+        }
+        return Math.max(0L, windowAvailableAtSeconds.get(windowId) - currentTime);
     }
 
     public long resolveDiningTimeSeconds() {
@@ -302,28 +323,70 @@ public class SimulationEngine {
 
         int preferred = Math.floorMod(student.getWindowPreference(), queues.size());
         int patienceLimit = Math.max(0, student.getPatienceLimit());
+        int partySize = Math.max(1, student.getPartySize());
+
+        if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.DINE_IN_BIASED) {
+            int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false);
+            if (normalWindow >= 0) {
+                return normalWindow;
+            }
+        }
+
+        if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.BALANCED) {
+            int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false);
+            int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true);
+            if (normalWindow >= 0 && takeawayWindow >= 0 && !shouldBalancedStudentUseTakeawayWindow(normalWindow, takeawayWindow)) {
+                return normalWindow;
+            }
+        }
+
+        return chooseBestWindow(student, preferred, patienceLimit, partySize, null);
+    }
+
+    private int chooseBestWindow(Student student,
+                                 int preferred,
+                                 int patienceLimit,
+                                 int partySize,
+                                 Boolean takeawayOnly) {
+        List<Integer> queues = canteenState.getWindowQueues();
         double nonPreferredPenalty = switch (student.getPatienceLevel()) {
             case LOW -> 0.15;
             case MEDIUM -> 0.45;
             case HIGH -> 0.90;
         };
-
         int bestWindow = -1;
         double bestScore = Double.MAX_VALUE;
         for (int i = 0; i < queues.size(); i++) {
+            if (takeawayOnly != null && isTakeawayWindow(i) != takeawayOnly) {
+                continue;
+            }
             int queueSize = queues.get(i);
-            if (queueSize >= patienceLimit) {
+            // [重构] 组团学生选择窗口时也按人数检查耐心阈值，原因是四人同行不应只占一个排队名额。
+            if (queueSize + partySize > patienceLimit) {
                 continue;
             }
 
             double preferencePenalty = (i == preferred) ? 0.0 : nonPreferredPenalty;
-            double score = queueSize + preferencePenalty + windowTypePenalty(student, i);
+            double delayPenalty = projectedWindowDelaySeconds(i) / 60.0 * 0.25;
+            double score = queueSize + preferencePenalty + delayPenalty + windowTypePenalty(student, i);
             if (score < bestScore) {
                 bestScore = score;
                 bestWindow = i;
             }
         }
         return bestWindow;
+    }
+
+    private boolean shouldBalancedStudentUseTakeawayWindow(int normalWindow, int takeawayWindow) {
+        int normalQueue = canteenState.getWindowQueues().get(normalWindow);
+        int takeawayQueue = canteenState.getWindowQueues().get(takeawayWindow);
+        double queuePressure = currentQueuePressure();
+        double seatPressure = currentSeatUtilizationRate();
+        long normalDelay = projectedWindowDelaySeconds(normalWindow);
+        long takeawayDelay = projectedWindowDelaySeconds(takeawayWindow);
+        boolean systemPressureHigh = queuePressure >= 0.65 || seatPressure >= 0.88;
+        boolean takeawayClearlyBetter = normalQueue - takeawayQueue >= 4 || normalDelay - takeawayDelay >= 180L;
+        return systemPressureHigh && takeawayClearlyBetter;
     }
 
     private double windowTypePenalty(Student student, int windowId) {
@@ -333,9 +396,9 @@ public class SimulationEngine {
 
         boolean takeawayWindow = isTakeawayWindow(windowId);
         return switch (student.getPackPreferenceLevel()) {
-            case TAKEAWAY_BIASED -> takeawayWindow ? -0.60 : 0.40;
-            case BALANCED -> takeawayWindow ? 0.10 : 0.00;
-            case DINE_IN_BIASED -> takeawayWindow ? 2.00 : -0.20;
+            case TAKEAWAY_BIASED -> takeawayWindow ? -0.20 : 0.35;
+            case BALANCED -> takeawayWindow ? 0.80 : 0.00;
+            case DINE_IN_BIASED -> takeawayWindow ? 6.00 : -0.20;
         };
     }
 
@@ -374,8 +437,12 @@ public class SimulationEngine {
     }
 
     public void recordWaitTime(long arriveTime, int partySize) {
+        recordWaitTime(arriveTime, currentTime, partySize);
+    }
+
+    public void recordWaitTime(long queueEnterTime, long serviceStartTime, int partySize) {
         int count = Math.max(1, partySize);
-        this.totalWaitTime += Math.max(0L, this.currentTime - arriveTime) * count;
+        this.totalWaitTime += Math.max(0L, serviceStartTime - queueEnterTime) * count;
         this.servedCount += count;
     }
 
@@ -457,6 +524,44 @@ public class SimulationEngine {
                 studentPreference,
                 takeaway,
                 partySize));
+    }
+
+    public void recordTakeawayDecision(String studentId,
+                                       String reason,
+                                       double finalProbability,
+                                       double randomRoll,
+                                       double waitMinutes,
+                                       double studentPreference,
+                                       boolean takeaway,
+                                       int partySize,
+                                       double baseProbability,
+                                       double preferenceFactor,
+                                       double seatPressureFactor,
+                                       double waitPressureFactor,
+                                       double queuePressureFactor,
+                                       double weatherFactor,
+                                       String windowChoiceReason,
+                                       String decisionReason) {
+        takeawayDecisionRecords.add(new TakeawayDecisionRecord(
+                currentTime,
+                studentId,
+                reason,
+                finalProbability,
+                randomRoll,
+                currentSeatUtilizationRate(),
+                currentQueuePressure(),
+                waitMinutes,
+                studentPreference,
+                takeaway,
+                partySize,
+                baseProbability,
+                preferenceFactor,
+                seatPressureFactor,
+                waitPressureFactor,
+                queuePressureFactor,
+                weatherFactor,
+                windowChoiceReason,
+                decisionReason));
     }
 
     public void recordLeave() {
@@ -838,6 +943,10 @@ public class SimulationEngine {
         return canteenState.getSeatCells(currentTime);
     }
 
+    public long getOccupiedSeatSeconds() {
+        return canteenState.getOccupiedSeatSeconds(currentTime);
+    }
+
     private long sampleDurationSeconds(SimConfig.DistributionSpec spec, long fallbackMin, long fallbackMax) {
         SimConfig.DistributionSpec safeSpec = spec == null ? SimConfig.DistributionSpec.uniform() : spec;
         String type = normalizeDistributionType(safeSpec, "UNIFORM");
@@ -967,12 +1076,10 @@ public class SimulationEngine {
     }
 
     private Student.PackPreferenceLevel resolvePackPreferenceLevel(double packPreference, double minPref, double maxPref) {
-        double span = Math.max(0.0001, maxPref - minPref);
-        double normalized = (packPreference - minPref) / span;
-        if (normalized < 0.34) {
+        if (packPreference <= 0.18) {
             return Student.PackPreferenceLevel.DINE_IN_BIASED;
         }
-        if (normalized < 0.67) {
+        if (packPreference < 0.45) {
             return Student.PackPreferenceLevel.BALANCED;
         }
         return Student.PackPreferenceLevel.TAKEAWAY_BIASED;

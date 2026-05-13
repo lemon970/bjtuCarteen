@@ -384,6 +384,18 @@ button:disabled {
   stroke-width: 1;
 }
 
+.grid-line {
+  stroke: #e1e9f0;
+  stroke-width: 1;
+}
+
+.axis-label,
+.peak-label {
+  fill: #66768a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .chart-line {
   fill: none;
   stroke-linecap: round;
@@ -397,6 +409,20 @@ button:disabled {
 
 .chart-line.seats {
   stroke: #2f8a62;
+}
+
+.chart-line.utilization {
+  stroke: #0f766e;
+}
+
+.utilization-area {
+  fill: rgba(20, 184, 166, 0.16);
+}
+
+.peak-point {
+  fill: #0f766e;
+  stroke: #ffffff;
+  stroke-width: 2;
 }
 
 .legend {
@@ -428,6 +454,14 @@ button:disabled {
 
 .seat-dot {
   background: #2f8a62;
+}
+
+.utilization-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #0f766e;
 }
 
 .empty-state {
@@ -569,6 +603,13 @@ button:disabled {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .flow-dot {
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
 .seat-heatmap {
   display: grid;
   gap: 10px;
@@ -576,8 +617,11 @@ button:disabled {
 
 .seat-grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(12px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12px, 1fr));
   gap: 5px;
+  max-height: 340px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .seat-cell {
@@ -647,6 +691,10 @@ button:disabled {
 
 .bar-fill.takeaway {
   background: #a95f24;
+}
+
+.bar-fill.probability {
+  background: #0f766e;
 }
 
 .window-row strong {
@@ -797,6 +845,12 @@ td {
   gap: 12px;
 }
 
+.distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .mini-table {
   display: grid;
   gap: 8px;
@@ -812,6 +866,20 @@ td {
   padding-bottom: 0;
 }
 
+.distribution-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 0.8fr) minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+  color: #405167;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.distribution-row strong {
+  text-align: right;
+}
+
 @media (max-width: 1080px) {
   .page-grid {
     grid-template-columns: 1fr;
@@ -820,7 +888,8 @@ td {
   .analysis-grid,
   .kpi-grid,
   .realtime-modules,
-  .probability-grid {
+  .probability-grid,
+  .distribution-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -846,6 +915,7 @@ td {
     .form-actions,
     .realtime-modules,
     .probability-grid,
+    .distribution-grid,
     .mini-table-grid {
     grid-template-columns: 1fr;
   }
@@ -856,5 +926,429 @@ td {
 
   h1 {
     font-size: 1.35rem;
+  }
+}
+
+/* [重构] 统一为科技感数据驾驶舱视觉，原因是原浅色表单页层级弱、右侧空白明显且分析数据缺少仪表盘感。 */
+:root {
+  color: #dbeafe;
+  background: #07111f;
+}
+
+body {
+  background:
+    linear-gradient(135deg, #07111f 0%, #0b2239 42%, #0f3a4a 100%);
+  color: #dbeafe;
+}
+
+.app-shell {
+  width: min(1480px, 100%);
+}
+
+.topbar {
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 19, 35, 0.72);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  padding: 16px;
+}
+
+h1,
+h2,
+.form-section h3,
+.sub-panel h3,
+.mini-table h3,
+.card-title h3 {
+  color: #f8fbff;
+}
+
+p,
+li,
+.panel-head span,
+.eyebrow {
+  color: #a9c3dd;
+}
+
+.report-badge,
+.nav-tab,
+.panel,
+.metric-card,
+.sub-panel,
+.mini-table,
+.probability-grid div,
+.param-table,
+.table-wrap,
+.form-section {
+  border-color: rgba(125, 211, 252, 0.18);
+  background: rgba(11, 29, 50, 0.78);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+}
+
+.nav-tab {
+  color: #dbeafe;
+}
+
+.nav-tab small,
+.report-badge span,
+.metric-card span,
+.probability-grid span,
+.param-table span,
+.history-meta,
+.legend,
+.flow-caption,
+.seat-legend,
+.area-row,
+.window-row,
+.distribution-row {
+  color: #a9c3dd;
+}
+
+.nav-tab.active {
+  border-color: rgba(34, 211, 238, 0.78);
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.32), rgba(37, 99, 235, 0.28));
+  color: #ffffff;
+}
+
+.report-badge strong,
+.metric-card strong,
+.probability-grid strong,
+.param-table strong,
+.window-row strong,
+td {
+  color: #f8fbff;
+}
+
+input,
+select {
+  border-color: rgba(148, 163, 184, 0.32);
+  background: rgba(2, 8, 23, 0.42);
+  color: #f8fbff;
+}
+
+input:focus,
+select:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.16);
+}
+
+input[readonly] {
+  color: #7dd3fc;
+  background: rgba(14, 116, 144, 0.18);
+}
+
+.primary {
+  background: linear-gradient(135deg, #0891b2, #2563eb);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #0e7490, #1d4ed8);
+}
+
+.secondary,
+.ghost {
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  background: rgba(15, 23, 42, 0.58);
+  color: #dbeafe;
+}
+
+.secondary:hover,
+.ghost:hover {
+  background: rgba(14, 116, 144, 0.22);
+  border-color: rgba(34, 211, 238, 0.56);
+}
+
+.message {
+  border-color: rgba(45, 212, 191, 0.38);
+  background: rgba(20, 184, 166, 0.14);
+  color: #ccfbf1;
+}
+
+.empty-state {
+  border-color: rgba(125, 211, 252, 0.24);
+  background: rgba(15, 23, 42, 0.42);
+  color: #a9c3dd;
+}
+
+.input-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.input-hero {
+  display: grid;
+  gap: 14px;
+}
+
+.input-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.input-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.parameter-card {
+  display: grid;
+  gap: 14px;
+}
+
+.card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.estimate-panel {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.estimate-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.estimate-card,
+.model-explain-card,
+.decision-row {
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.34);
+  padding: 12px;
+}
+
+.estimate-card {
+  display: grid;
+  gap: 4px;
+}
+
+.estimate-card span,
+.model-explain-card span {
+  color: #93c5fd;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.estimate-card strong {
+  color: #f8fbff;
+  font-size: 1.35rem;
+}
+
+.estimate-card small,
+.model-explain-card p,
+.decision-row p,
+.decision-main small {
+  color: #a9c3dd;
+}
+
+.model-note {
+  border-left: 3px solid #22d3ee;
+  background: rgba(14, 116, 144, 0.14);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.model-note strong {
+  color: #ecfeff;
+}
+
+.probability-metric.ok {
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.probability-metric.warn {
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+.model-explain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.model-explain-card {
+  display: grid;
+  gap: 6px;
+}
+
+.model-explain-card strong {
+  color: #f8fbff;
+  font-size: 1rem;
+}
+
+.decision-path-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.decision-list {
+  display: grid;
+  gap: 10px;
+}
+
+.decision-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.45fr) minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.decision-row p {
+  grid-column: 1 / -1;
+}
+
+.decision-main,
+.decision-formula {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.decision-main strong {
+  color: #f8fbff;
+  font-size: 1.2rem;
+}
+
+.decision-formula span,
+.status-pill {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.decision-formula span {
+  background: rgba(37, 99, 235, 0.18);
+  color: #bfdbfe;
+}
+
+.status-pill.ok {
+  background: rgba(45, 212, 191, 0.16);
+  color: #99f6e4;
+}
+
+.status-pill.warn {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+}
+
+.bar-track {
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.bar-fill.probability,
+.chart-line.utilization,
+.utilization-dot,
+.peak-point {
+  background: #22d3ee;
+  stroke: #22d3ee;
+}
+
+.chart-line.queue {
+  stroke: #60a5fa;
+}
+
+.chart-line.seats {
+  stroke: #34d399;
+}
+
+.grid-line,
+.axis {
+  stroke: rgba(148, 163, 184, 0.24);
+}
+
+.axis-label,
+.peak-label {
+  fill: #a9c3dd;
+}
+
+.flow-stage {
+  border-color: rgba(125, 211, 252, 0.18);
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.18), rgba(20, 184, 166, 0.14));
+}
+
+.flow-node {
+  border-color: rgba(125, 211, 252, 0.3);
+  background: rgba(2, 8, 23, 0.86);
+  color: #f8fbff;
+}
+
+.seat-cell {
+  border-color: rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.seat-cell.occupied {
+  background: #2563eb;
+  border-color: #60a5fa;
+}
+
+.seat-cell.cleaning {
+  background: #f59e0b;
+  border-color: #fbbf24;
+}
+
+.seat-cell.free {
+  background: rgba(34, 211, 238, 0.12);
+}
+
+table,
+th,
+.param-table div,
+.analysis-notes p {
+  background: rgba(2, 8, 23, 0.34);
+}
+
+th,
+td,
+.param-table div,
+.mini-table p {
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+@media (max-width: 1180px) {
+  .input-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .estimate-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .input-sections,
+  .model-explain-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .parameter-grid,
+  .decision-row {
+    grid-template-columns: 1fr;
+  }
+
+  .field-wide,
+  .decision-row p {
+    grid-column: auto;
   }
 }

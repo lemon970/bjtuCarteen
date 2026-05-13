@@ -29,6 +29,7 @@ com\bjtu\simulation\dto\OptimizationRequest.class
 com\bjtu\simulation\service\SimulationConfigNormalizer.class
 com\bjtu\simulation\model\DiningArea$DiningTable.class
 com\bjtu\simulation\SimulationApplication.class
+com\bjtu\simulation\engine\ServiceFinishEvent$DecisionProbability.class
 com\bjtu\simulation\service\SimulationArrivalScheduler.class
 com\bjtu\simulation\dto\SimConfig$WeatherConfig.class
 com\bjtu\simulation\engine\CanteenWindow.class

@@ -50,19 +50,27 @@ public class CanteenState {
     }
 
     public void joinQueue(int windowId) {
+        joinQueue(windowId, 1);
+    }
+
+    public void joinQueue(int windowId, int partySize) {
         if (windowId < 0 || windowId >= windowQueues.size()) {
             return;
         }
-        windowQueues.set(windowId, windowQueues.get(windowId) + 1);
+        windowQueues.set(windowId, windowQueues.get(windowId) + Math.max(1, partySize));
     }
 
     public void leaveQueue(int windowId) {
+        leaveQueue(windowId, 1);
+    }
+
+    public void leaveQueue(int windowId, int partySize) {
         if (windowId < 0 || windowId >= windowQueues.size()) {
             return;
         }
         int current = windowQueues.get(windowId);
         if (current > 0) {
-            windowQueues.set(windowId, current - 1);
+            windowQueues.set(windowId, Math.max(0, current - Math.max(1, partySize)));
         }
     }
 
@@ -117,6 +125,10 @@ public class CanteenState {
 
     public List<TableSnapshot> getTableSnapshots(long currentTime) {
         return diningArea.getTableSnapshots(currentTime);
+    }
+
+    public long getOccupiedSeatSeconds(long currentTime) {
+        return diningArea.getOccupiedSeatSeconds(currentTime);
     }
 
     public List<com.bjtu.simulation.model.SeatCellSnapshot> getSeatCells(long currentTime) {
