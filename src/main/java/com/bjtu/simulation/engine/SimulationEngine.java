@@ -18,11 +18,19 @@ import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
 import com.bjtu.simulation.model.TableSnapshot;
 import com.bjtu.simulation.model.TakeawayDecisionRecord;
+import com.bjtu.simulation.model.WaitTimeSample;
+import com.bjtu.simulation.service.SimulationMath;
 
 public class SimulationEngine {
     private final Map<String, Student> studentRoster = new ConcurrentHashMap<>();
     private final SimConfig config;
-    private final Random random;
+    private final SimulationRandomSampler randomSampler;
+    private final SimulationDurationPolicy durationPolicy;
+    private final StudentProfileFactory studentProfileFactory = new StudentProfileFactory();
+    private final WindowSelectionPolicy windowSelectionPolicy = new WindowSelectionPolicy();
+    private final TakeawayDecisionPolicy takeawayRoutingPolicy = new TakeawayDecisionPolicy();
+    private final SimulationInvariantChecker invariantChecker = new SimulationInvariantChecker();
+    private final SimulationSnapshotRecorder snapshotRecorder = new SimulationSnapshotRecorder();
     private final long effectiveSeed;
 
     private long currentTime = 0L;
@@ -30,6 +38,7 @@ public class SimulationEngine {
     private final CanteenState canteenState;
     private final List<SimulationResult> history = new ArrayList<>();
     private final List<ArrivalSample> arrivalSamples = new ArrayList<>();
+    private final List<WaitTimeSample> waitTimeSamples = new ArrayList<>();
     private final List<TakeawayDecisionRecord> takeawayDecisionRecords = new ArrayList<>();
     private final List<Integer> windowServedCounts;
     private final List<String> windowTypes;
@@ -55,18 +64,11 @@ public class SimulationEngine {
     private int noSeatSwitchToTakeawayCount = 0;
     private int weatherDrivenTakeawayCount = 0;
     private int leaveCount = 0;
-
-    private long peakTime = 0L;
-    private int peakWindowId = -1;
-    private int maxQueueSizeEver = 0;
-
-    private int maxTotalQueueSize = 0;
-    private long totalQueueSizeSum = 0L;
-    private int queueSizeSamples = 0;
-
-    private int maxOccupiedSeats = 0;
-    private long occupiedSeatsSum = 0L;
-    private int occupiedSeatsSamples = 0;
+    private int groupCount = 0;
+    private int groupedStudentCount = 0;
+    private int sameTableGroupCount = 0;
+    private int splitGroupCount = 0;
+    private int forcedLeaveCount = 0;
 
     public SimulationEngine(SimConfig config) {
         SimConfig safeConfig = config == null ? new SimConfig() : config;
@@ -94,7 +96,8 @@ public class SimulationEngine {
 
         this.config = safeConfig;
         this.effectiveSeed = safeConfig.getSeed() == null ? System.currentTimeMillis() : safeConfig.getSeed();
-        this.random = new Random(effectiveSeed);
+        this.randomSampler = new SimulationRandomSampler(new Random(effectiveSeed));
+        this.durationPolicy = new SimulationDurationPolicy(safeConfig, randomSampler);
 
         int windowCount = Math.max(0, safeConfig.getBaseConfig().getWindowCount());
         this.takeawayWindowCount = Math.min(windowCount, Math.max(0, safeConfig.getBaseConfig().getTakeawayWindowCount()));
@@ -122,79 +125,31 @@ public class SimulationEngine {
     }
 
     public double nextDouble() {
-        return random.nextDouble();
+        return randomSampler.nextDouble();
     }
 
     public int nextInt(int minInclusive, int maxInclusive) {
-        if (maxInclusive <= minInclusive) {
-            return minInclusive;
-        }
-        int bound = (maxInclusive - minInclusive) + 1;
-        return minInclusive + random.nextInt(bound);
+        return randomSampler.nextInt(minInclusive, maxInclusive);
     }
 
     public long nextLong(long minInclusive, long maxExclusive) {
-        if (maxExclusive <= minInclusive) {
-            return minInclusive;
-        }
-        return random.nextLong(minInclusive, maxExclusive);
+        return randomSampler.nextLong(minInclusive, maxExclusive);
     }
 
     public int sampleArrivalCountForMinute(double effectiveArrivalRatePerHour) {
-        double lambdaPerHour = Math.max(0.0, effectiveArrivalRatePerHour);
-        if (lambdaPerHour <= 0.0 && config.getArrivalDist().getLambda() > 0) {
-            lambdaPerHour = config.getArrivalDist().getLambda();
-        }
-        double lambdaPerMinute = Math.max(0.0, lambdaPerHour / 60.0);
-        String type = normalizeDistributionType(config.getArrivalDist(), "POISSON");
-
-        if ("FIXED".equals(type)) {
-            return (int) Math.floor(lambdaPerMinute);
-        }
-        if ("UNIFORM".equals(type)) {
-            long min = Math.max(0L, config.getArrivalDist().getMin());
-            long max = config.getArrivalDist().getMax() > 0 ? Math.max(min, config.getArrivalDist().getMax()) : Math.max(min, (long) Math.ceil(lambdaPerMinute * 2));
-            return (int) nextLong(min, max + 1);
-        }
-        return samplePoisson(lambdaPerMinute);
+        return durationPolicy.sampleArrivalCountForMinute(effectiveArrivalRatePerHour);
     }
 
     public long sampleExponentialInterarrivalSeconds(double effectiveArrivalRatePerHour) {
-        double lambdaPerHour = Math.max(0.0, effectiveArrivalRatePerHour);
-        if (lambdaPerHour <= 0.0 && config.getArrivalDist().getLambda() > 0) {
-            lambdaPerHour = config.getArrivalDist().getLambda();
-        }
-        if (lambdaPerHour <= 0.0) {
-            return 60L;
-        }
-        double meanSeconds = 3600.0 / lambdaPerHour;
-        double u = Math.max(1.0e-12, 1.0 - nextDouble());
-        return Math.max(1L, Math.round(-Math.log(u) * meanSeconds));
+        return durationPolicy.sampleExponentialInterarrivalSeconds(effectiveArrivalRatePerHour);
     }
 
     public int samplePartySize() {
-        int configuredPartySize = Math.max(1, config.getPartySize());
-        if (configuredPartySize <= 1 || nextDouble() >= clamp(config.getGroupArrivalProb(), 0.0, 1.0)) {
-            return 1;
-        }
-        return configuredPartySize;
+        return durationPolicy.samplePartySize();
     }
 
     public long resolveServiceTimeSeconds(int windowId) {
-        SimConfig.DistributionSpec spec = isTakeawayWindow(windowId)
-                ? config.getWindowServiceDist()
-                : config.getNormalServiceDist();
-        long sampled = sampleDurationSeconds(spec, serviceRangeMin(), serviceRangeMax());
-        if (!isTakeawayWindow(windowId)) {
-            return sampled;
-        }
-
-        double multiplier = 1.15;
-        if (config.getBaseConfig() != null) {
-            multiplier = config.getBaseConfig().getTakeawayServiceTimeMultiplier();
-        }
-        multiplier = Double.isNaN(multiplier) || Double.isInfinite(multiplier) ? 1.15 : Math.max(1.0, multiplier);
-        return Math.max(sampled, Math.round(sampled * multiplier));
+        return durationPolicy.resolveServiceTimeSeconds(isTakeawayWindow(windowId));
     }
 
     public long reserveWindowService(int windowId, long queueEnterTime, long serviceTimeSeconds) {
@@ -208,93 +163,71 @@ public class SimulationEngine {
         return serviceStartTime;
     }
 
-    private long projectedWindowDelaySeconds(int windowId) {
-        if (windowId < 0 || windowId >= windowAvailableAtSeconds.size()) {
-            return 0L;
-        }
-        return Math.max(0L, windowAvailableAtSeconds.get(windowId) - currentTime);
-    }
-
     public long resolveDiningTimeSeconds() {
-        return sampleDurationSeconds(config.getDiningTimeDist(), diningRangeMin(), diningRangeMax());
+        return durationPolicy.resolveDiningTimeSeconds();
     }
 
     public long resolveMovementTimeSeconds() {
-        double walkTimeMean = config == null ? 0.0 : Math.max(0.0, config.getWalkTimeMean());
-        if (walkTimeMean <= 0.0) {
-            return 0L;
-        }
-        double penalty = config == null ? 0.0 : Math.max(0.0, config.getCongestionPenalty());
-        double pressure = currentPeopleInSystem() / (double) Math.max(1, maxPeopleCapacity());
-        double movementTime = walkTimeMean * (1.0 + penalty * pressure);
-        return Math.max(0L, Math.round(movementTime));
+        return durationPolicy.resolveMovementTimeSeconds(canteenState, pendingSeatDecisionCount);
     }
 
     public DiningArea.SeatAllocation trySeatStudent(Student student) {
         if (student == null) {
             return canteenState.tryOccupySeats(1, currentTime);
         }
-        DiningArea.SeatAllocation allocation = canteenState.tryOccupySeats(student.getPartySize(), currentTime);
+        DiningArea.SeatAllocation allocation = canteenState.tryOccupySeats(
+                student.getPartySize(),
+                currentTime,
+                student.getGroupId());
         student.setSeatAllocation(allocation);
+        if (allocation != null && student.isGrouped()) {
+            if (allocation.splitGroup()) {
+                splitGroupCount++;
+            } else {
+                sameTableGroupCount++;
+            }
+        }
         return allocation;
     }
 
     public void releaseStudentSeat(Student student) {
         if (student == null || student.getSeatAllocation() == null) {
-            canteenState.releaseSeat();
             return;
         }
         canteenState.releaseSeats(student.getSeatAllocation(), currentTime);
         student.setSeatAllocation(null);
     }
 
-    public Student registerStudent(String id, ArrivalGroup arrivalGroup) {
-        return registerStudent(id, arrivalGroup, 1);
+    public Student registerStudent(String id, ArrivalGroup arrivalGroup, int partySize) {
+        return registerStudent(id, arrivalGroup, partySize, null, partySize, 0);
     }
 
-    public Student registerStudent(String id, ArrivalGroup arrivalGroup, int partySize) {
+    public Student registerStudent(String id,
+                                   ArrivalGroup arrivalGroup,
+                                   int partySize,
+                                   String groupId,
+                                   int groupSize,
+                                   int groupMemberIndex) {
         Student existing = studentRoster.get(id);
         if (existing != null) {
             return existing;
         }
 
-        double minPref = 0.1;
-        double maxPref = 0.3;
-        if (config.getRandomBounds() != null && config.getRandomBounds().getPreferenceRange() != null
-                && config.getRandomBounds().getPreferenceRange().size() >= 2) {
-            double a = config.getRandomBounds().getPreferenceRange().get(0);
-            double b = config.getRandomBounds().getPreferenceRange().get(1);
-            minPref = Math.min(a, b);
-            maxPref = Math.max(a, b);
-        }
-        minPref = clamp(minPref, 0.0, 1.0);
-        maxPref = clamp(maxPref, minPref, 1.0);
-        double rawPackPreference = minPref + (maxPref - minPref) * nextDouble();
-        double packPreference = discretizeProbability(rawPackPreference, 0.05);
-        Student.PackPreferenceLevel packPreferenceLevel = resolvePackPreferenceLevel(packPreference, minPref, maxPref);
-
-        int queueLimit = Math.max(0, config.getQueueLimit());
-        Student.PatienceLevel patienceLevel = samplePatienceLevel();
-        int patienceLimit = resolvePatienceLimit(queueLimit, patienceLevel);
-
-        int windowCount = canteenState.getWindowCount();
-        int windowPreference = windowCount == 0 ? 0 : nextInt(0, windowCount - 1);
-
-        Student.SeatToleranceLevel seatToleranceLevel = sampleSeatToleranceLevel(packPreferenceLevel);
-        int seatSearchPatience = resolveSeatSearchPatience(seatToleranceLevel, patienceLevel);
-
-        Student student = new Student(
+        Student student = studentProfileFactory.create(
                 id,
-                packPreference,
-                patienceLimit,
-                windowPreference,
-                seatSearchPatience,
-                arrivalGroup == null ? ArrivalGroup.NORMAL : arrivalGroup,
-                packPreferenceLevel,
-                patienceLevel,
-                seatToleranceLevel,
-                Math.max(1, partySize));
+                arrivalGroup,
+                partySize,
+                groupId,
+                groupSize,
+                groupMemberIndex,
+                config,
+                canteenState.getWindowCount(),
+                randomSampler);
         studentRoster.put(id, student);
+        if (student.isGrouped()) {
+            groupCount++;
+            groupedStudentCount += student.getPartySize();
+        }
 
         return student;
     }
@@ -311,101 +244,25 @@ public class SimulationEngine {
     }
 
     public int chooseWindowForStudent(Student student) {
-        List<Integer> queues = canteenState.getWindowQueues();
-        if (queues.isEmpty()) {
-            return -1;
-        }
-
-        int shortestWindow = canteenState.findShortestQueueIndex();
-        if (student == null) {
-            return shortestWindow;
-        }
-
-        int preferred = Math.floorMod(student.getWindowPreference(), queues.size());
-        int patienceLimit = Math.max(0, student.getPatienceLimit());
-        int partySize = Math.max(1, student.getPartySize());
-
-        if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.DINE_IN_BIASED) {
-            int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false);
-            if (normalWindow >= 0) {
-                return normalWindow;
-            }
-        }
-
-        if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.BALANCED) {
-            int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false);
-            int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true);
-            if (normalWindow >= 0 && takeawayWindow >= 0 && !shouldBalancedStudentUseTakeawayWindow(normalWindow, takeawayWindow)) {
-                return normalWindow;
-            }
-        }
-
-        return chooseBestWindow(student, preferred, patienceLimit, partySize, null);
+        boolean willTakeaway = predictTakeawayIntent(student);
+        return windowSelectionPolicy.choose(
+                student,
+                canteenState,
+                windowAvailableAtSeconds,
+                windowTypes,
+                currentTime,
+                currentQueuePressure(),
+                currentSeatUtilizationRate(),
+                takeawayWindowCount,
+                willTakeaway);
     }
 
-    private int chooseBestWindow(Student student,
-                                 int preferred,
-                                 int patienceLimit,
-                                 int partySize,
-                                 Boolean takeawayOnly) {
-        List<Integer> queues = canteenState.getWindowQueues();
-        double nonPreferredPenalty = switch (student.getPatienceLevel()) {
-            case LOW -> 0.15;
-            case MEDIUM -> 0.45;
-            case HIGH -> 0.90;
-        };
-        int bestWindow = -1;
-        double bestScore = Double.MAX_VALUE;
-        for (int i = 0; i < queues.size(); i++) {
-            if (takeawayOnly != null && isTakeawayWindow(i) != takeawayOnly) {
-                continue;
-            }
-            int queueSize = queues.get(i);
-            // [重构] 组团学生选择窗口时也按人数检查耐心阈值，原因是四人同行不应只占一个排队名额。
-            if (queueSize + partySize > patienceLimit) {
-                continue;
-            }
-
-            double preferencePenalty = (i == preferred) ? 0.0 : nonPreferredPenalty;
-            double delayPenalty = projectedWindowDelaySeconds(i) / 60.0 * 0.25;
-            double score = queueSize + preferencePenalty + delayPenalty + windowTypePenalty(student, i);
-            if (score < bestScore) {
-                bestScore = score;
-                bestWindow = i;
-            }
-        }
-        return bestWindow;
-    }
-
-    private boolean shouldBalancedStudentUseTakeawayWindow(int normalWindow, int takeawayWindow) {
-        int normalQueue = canteenState.getWindowQueues().get(normalWindow);
-        int takeawayQueue = canteenState.getWindowQueues().get(takeawayWindow);
-        double queuePressure = currentQueuePressure();
-        double seatPressure = currentSeatUtilizationRate();
-        long normalDelay = projectedWindowDelaySeconds(normalWindow);
-        long takeawayDelay = projectedWindowDelaySeconds(takeawayWindow);
-        boolean systemPressureHigh = queuePressure >= 0.65 || seatPressure >= 0.88;
-        boolean takeawayClearlyBetter = normalQueue - takeawayQueue >= 4 || normalDelay - takeawayDelay >= 180L;
-        return systemPressureHigh && takeawayClearlyBetter;
-    }
-
-    private double windowTypePenalty(Student student, int windowId) {
+    private boolean predictTakeawayIntent(Student student) {
         if (student == null || takeawayWindowCount <= 0) {
-            return 0.0;
+            return false;
         }
-
-        boolean takeawayWindow = isTakeawayWindow(windowId);
-        return switch (student.getPackPreferenceLevel()) {
-            case TAKEAWAY_BIASED -> takeawayWindow ? -0.20 : 0.35;
-            case BALANCED -> takeawayWindow ? 0.80 : 0.00;
-            case DINE_IN_BIASED -> takeawayWindow ? 6.00 : -0.20;
-        };
+        return student.getPackPreferenceLevel() == Student.PackPreferenceLevel.TAKEAWAY_BIASED;
     }
-
-    public void recordArrival(ArrivalGroup arrivalGroup) {
-        recordArrival(arrivalGroup, 1);
-    }
-
     public void recordArrival(ArrivalGroup arrivalGroup, int partySize) {
         int count = Math.max(1, partySize);
         this.arrivedCount += count;
@@ -432,22 +289,29 @@ public class SimulationEngine {
         this.abandonedByQueueCount++;
     }
 
-    public void recordWaitTime(long arriveTime) {
-        recordWaitTime(arriveTime, 1);
-    }
-
-    public void recordWaitTime(long arriveTime, int partySize) {
-        recordWaitTime(arriveTime, currentTime, partySize);
-    }
-
     public void recordWaitTime(long queueEnterTime, long serviceStartTime, int partySize) {
-        int count = Math.max(1, partySize);
-        this.totalWaitTime += Math.max(0L, serviceStartTime - queueEnterTime) * count;
-        this.servedCount += count;
+        recordWaitTime(queueEnterTime, serviceStartTime, partySize, -1, "UNKNOWN", 0);
     }
 
-    public void recordWindowServed(int windowId) {
-        recordWindowServed(windowId, 1);
+    public void recordWaitTime(long queueEnterTime,
+                               long serviceStartTime,
+                               int partySize,
+                               int windowId,
+                               String windowType,
+                               int queueLengthAtJoin) {
+        int count = Math.max(1, partySize);
+        long safeQueueEnterTime = Math.max(0L, queueEnterTime);
+        long safeServiceStartTime = Math.max(safeQueueEnterTime, serviceStartTime);
+        this.totalWaitTime += (safeServiceStartTime - safeQueueEnterTime) * count;
+        this.servedCount += count;
+        this.waitTimeSamples.add(new WaitTimeSample(
+                safeQueueEnterTime,
+                safeServiceStartTime,
+                count,
+                windowId,
+                windowType,
+                queueLengthAtJoin,
+                durationPolicy.resolveWaitPhase(safeServiceStartTime)));
     }
 
     public void recordWindowServed(int windowId, int partySize) {
@@ -456,74 +320,28 @@ public class SimulationEngine {
         }
     }
 
-    public void recordDineIn() {
-        recordDineIn(1);
-    }
-
     public void recordDineIn(int partySize) {
         this.dineInCount += Math.max(1, partySize);
-    }
-
-    public void recordTakeaway() {
-        recordTakeaway(1);
     }
 
     public void recordTakeaway(int partySize) {
         this.takeawayCount += Math.max(1, partySize);
     }
 
-    public void recordSeatDecisionPending() {
-        recordSeatDecisionPending(1);
-    }
-
     public void recordSeatDecisionPending(int partySize) {
         this.pendingSeatDecisionCount += Math.max(1, partySize);
-    }
-
-    public void resolveSeatDecisionPending() {
-        resolveSeatDecisionPending(1);
     }
 
     public void resolveSeatDecisionPending(int partySize) {
         this.pendingSeatDecisionCount = Math.max(0, this.pendingSeatDecisionCount - Math.max(1, partySize));
     }
 
-    public void recordNoSeatSwitchToTakeaway() {
-        recordNoSeatSwitchToTakeaway(1);
-    }
-
     public void recordNoSeatSwitchToTakeaway(int partySize) {
         this.noSeatSwitchToTakeawayCount += Math.max(1, partySize);
     }
 
-    public void recordWeatherDrivenTakeaway() {
-        recordWeatherDrivenTakeaway(1);
-    }
-
     public void recordWeatherDrivenTakeaway(int partySize) {
         this.weatherDrivenTakeawayCount += Math.max(1, partySize);
-    }
-
-    public void recordTakeawayDecision(String studentId,
-                                       String reason,
-                                       double finalProbability,
-                                       double randomRoll,
-                                       double waitMinutes,
-                                       double studentPreference,
-                                       boolean takeaway,
-                                       int partySize) {
-        takeawayDecisionRecords.add(new TakeawayDecisionRecord(
-                currentTime,
-                studentId,
-                reason,
-                finalProbability,
-                randomRoll,
-                currentSeatUtilizationRate(),
-                currentQueuePressure(),
-                waitMinutes,
-                studentPreference,
-                takeaway,
-                partySize));
     }
 
     public void recordTakeawayDecision(String studentId,
@@ -564,10 +382,6 @@ public class SimulationEngine {
                 decisionReason));
     }
 
-    public void recordLeave() {
-        recordLeave(1);
-    }
-
     public void recordLeave(int partySize) {
         this.leaveCount += Math.max(1, partySize);
     }
@@ -575,17 +389,6 @@ public class SimulationEngine {
     public void recordMovementTime(long movementTimeSeconds) {
         this.totalMovementTime += Math.max(0L, movementTimeSeconds);
         this.movementSampleCount++;
-    }
-
-    public void checkPeak() {
-        List<Integer> queues = canteenState.getWindowQueues();
-        for (int i = 0; i < queues.size(); i++) {
-            if (queues.get(i) > maxQueueSizeEver) {
-                maxQueueSizeEver = queues.get(i);
-                peakTime = this.currentTime;
-                peakWindowId = i;
-            }
-        }
     }
 
     public int getArrivedCount() {
@@ -640,32 +443,52 @@ public class SimulationEngine {
         return leaveCount;
     }
 
+    public int getGroupCount() {
+        return groupCount;
+    }
+
+    public int getGroupedStudentCount() {
+        return groupedStudentCount;
+    }
+
+    public int getSameTableGroupCount() {
+        return sameTableGroupCount;
+    }
+
+    public int getSplitGroupCount() {
+        return splitGroupCount;
+    }
+
     public int getPeakWindowId() {
-        return peakWindowId;
+        return snapshotRecorder.getPeakWindowId();
     }
 
     public long getPeakTime() {
-        return peakTime;
+        return snapshotRecorder.getPeakTime();
+    }
+
+    public long getTotalPeakTime() {
+        return snapshotRecorder.getTotalPeakTime();
     }
 
     public int getMaxQueueSizeEver() {
-        return maxQueueSizeEver;
+        return snapshotRecorder.getMaxQueueSizeEver();
     }
 
     public int getMaxTotalQueueSize() {
-        return maxTotalQueueSize;
+        return snapshotRecorder.getMaxTotalQueueSize();
     }
 
     public double getAvgTotalQueueSize() {
-        return queueSizeSamples == 0 ? 0 : (double) totalQueueSizeSum / queueSizeSamples;
+        return snapshotRecorder.getAvgTotalQueueSize();
     }
 
     public int getMaxOccupiedSeats() {
-        return maxOccupiedSeats;
+        return snapshotRecorder.getMaxOccupiedSeats();
     }
 
     public double getAvgOccupiedSeats() {
-        return occupiedSeatsSamples == 0 ? 0 : (double) occupiedSeatsSum / occupiedSeatsSamples;
+        return snapshotRecorder.getAvgOccupiedSeats();
     }
 
     public double getTotalWaitTimeMinutes() {
@@ -754,6 +577,10 @@ public class SimulationEngine {
         return Collections.unmodifiableList(arrivalSamples);
     }
 
+    public List<WaitTimeSample> getWaitTimeSamples() {
+        return Collections.unmodifiableList(waitTimeSamples);
+    }
+
     public List<TakeawayDecisionRecord> getTakeawayDecisionRecords() {
         return Collections.unmodifiableList(takeawayDecisionRecords);
     }
@@ -781,13 +608,13 @@ public class SimulationEngine {
         if (totalSeats == 0) {
             return 1.0;
         }
-        return clamp((double) canteenState.getOccupiedSeats() / totalSeats, 0.0, 1.0);
+        return SimulationMath.clamp((double) canteenState.getOccupiedSeats() / totalSeats, 0.0, 1.0);
     }
 
     public double currentQueuePressure() {
         int windowCount = Math.max(1, canteenState.getWindowCount());
         int queueLimit = config == null ? 10 : Math.max(1, config.getQueueLimit());
-        return clamp((double) getCurrentTotalQueueSize() / (windowCount * queueLimit), 0.0, 1.0);
+        return SimulationMath.clamp((double) getCurrentTotalQueueSize() / (windowCount * queueLimit), 0.0, 1.0);
     }
 
     public void runUntil(long targetTime) {
@@ -803,6 +630,39 @@ public class SimulationEngine {
             BaseEvent event = eventQueue.poll();
             runScheduledEvent(event);
         }
+        finalizeLingeringDiners();
+    }
+
+    /**
+     * 仿真结束时,把仍持有座位但未触发 LeaveEvent 的学生强制结束:
+     * 释放座位、推进 leaveCount、转入 LEAVE 状态。
+     * 这一步避免座位图出现"无人却 OCCUPIED"的残留观感,
+     * 同时保留 leaveCount <= servedCount 不变量。
+     */
+    private void finalizeLingeringDiners() {
+        for (Student student : studentRoster.values()) {
+            if (student == null) {
+                continue;
+            }
+            if (student.getSeatAllocation() == null) {
+                continue;
+            }
+            if (student.getState() == StudentState.LEAVE) {
+                continue;
+            }
+            int partySize = student.getPartySize();
+            releaseStudentSeat(student);
+            recordLeave(partySize);
+            student.setState(StudentState.LEAVE);
+            forcedLeaveCount += partySize;
+        }
+        if (forcedLeaveCount > 0) {
+            recordState("simulation finalize: force-released " + forcedLeaveCount + " lingering diners");
+        }
+    }
+
+    public int getForcedLeaveCount() {
+        return forcedLeaveCount;
     }
 
     private void runScheduledEvent(BaseEvent event) {
@@ -811,64 +671,7 @@ public class SimulationEngine {
         }
         currentTime = event.getEventTime();
         event.process(this);
-        validateInvariants();
-    }
-
-    private void validateInvariants() {
-        for (Integer queueSize : canteenState.getWindowQueues()) {
-            if (queueSize == null || queueSize < 0) {
-                throw new IllegalStateException("queue size must be >= 0");
-            }
-        }
-        if (canteenState.getOccupiedSeats() < 0) {
-            throw new IllegalStateException("occupiedSeats must be >= 0");
-        }
-        if (canteenState.getOccupiedSeats() > canteenState.getTotalSeats()) {
-            throw new IllegalStateException("occupiedSeats must be <= totalSeats");
-        }
-        if (servedCount > arrivedCount) {
-            throw new IllegalStateException("servedCount cannot exceed arrivedCount");
-        }
-        if (leaveCount > servedCount) {
-            throw new IllegalStateException("leaveCount cannot exceed servedCount");
-        }
-        if (pendingSeatDecisionCount < 0) {
-            throw new IllegalStateException("pendingSeatDecisionCount must be >= 0");
-        }
-        if (dineInCount + takeawayCount + pendingSeatDecisionCount != servedCount) {
-            throw new IllegalStateException("dineInCount + takeawayCount + pendingSeatDecisionCount must equal servedCount");
-        }
-        if (abandonedByQueueCount > abandonedCount) {
-            throw new IllegalStateException("abandonedByQueueCount cannot exceed abandonedCount");
-        }
-        if (noSeatSwitchToTakeawayCount > takeawayCount) {
-            throw new IllegalStateException("noSeatSwitchToTakeawayCount cannot exceed takeawayCount");
-        }
-        if (normalArrivalCount + classPeakArrivalCount + rainPeakArrivalCount != arrivedCount) {
-            throw new IllegalStateException("arrival group counts must equal arrivedCount");
-        }
-
-        int servedByWindow = 0;
-        for (int count : windowServedCounts) {
-            if (count < 0) {
-                throw new IllegalStateException("window served count must be >= 0");
-            }
-            servedByWindow += count;
-        }
-        if (servedByWindow != servedCount) {
-            throw new IllegalStateException("sum(windowServedCounts) must equal servedCount");
-        }
-        if (getNormalWindowServedCount() + getTakeawayWindowServedCount() != servedCount) {
-            throw new IllegalStateException("normalWindowServedCount + takeawayWindowServedCount must equal servedCount");
-        }
-    }
-
-    private String normalizeWindowType(String type) {
-        if (type == null || type.isBlank()) {
-            return "NORMAL";
-        }
-        String normalized = type.trim().toUpperCase();
-        return "TAKEAWAY".equals(normalized) ? "TAKEAWAY" : "NORMAL";
+        invariantChecker.validate(this);
     }
 
     private void recalculateWindowTypeCounts() {
@@ -886,53 +689,7 @@ public class SimulationEngine {
     }
 
     public void recordState(String message) {
-        List<Integer> currentQueues = new ArrayList<>(this.canteenState.getWindows());
-        int totalQueueSize = 0;
-        for (int size : currentQueues) {
-            totalQueueSize += size;
-        }
-        totalQueueSizeSum += totalQueueSize;
-        queueSizeSamples++;
-        if (totalQueueSize > maxTotalQueueSize) {
-            maxTotalQueueSize = totalQueueSize;
-        }
-
-        int occupiedSeats = this.canteenState.getOccupiedSeats();
-        occupiedSeatsSum += occupiedSeats;
-        occupiedSeatsSamples++;
-        if (occupiedSeats > maxOccupiedSeats) {
-            maxOccupiedSeats = occupiedSeats;
-        }
-
-        checkPeak();
-        int emptySeats = Math.max(0, this.canteenState.getTotalSeats() - occupiedSeats);
-        String safeMessage = message == null ? "" : message;
-        SimulationResult snapshot = new SimulationResult(
-                this.currentTime,
-                currentQueues,
-                totalQueueSize,
-                occupiedSeats,
-                emptySeats,
-                safeMessage,
-                arrivedCount,
-                abandonedCount,
-                abandonedByQueueCount,
-                servedCount,
-                dineInCount,
-                takeawayCount,
-                pendingSeatDecisionCount,
-                noSeatSwitchToTakeawayCount,
-                weatherDrivenTakeawayCount,
-                leaveCount,
-                normalArrivalCount,
-                classPeakArrivalCount,
-                rainPeakArrivalCount,
-                movementSampleCount,
-                getTotalMovementTimeMinutes(),
-                getAvgMovementTimeMinutes(),
-                List.of());
-
-        this.history.add(snapshot);
+        this.history.add(snapshotRecorder.record(this, message));
     }
 
     public List<TableSnapshot> getTableSnapshots() {
@@ -947,212 +704,4 @@ public class SimulationEngine {
         return canteenState.getOccupiedSeatSeconds(currentTime);
     }
 
-    private long sampleDurationSeconds(SimConfig.DistributionSpec spec, long fallbackMin, long fallbackMax) {
-        SimConfig.DistributionSpec safeSpec = spec == null ? SimConfig.DistributionSpec.uniform() : spec;
-        String type = normalizeDistributionType(safeSpec, "UNIFORM");
-        boolean explicitDistributionParam = safeSpec.getMean() > 0 || safeSpec.getLambda() > 0 || safeSpec.getStd() > 0;
-        boolean useFallbackBounds = "UNIFORM".equals(type) || !explicitDistributionParam;
-        long min = safeSpec.getMin() > 0 ? safeSpec.getMin() : (useFallbackBounds ? fallbackMin : 1L);
-        long max = safeSpec.getMax() > 0 ? safeSpec.getMax() : (useFallbackBounds ? fallbackMax : Long.MAX_VALUE / 4L);
-        min = Math.max(0L, min);
-        max = Math.max(min + 1L, max);
-
-        double sampled;
-        if ("NORMAL".equals(type)) {
-            double mean = safeSpec.getMean() > 0 ? safeSpec.getMean() : (min + max) / 2.0;
-            double std = safeSpec.getStd() > 0 ? safeSpec.getStd() : Math.max(1.0, (max - min) / 6.0);
-            sampled = mean + random.nextGaussian() * std;
-        } else if ("EXPONENTIAL".equals(type)) {
-            double mean = safeSpec.getMean() > 0 ? safeSpec.getMean() : (min + max) / 2.0;
-            if (safeSpec.getLambda() > 0) {
-                mean = 1.0 / safeSpec.getLambda();
-            }
-            double u = Math.max(1.0e-12, 1.0 - nextDouble());
-            sampled = -Math.log(u) * Math.max(1.0e-9, mean);
-        } else if ("POISSON".equals(type)) {
-            double lambda = safeSpec.getLambda() > 0 ? safeSpec.getLambda() : Math.max(0.0, safeSpec.getMean());
-            if (lambda <= 0.0) {
-                lambda = (min + max) / 2.0;
-            }
-            sampled = samplePoisson(lambda);
-        } else if ("FIXED".equals(type)) {
-            sampled = safeSpec.getMean() > 0 ? safeSpec.getMean() : min;
-        } else {
-            long upperExclusive = max == Long.MAX_VALUE ? max : max + 1L;
-            sampled = nextLong(min, upperExclusive);
-        }
-
-        long rounded = Math.round(sampled);
-        if (rounded < min) {
-            return min;
-        }
-        if (rounded > max) {
-            return max;
-        }
-        return rounded;
-    }
-
-    private int samplePoisson(double lambda) {
-        if (lambda <= 0.0 || Double.isNaN(lambda) || Double.isInfinite(lambda)) {
-            return 0;
-        }
-        if (lambda < 40.0) {
-            double limit = Math.exp(-lambda);
-            int k = 0;
-            double product = 1.0;
-            do {
-                k++;
-                product *= nextDouble();
-            } while (product > limit);
-            return Math.max(0, k - 1);
-        }
-
-        double sampled = lambda + random.nextGaussian() * Math.sqrt(lambda);
-        return Math.max(0, (int) Math.round(sampled));
-    }
-
-    private String normalizeDistributionType(SimConfig.DistributionSpec spec, String fallback) {
-        String raw = spec == null ? null : spec.getType();
-        if (raw == null || raw.isBlank()) {
-            return fallback;
-        }
-        return raw.trim().toUpperCase();
-    }
-
-    private long serviceRangeMin() {
-        return rangeValue(config.getRandomBounds().getServiceRange(), 0, 60L);
-    }
-
-    private long serviceRangeMax() {
-        return rangeValue(config.getRandomBounds().getServiceRange(), 1, 300L);
-    }
-
-    private long diningRangeMin() {
-        return rangeValue(config.getRandomBounds().getDiningRange(), 0, 600L);
-    }
-
-    private long diningRangeMax() {
-        return rangeValue(config.getRandomBounds().getDiningRange(), 1, 1800L);
-    }
-
-    private long rangeValue(List<Integer> range, int index, long fallback) {
-        if (range == null || range.size() <= index || range.get(index) == null) {
-            return fallback;
-        }
-        return Math.max(1L, range.get(index));
-    }
-
-    private int currentPeopleInSystem() {
-        int queueSize = 0;
-        for (int size : canteenState.getWindowQueues()) {
-            queueSize += Math.max(0, size);
-        }
-        return queueSize + canteenState.getOccupiedSeats() + Math.max(0, pendingSeatDecisionCount);
-    }
-
-    private int maxPeopleCapacity() {
-        int seatCapacity = Math.max(0, canteenState.getTotalSeats());
-        int queueCapacity = Math.max(0, config.getQueueLimit()) * Math.max(0, canteenState.getWindowCount());
-        return Math.max(1, seatCapacity + queueCapacity);
-    }
-
-    private double clamp(double value, double min, double max) {
-        if (value < min) {
-            return min;
-        }
-        if (value > max) {
-            return max;
-        }
-        return value;
-    }
-
-    private double discretizeProbability(double value, double step) {
-        if (step <= 0) {
-            return clamp(value, 0.0, 1.0);
-        }
-        double clamped = clamp(value, 0.0, 1.0);
-        double scaled = Math.round(clamped / step) * step;
-        return clamp(scaled, 0.0, 1.0);
-    }
-
-    private Student.PackPreferenceLevel resolvePackPreferenceLevel(double packPreference, double minPref, double maxPref) {
-        if (packPreference <= 0.18) {
-            return Student.PackPreferenceLevel.DINE_IN_BIASED;
-        }
-        if (packPreference < 0.45) {
-            return Student.PackPreferenceLevel.BALANCED;
-        }
-        return Student.PackPreferenceLevel.TAKEAWAY_BIASED;
-    }
-
-    private Student.PatienceLevel samplePatienceLevel() {
-        double roll = nextDouble();
-        if (roll < 0.30) {
-            return Student.PatienceLevel.LOW;
-        }
-        if (roll < 0.75) {
-            return Student.PatienceLevel.MEDIUM;
-        }
-        return Student.PatienceLevel.HIGH;
-    }
-
-    private int resolvePatienceLimit(int queueLimit, Student.PatienceLevel patienceLevel) {
-        if (queueLimit <= 0) {
-            return 0;
-        }
-
-        return switch (patienceLevel) {
-            case LOW -> nextInt(Math.max(0, queueLimit - 4), Math.max(0, queueLimit - 1));
-            case MEDIUM -> nextInt(Math.max(0, queueLimit - 2), queueLimit + 1);
-            case HIGH -> nextInt(queueLimit, queueLimit + 4);
-        };
-    }
-
-    private Student.SeatToleranceLevel sampleSeatToleranceLevel(Student.PackPreferenceLevel packPreferenceLevel) {
-        double roll = nextDouble();
-        return switch (packPreferenceLevel) {
-            case TAKEAWAY_BIASED -> {
-                if (roll < 0.60) {
-                    yield Student.SeatToleranceLevel.LOW;
-                }
-                if (roll < 0.90) {
-                    yield Student.SeatToleranceLevel.MEDIUM;
-                }
-                yield Student.SeatToleranceLevel.HIGH;
-            }
-            case BALANCED -> {
-                if (roll < 0.25) {
-                    yield Student.SeatToleranceLevel.LOW;
-                }
-                if (roll < 0.75) {
-                    yield Student.SeatToleranceLevel.MEDIUM;
-                }
-                yield Student.SeatToleranceLevel.HIGH;
-            }
-            case DINE_IN_BIASED -> {
-                if (roll < 0.10) {
-                    yield Student.SeatToleranceLevel.LOW;
-                }
-                if (roll < 0.55) {
-                    yield Student.SeatToleranceLevel.MEDIUM;
-                }
-                yield Student.SeatToleranceLevel.HIGH;
-            }
-        };
-    }
-
-    private int resolveSeatSearchPatience(Student.SeatToleranceLevel seatToleranceLevel, Student.PatienceLevel patienceLevel) {
-        int base = switch (seatToleranceLevel) {
-            case LOW -> 0;
-            case MEDIUM -> 1;
-            case HIGH -> 2;
-        };
-
-        int patienceAdjustment = switch (patienceLevel) {
-            case LOW -> -1;
-            case MEDIUM -> 0;
-            case HIGH -> 1;
-        };
-        return Math.max(0, Math.min(4, base + patienceAdjustment));
-    }
 }

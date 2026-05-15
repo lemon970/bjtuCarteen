@@ -49,7 +49,15 @@ public class SeatSearchEvent extends BaseEvent {
                 0.0,
                 studentPackPreference,
                 true,
-                partySize);
+                partySize,
+                engine.getConfig() == null ? 0.2 : engine.getConfig().getPackProbability(),
+                0.0,
+                0.50,
+                0.0,
+                0.0,
+                0.0,
+                "TABLE_SEARCH_FAILED",
+                "座位搜索失败，转为打包离开");
         engine.recordTakeaway(partySize);
         engine.recordNoSeatSwitchToTakeaway(partySize);
         engine.recordLeave(partySize);

@@ -96,7 +96,8 @@ public class MovementEvent extends BaseEvent {
                 studentId,
                 windowId,
                 queueEnterTime,
-                serviceStartTime));
+                serviceStartTime,
+                chosenQueueSize));
 
         String groupTag = student == null || student.getArrivalGroup() == null
                 ? ArrivalGroup.NORMAL.name()

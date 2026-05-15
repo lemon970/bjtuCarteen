@@ -1,17 +1,25 @@
 import { API_BASE, HISTORY_PAGE_SIZE } from '../constants'
 
-// [重构] 把所有后端请求集中在 API 层，页面组件不直接拼接接口地址，便于前后端契约统一维护。
-async function requestJson(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, options)
+const ANALYSIS_BASE = '/api/analysis'
+
+class ApiError extends Error {
+  constructor(message, payload) {
+    super(message)
+    this.payload = payload
+  }
+}
+
+async function requestJson(path, options = {}, base = API_BASE) {
+  const response = await fetch(`${base}${path}`, options)
   const text = await response.text()
   let body
   try {
     body = text ? JSON.parse(text) : {}
   } catch {
-    throw new Error(`后端返回了非 JSON 内容（HTTP ${response.status}），请确认服务接口正常运行`)
+    throw new ApiError(`后端返回了非 JSON 内容,HTTP ${response.status}`, { code: response.status })
   }
   if (!response.ok || body.code !== 0) {
-    throw new Error(body.message || `HTTP ${response.status}`)
+    throw new ApiError(body.message || `HTTP ${response.status}`, body)
   }
   return body.data
 }
@@ -21,6 +29,18 @@ export function runSimulation(payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
+  })
+}
+
+export function loadScenarioCatalog() {
+  return requestJson('/scenarios')
+}
+
+export function runScenarioBatch(scenarioIds, overrides) {
+  return requestJson('/scenarios/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenario_ids: scenarioIds, overrides })
   })
 }
 
@@ -34,4 +54,20 @@ export function loadReportHistory(reportId, page = 1) {
 
 export function csvExportUrl(reportId) {
   return `${API_BASE}/report/${reportId}/csv`
+}
+
+export function runAnalysis(reportId) {
+  return requestJson('/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reportId })
+  }, ANALYSIS_BASE)
+}
+
+export function runCrossScenarioAnalysis(scenarioIds) {
+  return requestJson('/cross-scenario', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenarioIds })
+  }, ANALYSIS_BASE)
 }

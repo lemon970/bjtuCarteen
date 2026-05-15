@@ -29,11 +29,13 @@ public class SimulationSummary {
 
     private final double avgWaitTimeMinutes;
     private final double totalWaitTimeMinutes;
+    private final WaitTimeMetrics waitTimeMetrics;
     private final double avgMovementTimeMinutes;
     private final double totalMovementTimeMinutes;
     private final int movementSampleCount;
 
     private final long peakTimeMinutes;
+    private final long totalPeakTimeMinutes;
     private final int peakWindowId;
     private final int maxQueueSize;
 
@@ -68,6 +70,11 @@ public class SimulationSummary {
     private final List<TakeawayDecisionRecord> takeawayDecisionRecords;
     private final ProbabilityModelSummary probabilityModel;
     private final QueueTheoryMetrics queueTheoryMetrics;
+    private final int groupCount;
+    private final int groupedStudentCount;
+    private final double avgGroupSize;
+    private final double sameTableGroupRate;
+    private final double splitGroupRate;
 
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
@@ -86,10 +93,12 @@ public class SimulationSummary {
                              int leaveCount,
                              double avgWaitTimeMinutes,
                              double totalWaitTimeMinutes,
+                             WaitTimeMetrics waitTimeMetrics,
                              double avgMovementTimeMinutes,
                              double totalMovementTimeMinutes,
                              int movementSampleCount,
                              long peakTimeMinutes,
+                             long totalPeakTimeMinutes,
                              int peakWindowId,
                              int maxQueueSize,
                              int maxTotalQueueSize,
@@ -118,7 +127,12 @@ public class SimulationSummary {
                              List<ArrivalSample> arrivalSamples,
                              List<TakeawayDecisionRecord> takeawayDecisionRecords,
                              ProbabilityModelSummary probabilityModel,
-                             QueueTheoryMetrics queueTheoryMetrics) {
+                             QueueTheoryMetrics queueTheoryMetrics,
+                             int groupCount,
+                             int groupedStudentCount,
+                             double avgGroupSize,
+                             double sameTableGroupRate,
+                             double splitGroupRate) {
         this.history = history;
         this.timeline = timeline;
         this.arrivedCount = arrivedCount;
@@ -136,10 +150,12 @@ public class SimulationSummary {
         this.leaveCount = leaveCount;
         this.avgWaitTimeMinutes = avgWaitTimeMinutes;
         this.totalWaitTimeMinutes = totalWaitTimeMinutes;
+        this.waitTimeMetrics = waitTimeMetrics == null ? WaitTimeMetrics.empty() : waitTimeMetrics;
         this.avgMovementTimeMinutes = avgMovementTimeMinutes;
         this.totalMovementTimeMinutes = totalMovementTimeMinutes;
         this.movementSampleCount = movementSampleCount;
         this.peakTimeMinutes = peakTimeMinutes;
+        this.totalPeakTimeMinutes = totalPeakTimeMinutes;
         this.peakWindowId = peakWindowId;
         this.maxQueueSize = maxQueueSize;
         this.maxTotalQueueSize = maxTotalQueueSize;
@@ -169,6 +185,11 @@ public class SimulationSummary {
         this.takeawayDecisionRecords = takeawayDecisionRecords;
         this.probabilityModel = probabilityModel;
         this.queueTheoryMetrics = queueTheoryMetrics;
+        this.groupCount = groupCount;
+        this.groupedStudentCount = groupedStudentCount;
+        this.avgGroupSize = avgGroupSize;
+        this.sameTableGroupRate = sameTableGroupRate;
+        this.splitGroupRate = splitGroupRate;
     }
 
     public List<SimulationResult> getHistory() {
@@ -239,6 +260,50 @@ public class SimulationSummary {
         return totalWaitTimeMinutes;
     }
 
+    public double getRawAvgWaitTimeMinutes() {
+        return waitTimeMetrics.getRawAvgWaitTimeMinutes();
+    }
+
+    public double getSteadyAvgWaitTimeMinutes() {
+        return waitTimeMetrics.getSteadyAvgWaitTimeMinutes();
+    }
+
+    public double getTypicalWaitTimeMinutes() {
+        return waitTimeMetrics.getTypicalWaitTimeMinutes();
+    }
+
+    public double getMedianWaitTimeMinutes() {
+        return waitTimeMetrics.getMedianWaitTimeMinutes();
+    }
+
+    public double getP75WaitTimeMinutes() {
+        return waitTimeMetrics.getP75WaitTimeMinutes();
+    }
+
+    public double getP90WaitTimeMinutes() {
+        return waitTimeMetrics.getP90WaitTimeMinutes();
+    }
+
+    public double getLongWaitRate() {
+        return waitTimeMetrics.getLongWaitRate();
+    }
+
+    public double getZeroWaitRate() {
+        return waitTimeMetrics.getZeroWaitRate();
+    }
+
+    public double getEdgeWaitSampleRate() {
+        return waitTimeMetrics.getEdgeWaitSampleRate();
+    }
+
+    public List<WaitTimeBucket> getWaitTimeDistribution() {
+        return waitTimeMetrics.getWaitTimeDistribution();
+    }
+
+    public WaitTimeInsight getWaitTimeInsight() {
+        return waitTimeMetrics.getWaitTimeInsight();
+    }
+
     public double getAvgMovementTimeMinutes() {
         return avgMovementTimeMinutes;
     }
@@ -253,6 +318,10 @@ public class SimulationSummary {
 
     public long getPeakTimeMinutes() {
         return peakTimeMinutes;
+    }
+
+    public long getTotalPeakTimeMinutes() {
+        return totalPeakTimeMinutes;
     }
 
     public int getPeakWindowId() {
@@ -369,5 +438,25 @@ public class SimulationSummary {
 
     public QueueTheoryMetrics getQueueTheoryMetrics() {
         return queueTheoryMetrics;
+    }
+
+    public int getGroupCount() {
+        return groupCount;
+    }
+
+    public int getGroupedStudentCount() {
+        return groupedStudentCount;
+    }
+
+    public double getAvgGroupSize() {
+        return avgGroupSize;
+    }
+
+    public double getSameTableGroupRate() {
+        return sameTableGroupRate;
+    }
+
+    public double getSplitGroupRate() {
+        return splitGroupRate;
     }
 }

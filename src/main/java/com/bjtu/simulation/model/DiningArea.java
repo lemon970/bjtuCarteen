@@ -29,6 +29,10 @@ public class DiningArea {
     }
 
     public SeatAllocation tryOccupySeats(int requestedSeats, long currentTime) {
+        return tryOccupySeats(requestedSeats, currentTime, null);
+    }
+
+    public SeatAllocation tryOccupySeats(int requestedSeats, long currentTime, String groupId) {
         int seats = Math.max(1, requestedSeats);
         Optional<DiningTable> table = findTableForParty(seats, currentTime);
         if (table.isEmpty()) {
@@ -39,7 +43,8 @@ public class DiningArea {
         selected.updateDurations(currentTime);
         selected.cleaningUntilTime = 0L;
         selected.occupiedSeats += seats;
-        return new SeatAllocation(selected.tableId, seats);
+        selected.addOccupancy(seats, groupId);
+        return new SeatAllocation(selected.tableId, seats, groupId, false);
     }
 
     public void releaseSeat() {
@@ -58,7 +63,7 @@ public class DiningArea {
         for (DiningTable table : tables) {
             if (table.tableId == allocation.tableId()) {
                 table.updateDurations(currentTime);
-                table.occupiedSeats = Math.max(0, table.occupiedSeats - Math.max(1, allocation.seatCount()));
+                table.removeOccupancy(allocation);
                 if (table.occupiedSeats == 0) {
                     table.cleaningUntilTime = Math.max(currentTime, 0L) + CLEANING_SECONDS;
                 }
@@ -98,7 +103,8 @@ public class DiningArea {
                     table.capacity,
                     table.occupiedSeats,
                     occupiedSeconds,
-                    occupiedSeatSeconds));
+                    occupiedSeatSeconds,
+                    new ArrayList<>(table.occupiedGroupIds)));
         }
         return Collections.unmodifiableList(snapshots);
     }
@@ -126,7 +132,8 @@ public class DiningArea {
                         row,
                         column,
                         areaForTable(table.tableId),
-                        status));
+                        status,
+                        table.groupIdAt(seatIndex)));
                 seatId++;
             }
         }
@@ -212,7 +219,10 @@ public class DiningArea {
         return value;
     }
 
-    public record SeatAllocation(int tableId, int seatCount) {
+    public record SeatAllocation(int tableId, int seatCount, String groupId, boolean splitGroup) {
+        public SeatAllocation(int tableId, int seatCount) {
+            this(tableId, seatCount, null, false);
+        }
     }
 
     private static class DiningTable {
@@ -223,6 +233,7 @@ public class DiningArea {
         private long occupiedSeconds;
         private long occupiedSeatSeconds;
         private long cleaningUntilTime;
+        private final List<String> occupiedGroupIds;
 
         private DiningTable(int tableId, int capacity) {
             this.tableId = tableId;
@@ -232,6 +243,7 @@ public class DiningArea {
             this.occupiedSeconds = 0L;
             this.occupiedSeatSeconds = 0L;
             this.cleaningUntilTime = 0L;
+            this.occupiedGroupIds = new ArrayList<>();
         }
 
         private int getEmptySeats() {
@@ -246,6 +258,38 @@ public class DiningArea {
                 occupiedSeatSeconds += elapsed * occupiedSeats;
             }
             lastUpdatedTime = safeTime;
+        }
+
+        private void addOccupancy(int seats, String groupId) {
+            String normalizedGroupId = groupId == null || groupId.isBlank() ? "" : groupId;
+            for (int i = 0; i < Math.max(1, seats); i++) {
+                occupiedGroupIds.add(normalizedGroupId);
+            }
+        }
+
+        private void removeOccupancy(SeatAllocation allocation) {
+            int seats = Math.max(1, allocation.seatCount());
+            String groupId = allocation.groupId();
+            if (groupId != null && !groupId.isBlank()) {
+                for (int i = occupiedGroupIds.size() - 1; i >= 0 && seats > 0; i--) {
+                    if (groupId.equals(occupiedGroupIds.get(i))) {
+                        occupiedGroupIds.remove(i);
+                        seats--;
+                    }
+                }
+            }
+            while (seats > 0 && !occupiedGroupIds.isEmpty()) {
+                occupiedGroupIds.remove(occupiedGroupIds.size() - 1);
+                seats--;
+            }
+            occupiedSeats = occupiedGroupIds.size();
+        }
+
+        private String groupIdAt(int seatIndex) {
+            if (seatIndex < 0 || seatIndex >= occupiedGroupIds.size()) {
+                return "";
+            }
+            return occupiedGroupIds.get(seatIndex);
         }
     }
 }

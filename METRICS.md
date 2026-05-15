@@ -31,24 +31,34 @@ Final report expectation:
 
 Default arrival model:
 
-- arrivals are generated at a fixed interval derived from `arrivalRate`
-- if `randomBounds.arrivalInterval > 0`, that explicit interval is used
-- if `baseConfig.totalStudents > 0`, it caps the number of scheduled arrivals
+- target arrivals are derived from `round(arrivalRate * durationHours)`
+- if `baseConfig.totalStudents > 0`, it is treated as an upper cap
+- class-peak windows reshape the arrival timeline but do not change the target total
 
 Class-peak arrival model:
 
 - enabled by `peakConfig.classPeakEnabled = true`
 - peak window defaults to minute `15-25`
-- the per-minute arrival factor grows exponentially from `1.0` to `peakConfig.classPeakMultiplier`
+- the per-minute arrival factor changes the distribution weight inside configured peak windows
 - arrivals inside the configured peak window are counted as `classPeakArrivalCount`
-- this model is intended for stress testing and demonstration curves; it can produce more arrivals than `duration * arrivalRate` when `totalStudents = 0`
+- total arrival count remains bounded by the target arrival total
 
 ## Wait-time metrics
 
-- per-student wait time = `serviceFinishTime - arrivalTime`
-- includes queue + service phase
+- wait time sample = `serviceStartTime - queueEnterTime`
+- service time is tracked separately by the service distribution
 - abandoned students are excluded
 - `avgWaitTimeMinutes = totalWaitTimeMinutes / servedCount`
+- `avgWaitTimeMinutes` is retained as the raw all-sample mean for compatibility
+- `rawAvgWaitTimeMinutes`: same raw all-sample mean, explicitly named
+- `steadyAvgWaitTimeMinutes`: mean over the middle 80% simulation window
+- `typicalWaitTimeMinutes`: 10% trimmed mean over steady-state samples; use this for the primary student-experience KPI
+- `medianWaitTimeMinutes`, `p75WaitTimeMinutes`, `p90WaitTimeMinutes`: weighted percentiles by `partySize`
+- `longWaitRate`: share of served students waiting at least 10 minutes
+- `zeroWaitRate`: share of served students with near-zero waiting
+- `edgeWaitSampleRate`: share of warm-up and cool-down samples
+- `waitTimeDistribution`: weighted buckets `0-2`, `2-5`, `5-10`, `10-15`, `15+`
+- `waitTimeInsight`: status and Chinese explanation for queue, edge-sample, or long-tail issues
 
 ## Queue peak metrics
 
@@ -59,8 +69,9 @@ Two independent peaks are tracked:
 
 Associated fields:
 
-- `peakTimeMinutes`: first minute when `maxQueueSize` appears
+- `peakTimeMinutes`: first minute when `maxQueueSize` appears (单窗口口径)
 - `peakWindowId`: first window id that reached `maxQueueSize`
+- `totalPeakTimeMinutes` / `total_peak_time_minutes`: first minute when `maxTotalQueueSize` appears (总队列口径，独立于 `peakTimeMinutes`，避免单窗与全窗峰值时间被混用)
 
 ## Seat metrics
 
@@ -160,4 +171,33 @@ Overlapping class peaks:
 - `peakConfig.classPeakWindows` can hold multiple class peak windows.
 - Each window has `startMinute`, `endMinute`, and `multiplier`.
 - When windows overlap, their extra pressure is added together, allowing scenarios such as 12:10 and 12:20 waves overlapping.
+
+## Advanced statistics (C++ post-processing)
+
+由 `dataAnalyze/canteen-analyze.exe` 生成,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。这些字段不出现在 `simulation report` 自身,而是包装在分析响应的 `data` 对象中。
+
+### Confidence intervals
+
+`confidence_intervals.{wait, utilization, takeaway_rate}` 各自包含:
+
+- `point`: 点估计值,与 summary 中对应字段一致
+- `lower` / `upper`: Bootstrap 95% 置信区间下/上界(默认 1000 次重抽样,`alpha = 0.05`)
+- `alpha`: 显著性水平,默认 `0.05`
+
+### Bottleneck score
+
+- `bottleneck_score`: 0~100 整数,综合反映窗口分配是否均衡 + 高峰是否持续
+  - 公式:`50 * gini_of_window_queues + 50 * congested_minutes_ratio`
+  - `gini_of_window_queues`:对 `windowServedCounts` 计算 Gini 系数(0=完全均衡,1=完全集中)
+  - `congested_minutes_ratio`:`timeline` 中 `seatUtilizationRate >= 0.7` 的分钟数 / 总分钟数
+- `bottleneck_breakdown`: `{ gini, congested_minutes, peak_window }` 拆解项,便于解释
+
+### ANOVA(仅 cross-scenario)
+
+- `anova.f_statistic` / `anova.p_value`:单因素方差分析结果
+- `anova.significant`:`p_value < 0.05` 时为 `true`
+- `anova.group_means`:每个场景的等待时间组均值
+
+详见 `dataAnalyze/AnalysisCore.h` 与 ADR `002-cpp-as-postprocessor.md`。
+
 

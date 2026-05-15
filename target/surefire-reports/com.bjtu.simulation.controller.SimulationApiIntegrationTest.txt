@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.bjtu.simulation.controller.SimulationApiIntegrationTest
--------------------------------------------------------------------------------
-Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.560 s -- in com.bjtu.simulation.controller.SimulationApiIntegrationTest

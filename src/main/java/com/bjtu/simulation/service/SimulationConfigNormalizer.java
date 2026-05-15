@@ -5,7 +5,12 @@ import java.util.List;
 
 import com.bjtu.simulation.dto.SimConfig;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class SimulationConfigNormalizer {
+
+    private static final double MAX_DURATION_HOURS = 16.0;
 
     public SimConfig normalize(SimConfig raw) {
         SimConfig config = raw == null ? new SimConfig() : raw;
@@ -21,6 +26,9 @@ public class SimulationConfigNormalizer {
         }
         if (config.getPeakConfig() == null) {
             config.setPeakConfig(new SimConfig.PeakConfig());
+        }
+        if (config.getGroupConfig() == null) {
+            config.setGroupConfig(new SimConfig.GroupConfig());
         }
         if (config.getArrivalDist() == null) {
             config.setArrivalDist(SimConfig.DistributionSpec.poisson());
@@ -43,6 +51,9 @@ public class SimulationConfigNormalizer {
     private void validate(SimConfig config) {
         if (Double.isNaN(config.getDuration()) || Double.isInfinite(config.getDuration()) || config.getDuration() <= 0) {
             throw new IllegalArgumentException("duration must be > 0");
+        }
+        if (config.getDuration() > MAX_DURATION_HOURS) {
+            throw new IllegalArgumentException("duration must be <= " + MAX_DURATION_HOURS + " hours to keep timeline at minute granularity");
         }
         if (Double.isNaN(config.getArrivalRate()) || Double.isInfinite(config.getArrivalRate()) || config.getArrivalRate() < 0) {
             throw new IllegalArgumentException("arrivalRate must be >= 0");
@@ -80,6 +91,7 @@ public class SimulationConfigNormalizer {
         if (config.getPartySize() < 1) {
             throw new IllegalArgumentException("partySize must be >= 1");
         }
+        validateGroupConfig(config.getGroupConfig());
         if (Double.isNaN(config.getWalkTimeMean()) || Double.isInfinite(config.getWalkTimeMean()) || config.getWalkTimeMean() < 0) {
             throw new IllegalArgumentException("walkTimeMean must be >= 0");
         }
@@ -123,6 +135,38 @@ public class SimulationConfigNormalizer {
         normalizeDistributionSpec(config.getDiningTimeDist(), "UNIFORM");
         // [重构] 到达率由 arrivalRate 统一定义，原因是前端旧 lambda 与到达率不同步会直接造成总人数偏差。
         config.getArrivalDist().setLambda(Math.max(0.0, config.getArrivalRate()));
+        normalizeGroupConfig(config.getGroupConfig());
+    }
+
+    private void validateGroupConfig(SimConfig.GroupConfig groupConfig) {
+        if (groupConfig == null) {
+            return;
+        }
+        if (groupConfig.getGroupCount() < 0) {
+            throw new IllegalArgumentException("groupCount must be >= 0");
+        }
+        if (groupConfig.getSizeMin() < 1 || groupConfig.getSizeMax() < 1) {
+            throw new IllegalArgumentException("group size must be >= 1");
+        }
+        if (groupConfig.getArrivalSpreadSeconds() < 0) {
+            throw new IllegalArgumentException("arrivalSpreadSeconds must be >= 0");
+        }
+        if (groupConfig.getBehaviorCorrelation() < 0 || groupConfig.getBehaviorCorrelation() > 1) {
+            throw new IllegalArgumentException("behaviorCorrelation must be in [0, 1]");
+        }
+    }
+
+    private void normalizeGroupConfig(SimConfig.GroupConfig groupConfig) {
+        if (groupConfig == null) {
+            return;
+        }
+        int min = Math.max(1, Math.min(groupConfig.getSizeMin(), groupConfig.getSizeMax()));
+        int max = Math.max(min, Math.max(groupConfig.getSizeMin(), groupConfig.getSizeMax()));
+        groupConfig.setSizeMin(min);
+        groupConfig.setSizeMax(max);
+        groupConfig.setGroupCount(Math.max(0, groupConfig.getGroupCount()));
+        groupConfig.setArrivalSpreadSeconds(Math.max(0, groupConfig.getArrivalSpreadSeconds()));
+        groupConfig.setBehaviorCorrelation(Math.max(0.0, Math.min(1.0, groupConfig.getBehaviorCorrelation())));
     }
 
     private void normalizeDistributionSpec(SimConfig.DistributionSpec spec, String defaultType) {

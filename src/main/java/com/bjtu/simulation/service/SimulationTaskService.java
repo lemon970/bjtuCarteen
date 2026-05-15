@@ -8,14 +8,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.bjtu.simulation.config.AppBeansConfig;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import jakarta.annotation.PreDestroy;
+
+@Service
 public class SimulationTaskService {
     private final SimulationRunService simulationRunService;
     private final SimulationReportRepository reportRepository;
@@ -24,12 +30,24 @@ public class SimulationTaskService {
     private final ExecutorService taskExecutor = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
     private final ExecutorService streamExecutor = Executors.newCachedThreadPool();
 
+    @Autowired
+    public SimulationTaskService(SimulationRunService simulationRunService,
+                                 SimulationReportRepository reportRepository) {
+        this(simulationRunService, reportRepository, AppBeansConfig.createReportObjectMapper());
+    }
+
     public SimulationTaskService(SimulationRunService simulationRunService,
                                  SimulationReportRepository reportRepository,
                                  ObjectMapper reportMapper) {
         this.simulationRunService = simulationRunService;
         this.reportRepository = reportRepository;
         this.reportMapper = reportMapper;
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        taskExecutor.shutdownNow();
+        streamExecutor.shutdownNow();
     }
 
     public SimulationTaskRecord submit(SimConfig config) {

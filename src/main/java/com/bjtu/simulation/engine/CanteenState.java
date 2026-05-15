@@ -87,6 +87,10 @@ public class CanteenState {
         return diningArea.tryOccupySeats(seats, currentTime);
     }
 
+    public DiningArea.SeatAllocation tryOccupySeats(int seats, long currentTime, String groupId) {
+        return diningArea.tryOccupySeats(seats, currentTime, groupId);
+    }
+
     public void releaseSeat() {
         diningArea.releaseSeat();
     }

@@ -91,8 +91,14 @@ class SimulationApiIntegrationTest {
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_version").value("1.8.0"))
+                .andExpect(jsonPath("$.data.report_version").value("1.9.0"))
                 .andExpect(jsonPath("$.data.summary.arrived_count").exists())
+                .andExpect(jsonPath("$.data.summary.raw_avg_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.typical_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.p75_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.p90_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.wait_time_distribution").isArray())
+                .andExpect(jsonPath("$.data.summary.wait_time_insight.status").exists())
                 .andExpect(jsonPath("$.data.summary.pending_seat_decision_count").exists())
                 .andExpect(jsonPath("$.data.summary.window_types").isArray())
                 .andExpect(jsonPath("$.data.summary.takeaway_window_count").exists())
@@ -223,8 +229,75 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.results[0].index").value(1))
                 .andExpect(jsonPath("$.data.results[0].config.base_config.window_count").value(2))
                 .andExpect(jsonPath("$.data.results[0].summary.arrived_count").exists())
+                .andExpect(jsonPath("$.data.results[0].summary.typical_wait_time_minutes").exists())
                 .andExpect(jsonPath("$.data.results[1].config.base_config.window_count").value(3))
                 .andExpect(jsonPath("$.data.top_configs").doesNotExist());
+    }
+
+    @Test
+    void optimizeEndpointShouldAcceptTypicalWaitObjective() throws Exception {
+        String json = """
+                {
+                  "objective": "minimize typical_wait_time_minutes",
+                  "configs": [
+                    {
+                      "duration": 0.1,
+                      "arrivalRate": 30,
+                      "queueLimit": 10,
+                      "packProbability": 0.2,
+                      "seed": 904,
+                      "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
+                      "weatherConfig": {"weatherImpactFactor": 1.0},
+                      "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/optimize")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.objective").value("minimize typical_wait_time_minutes"))
+                .andExpect(jsonPath("$.data.results[0].objective_value").exists());
+    }
+
+    @Test
+    void scenarioCatalogShouldExposeRunnablePresets() throws Exception {
+        mockMvc.perform(get("/api/simulation/scenarios"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.count").value(6))
+                .andExpect(jsonPath("$.data.scenarios[0].id").value("baseline_offpeak"))
+                .andExpect(jsonPath("$.data.scenarios[1].id").value("lunch_peak_pressure"))
+                .andExpect(jsonPath("$.data.scenarios[1].config.arrival_rate").value(300))
+                .andExpect(jsonPath("$.data.scenarios[1].expected_metrics.expected_arrivals").value(600))
+                .andExpect(jsonPath("$.data.scenarios[5].id").value("group_high_concentration"))
+                .andExpect(jsonPath("$.data.scenarios[5].config.group_config.enabled").value(true));
+    }
+
+    @Test
+    void scenarioBatchRunShouldReturnComparableResults() throws Exception {
+        String json = """
+                {
+                  "scenario_ids": [
+                    "baseline_offpeak",
+                    "lunch_peak_pressure",
+                    "takeaway_intervention"
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/scenarios/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.scenario_count").value(3))
+                .andExpect(jsonPath("$.data.results[1].scenario_id").value("lunch_peak_pressure"))
+                .andExpect(jsonPath("$.data.results[1].summary.arrived_count").value(600))
+                .andExpect(jsonPath("$.data.results[1].summary.typical_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.comparison_summary.best_typical_wait_scenario_id").exists());
     }
 
     @Test

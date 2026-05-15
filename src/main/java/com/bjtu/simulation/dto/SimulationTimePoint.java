@@ -40,6 +40,8 @@ public class SimulationTimePoint {
     private final int movementSampleCount;
     private final double totalMovementTimeMinutes;
     private final double avgMovementTimeMinutes;
+    private final double avgWaitMinutesWindow;
+    private final int waitSampleCountWindow;
     private final List<TableSnapshot> tableSnapshots;
 
     public SimulationTimePoint(long timeSeconds,
@@ -77,6 +79,8 @@ public class SimulationTimePoint {
                                int movementSampleCount,
                                double totalMovementTimeMinutes,
                                double avgMovementTimeMinutes,
+                               double avgWaitMinutesWindow,
+                               int waitSampleCountWindow,
                                List<TableSnapshot> tableSnapshots) {
         this.timeSeconds = timeSeconds;
         this.minute = minute;
@@ -113,6 +117,8 @@ public class SimulationTimePoint {
         this.movementSampleCount = movementSampleCount;
         this.totalMovementTimeMinutes = totalMovementTimeMinutes;
         this.avgMovementTimeMinutes = avgMovementTimeMinutes;
+        this.avgWaitMinutesWindow = avgWaitMinutesWindow;
+        this.waitSampleCountWindow = waitSampleCountWindow;
         this.tableSnapshots = tableSnapshots;
     }
 
@@ -254,6 +260,14 @@ public class SimulationTimePoint {
 
     public double getAvgMovementTimeMinutes() {
         return avgMovementTimeMinutes;
+    }
+
+    public double getAvgWaitMinutesWindow() {
+        return avgWaitMinutesWindow;
+    }
+
+    public int getWaitSampleCountWindow() {
+        return waitSampleCountWindow;
     }
 
     public List<TableSnapshot> getTableSnapshots() {

@@ -12,11 +12,15 @@ public class StudentLeaveEvent extends BaseEvent {
 
     @Override
     public void process(SimulationEngine engine) {
-        int partySize = 1;
-        if (engine.getStudent(studentId) != null) {
-            partySize = engine.getStudent(studentId).getPartySize();
+        var student = engine.getStudent(studentId);
+        if (student == null) {
+            // phantom leave: 未知 id 的离开事件不释放任何座位、也不计入 leaveCount,
+            // 避免破坏 leaveCount <= servedCount 的不变量。
+            engine.recordState(studentId + " phantom leave ignored");
+            return;
         }
-        engine.releaseStudentSeat(engine.getStudent(studentId));
+        int partySize = student.getPartySize();
+        engine.releaseStudentSeat(student);
         engine.recordLeave(partySize);
         engine.setStudentState(studentId, StudentState.LEAVE);
         engine.recordState(studentId + " left canteen after dining with partySize=" + partySize);
