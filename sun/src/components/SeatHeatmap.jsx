@@ -1,12 +1,21 @@
-import { buildSeatCells, formatPercent, read, summarizeSeatAreas, summarizeSeatCells } from '../utils/simulation'
+import { buildSeatTables, formatPercent, read, summarizeGroupsOnFrame, summarizeSeatAreas, summarizeSeatCells, buildSeatCells } from '../utils/simulation'
 
 const GROUP_RING_PALETTE = [
-  'ring-accent-amber',
-  'ring-bjtu-400',
-  'ring-semantic-critical',
-  'ring-semantic-success',
-  'ring-semantic-warning',
-  'ring-bjtu-700'
+  'ring-rose-500',
+  'ring-violet-500',
+  'ring-emerald-500',
+  'ring-sky-500',
+  'ring-amber-500',
+  'ring-fuchsia-500'
+]
+
+const GROUP_DOT_PALETTE = [
+  'bg-rose-500',
+  'bg-violet-500',
+  'bg-emerald-500',
+  'bg-sky-500',
+  'bg-amber-500',
+  'bg-fuchsia-500'
 ]
 
 function hashGroupId(groupId) {
@@ -19,76 +28,108 @@ function hashGroupId(groupId) {
   return hash
 }
 
-function seatColorClass(status, groupId) {
-  if (status === 'cleaning') return 'bg-accent-amber'
-  if (status === 'free') return 'bg-canvas-border'
-  if (status === 'occupied') {
-    return groupId ? 'bg-accent-teal' : 'bg-bjtu-600'
+function groupColorIndex(groupId) {
+  return hashGroupId(groupId) % GROUP_RING_PALETTE.length
+}
+
+function seatBgClass(status, groupId) {
+  if (status === 'OCCUPIED') {
+    return groupId ? 'bg-orange-600' : 'bg-slate-500'
   }
-  return 'bg-canvas-border'
+  if (status === 'RESERVED') {
+    return groupId ? 'bg-orange-300' : 'bg-slate-300'
+  }
+  if (status === 'CLEANING') {
+    return 'bg-amber-400'
+  }
+  return 'bg-slate-200'
 }
 
 function SeatHeatmap({ point, fallbackCells }) {
-  const cells = buildSeatCells(point, fallbackCells)
-  const areas = summarizeSeatAreas(cells)
-  const summary = summarizeSeatCells(cells)
-  const totalSeats = read(point, 'total_seats', 'totalSeats') || cells.length
-  const sampled = cells.some((cell) => read(cell, 'sampled') === true)
+  const tables = buildSeatTables(point, fallbackCells)
+  const flatCells = buildSeatCells(point, fallbackCells)
+  const areas = summarizeSeatAreas(flatCells)
+  const summary = summarizeSeatCells(flatCells)
+  const groupsOnFrame = summarizeGroupsOnFrame(tables).filter((g) => g.seatCount >= 2)
   const occupiedIndividual = Math.max(0, summary.occupied - summary.grouped)
+  const reservedFromTables = tables.reduce((acc, t) => acc + (t.reserved || 0), 0)
+  const reservedTotal = Math.max(reservedFromTables, summary.reserved || 0)
 
-  if (!cells.length) {
+  if (!tables.length) {
     return <div className="empty-state">暂无座位数据,请先运行仿真。</div>
   }
 
+  const tablesByArea = new Map()
+  for (const table of tables) {
+    const area = table.area || 'A'
+    const list = tablesByArea.get(area) || []
+    list.push(table)
+    tablesByArea.set(area, list)
+  }
+  const orderedAreas = [...tablesByArea.keys()].sort()
+  const visibleGroups = groupsOnFrame.slice(0, 6)
+  const overflowGroups = Math.max(0, groupsOnFrame.length - visibleGroups.length)
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2 text-xs">
-        <SeatPill color="bg-bjtu-600" label="个体占用" value={occupiedIndividual} />
-        <SeatPill color="bg-accent-teal" label="成组占用" value={summary.grouped} />
-        <SeatPill color="bg-accent-amber" label="待清理" value={summary.cleaning} />
-        <SeatPill color="bg-canvas-border" label="空闲" value={summary.free} />
+        <SeatPill color="bg-orange-600" label="成组占用" value={summary.grouped} />
+        <SeatPill color="bg-slate-500" label="个体占用" value={occupiedIndividual} />
+        <SeatPill color="bg-orange-300" label="已预定" value={reservedTotal} />
+        <SeatPill color="bg-amber-400" label="待清理" value={summary.cleaning} />
+        <SeatPill color="bg-slate-200" label="空闲" value={summary.free} />
       </div>
 
-      <div
-        className="grid gap-1.5 rounded-2xl bg-canvas-base p-3"
-        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(0.875rem, 1fr))' }}
-        aria-label="座位占用图"
-      >
-        {cells.map((cell, index) => {
-          const status = String(read(cell, 'status') || 'FREE').toLowerCase()
-          const groupId = read(cell, 'group_id', 'groupId') || ''
-          const seatId = read(cell, 'seat_id', 'seatId') ?? index
-          const colorClass = seatColorClass(status, groupId)
-          const ringClass = groupId
-            ? `ring-2 ${GROUP_RING_PALETTE[hashGroupId(groupId) % GROUP_RING_PALETTE.length]}`
-            : ''
+      {visibleGroups.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+          <span className="font-medium text-slate-600">本帧成组:</span>
+          {visibleGroups.map((group) => {
+            const idx = groupColorIndex(group.groupId)
+            return (
+              <span
+                key={group.groupId}
+                title={`组 ${group.groupId} / ${group.seatCount} 人 / 桌号 ${group.tableIds.join(',')}`}
+                className="flex items-center gap-1 rounded-full bg-canvas-base px-1.5 py-0.5"
+              >
+                <span className={`h-2 w-2 rounded-sm ${GROUP_DOT_PALETTE[idx]}`} />
+                <span>{group.seatCount}</span>
+                <span className="text-slate-400">{group.tableCount === 1 ? '同桌' : `跨${group.tableCount}桌`}</span>
+              </span>
+            )
+          })}
+          {overflowGroups > 0 && (
+            <span className="rounded-full bg-canvas-base px-1.5 py-0.5">+{overflowGroups}</span>
+          )}
+        </div>
+      )}
+
+      <div className="max-h-60 overflow-y-auto rounded-2xl bg-canvas-base p-2">
+        {orderedAreas.map((area) => {
+          const areaTables = tablesByArea.get(area)
           return (
-            <span
-              key={seatId}
-              title={`区域 ${read(cell, 'area') || 'A'} / 座位 ${index + 1} / ${statusLabel(status)}${groupId ? ` / 组 ${groupId}` : ''}`}
-              className={`block h-3.5 w-3.5 rounded-sm ${colorClass} ${ringClass}`}
-            />
+            <div key={area} className="mb-2 last:mb-0">
+              <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-500">
+                <span className="font-medium">{area} 区</span>
+                <span className="text-slate-400">{areaTables.length} 桌</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {areaTables.map((table) => (
+                  <TableMicro key={table.tableId} table={table} />
+                ))}
+              </div>
+            </div>
           )
         })}
       </div>
 
-      <div className="flex flex-wrap gap-3 text-xs text-slate-500">
-        <Legend color="bg-bjtu-600" label="个体学生" />
-        <Legend color="bg-accent-teal" label="成组学生(青底)" />
-        <Legend color="bg-accent-amber" label="待清理:90s 清理窗口" />
-        <Legend color="bg-canvas-border" label="空闲:可再分配" />
-        <span>同组学生 ring 颜色一致,不同组使用不同色环。</span>
-        {sampled && <span>已按 {cells.length}/{totalSeats} 抽样渲染</span>}
-      </div>
-
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {areas.map((area) => (
-          <div key={area.area} className="flex items-center gap-3">
-            <span className="w-12 text-sm font-medium text-slate-600">{area.area} 区</span>
+          <div key={area.area} className="flex items-center gap-3 text-xs">
+            <span className="w-10 font-medium text-slate-600">{area.area} 区</span>
             <div className="progress-bar flex-1">
               <div className="progress-bar-fill" style={{ width: `${Math.max(3, area.utilization * 100)}%` }} />
             </div>
-            <strong className="font-numeric w-14 text-right tabular-nums text-bjtu-700">{formatPercent(area.utilization)}</strong>
+            <strong className="font-numeric w-12 text-right tabular-nums text-bjtu-700">{formatPercent(area.utilization)}</strong>
           </div>
         ))}
       </div>
@@ -96,29 +137,43 @@ function SeatHeatmap({ point, fallbackCells }) {
   )
 }
 
+function TableMicro({ table }) {
+  const tableLabel = `T${String(table.tableId).padStart(2, '0')}`
+  const occCount = table.occupied
+  const reservedCount = table.reserved || 0
+  const cap = Math.max(1, table.capacity || table.seats.length || 1)
+  const tableTitle = `${tableLabel} · ${occCount}/${cap}` + (reservedCount > 0 ? ` (预定 ${reservedCount})` : '')
+  return (
+    <div className="flex gap-px" title={tableTitle}>
+      {table.seats.map((seat, index) => {
+        const status = seat.status || (seat.occupied ? 'OCCUPIED' : 'FREE')
+        const bg = seatBgClass(status, seat.groupId)
+        const ring = seat.groupId ? `ring-1 ring-inset ${GROUP_RING_PALETTE[groupColorIndex(seat.groupId)]}` : ''
+        const stateText = status === 'OCCUPIED' ? '占用'
+          : status === 'RESERVED' ? '已预定'
+          : status === 'CLEANING' ? '清理中'
+          : '空闲'
+        const tooltip = `${tableLabel} 座${index + 1} / ${stateText}${seat.groupId ? ` / 组 ${seat.groupId}` : ''}`
+        return (
+          <span
+            key={seat.seatId ?? index}
+            title={tooltip}
+            className={`h-1 w-1 rounded-[1px] ${bg} ${ring}`}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 function SeatPill({ color, label, value }) {
   return (
-    <span className="flex items-center gap-1.5 rounded-full bg-canvas-base px-3 py-1 text-slate-600">
+    <span className="flex items-center gap-1.5 rounded-full bg-canvas-base px-2.5 py-1 text-slate-600">
       <span className={`h-2.5 w-2.5 rounded-sm ${color}`} />
       <span>{label}</span>
       <strong className="font-numeric tabular-nums text-bjtu-700">{value}</strong>
     </span>
   )
-}
-
-function Legend({ color, label }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`h-2.5 w-2.5 rounded-sm ${color}`} />
-      <span>{label}</span>
-    </span>
-  )
-}
-
-function statusLabel(status) {
-  if (status === 'occupied') return '占用'
-  if (status === 'cleaning') return '待清理'
-  return '空闲'
 }
 
 export default SeatHeatmap

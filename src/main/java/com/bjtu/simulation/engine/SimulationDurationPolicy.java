@@ -59,11 +59,15 @@ class SimulationDurationPolicy {
     }
 
     long resolveServiceTimeSeconds(boolean takeawayWindow) {
+        return resolveServiceTimeSeconds(takeawayWindow, takeawayWindow);
+    }
+
+    long resolveServiceTimeSeconds(boolean takeawayWindow, boolean willTakeaway) {
         SimConfig.DistributionSpec spec = takeawayWindow
                 ? config.getWindowServiceDist()
                 : config.getNormalServiceDist();
         long sampled = randomSampler.sampleDurationSeconds(spec, serviceRangeMin(), serviceRangeMax());
-        if (!takeawayWindow) {
+        if (!willTakeaway) {
             return sampled;
         }
 
@@ -71,6 +75,9 @@ class SimulationDurationPolicy {
                 ? 1.15
                 : config.getBaseConfig().getTakeawayServiceTimeMultiplier();
         multiplier = Double.isNaN(multiplier) || Double.isInfinite(multiplier) ? 1.15 : Math.max(1.0, multiplier);
+        if (!takeawayWindow && willTakeaway) {
+            multiplier *= 1.10;
+        }
         return Math.max(sampled, Math.round(sampled * multiplier));
     }
 

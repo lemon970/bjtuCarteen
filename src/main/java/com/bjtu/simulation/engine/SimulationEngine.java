@@ -1,7 +1,10 @@
 package com.bjtu.simulation.engine;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -28,7 +31,6 @@ public class SimulationEngine {
     private final SimulationDurationPolicy durationPolicy;
     private final StudentProfileFactory studentProfileFactory = new StudentProfileFactory();
     private final WindowSelectionPolicy windowSelectionPolicy = new WindowSelectionPolicy();
-    private final TakeawayDecisionPolicy takeawayRoutingPolicy = new TakeawayDecisionPolicy();
     private final SimulationInvariantChecker invariantChecker = new SimulationInvariantChecker();
     private final SimulationSnapshotRecorder snapshotRecorder = new SimulationSnapshotRecorder();
     private final long effectiveSeed;
@@ -69,6 +71,19 @@ public class SimulationEngine {
     private int sameTableGroupCount = 0;
     private int splitGroupCount = 0;
     private int forcedLeaveCount = 0;
+
+    // 座位等位队列(reserve-then-queue 失败后的兜底)
+    private final Deque<String> seatWaitQueue = new ArrayDeque<>();
+    private final Map<String, Long> seatWaitEnqueuedAt = new HashMap<>();
+    // pre-service 路径(到达即失败、等位耐心耗尽):未进入 servedCount 分桶
+    private int preServiceNoSeatCount = 0;
+    // post-service 路径(已服务但 reservation 丢失):进入 servedCount 分桶
+    private int postServiceNoSeatCount = 0;
+    private int seatWaitQueueMax = 0;
+    private long seatWaitTotalSeconds = 0L;
+    private int seatWaitSampleCount = 0;
+    private long reservedSeatsAccum = 0L;
+    private int reservedSeatsSamples = 0;
 
     public SimulationEngine(SimConfig config) {
         SimConfig safeConfig = config == null ? new SimConfig() : config;
@@ -152,6 +167,10 @@ public class SimulationEngine {
         return durationPolicy.resolveServiceTimeSeconds(isTakeawayWindow(windowId));
     }
 
+    public long resolveServiceTimeSeconds(int windowId, boolean willTakeaway) {
+        return durationPolicy.resolveServiceTimeSeconds(isTakeawayWindow(windowId), willTakeaway);
+    }
+
     public long reserveWindowService(int windowId, long queueEnterTime, long serviceTimeSeconds) {
         if (windowId < 0 || windowId >= windowAvailableAtSeconds.size()) {
             return Math.max(0L, queueEnterTime);
@@ -190,12 +209,88 @@ public class SimulationEngine {
         return allocation;
     }
 
+    /**
+     * 学生到达即预定座位:写入 reserved 计数,不计 occupied,允许跨 2 桌拆分。
+     * 成功后 student.seatAllocation 持有该 reservation,直到 confirmReservation 或 cancelReservation。
+     */
+    public DiningArea.SeatAllocation tryReserveSeats(Student student) {
+        if (student == null) {
+            return null;
+        }
+        DiningArea.SeatAllocation reservation = canteenState.tryReserveSeats(
+                student.getPartySize(),
+                currentTime,
+                student.getGroupId(),
+                true);
+        if (reservation == null) {
+            return null;
+        }
+        student.setSeatAllocation(reservation);
+        if (student.isGrouped()) {
+            if (reservation.splitGroup()) {
+                splitGroupCount++;
+            } else {
+                sameTableGroupCount++;
+            }
+        }
+        return reservation;
+    }
+
+    /**
+     * 学生走到预定座位,把 RESERVED 转 OCCUPIED。
+     */
+    public void confirmReservation(Student student) {
+        if (student == null || student.getSeatAllocation() == null) {
+            return;
+        }
+        canteenState.confirmReservation(student.getSeatAllocation(), currentTime);
+    }
+
+    public void enqueueSeatWait(String studentId, int patienceTicks) {
+        if (studentId == null || patienceTicks <= 0) {
+            return;
+        }
+        if (seatWaitEnqueuedAt.containsKey(studentId)) {
+            return;
+        }
+        seatWaitQueue.offer(studentId);
+        seatWaitEnqueuedAt.put(studentId, currentTime);
+        seatWaitQueueMax = Math.max(seatWaitQueueMax, seatWaitQueue.size());
+        scheduleEvent(new SeatWaitEvent(currentTime + SeatWaitEvent.RETRY_INTERVAL_SECONDS,
+                studentId, patienceTicks - 1));
+    }
+
+    public void removeFromSeatWaitQueue(String studentId) {
+        if (studentId == null) {
+            return;
+        }
+        Long enqueuedAt = seatWaitEnqueuedAt.remove(studentId);
+        if (enqueuedAt != null) {
+            seatWaitTotalSeconds += Math.max(0L, currentTime - enqueuedAt);
+            seatWaitSampleCount++;
+        }
+        seatWaitQueue.remove(studentId);
+    }
+
+    public boolean isInSeatWaitQueue(String studentId) {
+        return studentId != null && seatWaitEnqueuedAt.containsKey(studentId);
+    }
+
     public void releaseStudentSeat(Student student) {
         if (student == null || student.getSeatAllocation() == null) {
             return;
         }
         canteenState.releaseSeats(student.getSeatAllocation(), currentTime);
         student.setSeatAllocation(null);
+    }
+
+    /**
+     * 任何座位释放后调用:尝试立即唤醒队首等位学生(如果可 reserve)。
+     * 实际重试由 SeatWaitEvent 周期触发,这里仅用于在释放瞬间快速消化队列。
+     */
+    public void tryWakeSeatWaitQueue() {
+        // 真实调度由各 SeatWaitEvent 自己驱动,此处不主动 dispatch,
+        // 仅保留 API 以便未来扩展(例如基于优先级的 wake)。
     }
 
     public Student registerStudent(String id, ArrivalGroup arrivalGroup, int partySize) {
@@ -261,7 +356,7 @@ public class SimulationEngine {
         if (student == null || takeawayWindowCount <= 0) {
             return false;
         }
-        return student.getPackPreferenceLevel() == Student.PackPreferenceLevel.TAKEAWAY_BIASED;
+        return student.wantsTakeaway();
     }
     public void recordArrival(ArrivalGroup arrivalGroup, int partySize) {
         int count = Math.max(1, partySize);
@@ -338,6 +433,23 @@ public class SimulationEngine {
 
     public void recordNoSeatSwitchToTakeaway(int partySize) {
         this.noSeatSwitchToTakeawayCount += Math.max(1, partySize);
+    }
+
+    /**
+     * 学生明确想堂食但找不到座位、且耐心耗尽 → 离开。
+     * 不计入 takeawayCount,单独 KPI,用户可观测"被压力赶走"的人数。
+     * pre-service 路径(到达即失败 / 等位耐心耗尽):学生未进入 servedCount 分桶。
+     */
+    public void recordNoSeatAbandoned(int partySize) {
+        this.preServiceNoSeatCount += Math.max(1, partySize);
+    }
+
+    /**
+     * post-service 路径:学生已 served,但走向座位时 reservation 丢失(理论防御)。
+     * 计入 servedCount 分桶,与 dineIn / takeaway 并列,但语义是"被赶走"。
+     */
+    public void recordPostServiceNoSeat(int partySize) {
+        this.postServiceNoSeatCount += Math.max(1, partySize);
     }
 
     public void recordWeatherDrivenTakeaway(int partySize) {
@@ -457,6 +569,39 @@ public class SimulationEngine {
 
     public int getSplitGroupCount() {
         return splitGroupCount;
+    }
+
+    public int getNoSeatAbandonedCount() {
+        return preServiceNoSeatCount + postServiceNoSeatCount;
+    }
+
+    public int getPostServiceNoSeatCount() {
+        return postServiceNoSeatCount;
+    }
+
+    public int getPreServiceNoSeatCount() {
+        return preServiceNoSeatCount;
+    }
+
+    public int getSeatWaitQueueMax() {
+        return seatWaitQueueMax;
+    }
+
+    public int getCurrentSeatWaitQueueSize() {
+        return seatWaitQueue.size();
+    }
+
+    public double getSeatWaitAvgSeconds() {
+        return seatWaitSampleCount == 0 ? 0.0 : (double) seatWaitTotalSeconds / seatWaitSampleCount;
+    }
+
+    public double getReservedSeatsAvg() {
+        return reservedSeatsSamples == 0 ? 0.0 : (double) reservedSeatsAccum / reservedSeatsSamples;
+    }
+
+    public void sampleReservedSeats() {
+        reservedSeatsAccum += Math.max(0, canteenState.getReservedSeats());
+        reservedSeatsSamples++;
     }
 
     public int getPeakWindowId() {
@@ -640,6 +785,24 @@ public class SimulationEngine {
      * 同时保留 leaveCount <= servedCount 不变量。
      */
     private void finalizeLingeringDiners() {
+        // 仍在等位队列的学生:计 no_seat_abandoned 离开,不算 takeaway
+        for (String waitingId : new ArrayList<>(seatWaitQueue)) {
+            Student student = studentRoster.get(waitingId);
+            if (student == null || student.getState() == StudentState.LEAVE) {
+                continue;
+            }
+            int partySize = student.getPartySize();
+            removeFromSeatWaitQueue(waitingId);
+            // 取消可能仍持有的预定(理论上等位时无 reservation,防御性处理)
+            if (student.getSeatAllocation() != null) {
+                canteenState.cancelReservation(student.getSeatAllocation());
+                student.setSeatAllocation(null);
+            }
+            recordNoSeatAbandoned(partySize);
+            student.setState(StudentState.LEAVE);
+            forcedLeaveCount += partySize;
+        }
+
         for (Student student : studentRoster.values()) {
             if (student == null) {
                 continue;

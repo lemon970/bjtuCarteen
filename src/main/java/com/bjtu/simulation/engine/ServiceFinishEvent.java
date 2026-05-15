@@ -46,15 +46,15 @@ public class ServiceFinishEvent extends BaseEvent {
         TakeawayDecisionPolicy.DecisionProbability probability = resolveProbability(engine, student);
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
         double preference = student == null ? probability.finalProbability() : student.getPackPreference();
-        double roll = engine.nextDouble();
+        boolean wantsTakeaway = student != null && student.wantsTakeaway();
 
         engine.setStudentState(studentId, StudentState.DECIDE_DINE_IN_OR_PACK);
-        if (roll < probability.finalProbability()) {
-            recordModelTakeaway(engine, partySize, waitMinutes, preference, roll, probability);
+        if (wantsTakeaway) {
+            recordModelTakeaway(engine, partySize, waitMinutes, preference, 0.0, probability);
             return;
         }
 
-        recordDineInDecision(engine, partySize, waitMinutes, preference, roll, probability);
+        recordDineInDecision(engine, partySize, waitMinutes, preference, 0.0, probability);
     }
 
     private TakeawayDecisionPolicy.DecisionProbability resolveProbability(SimulationEngine engine, Student student) {
@@ -78,6 +78,8 @@ public class ServiceFinishEvent extends BaseEvent {
     }
 
     private void recordForcedTakeaway(SimulationEngine engine, Student student, int partySize) {
+        // 防御:dine-in 学生意外被路由到打包窗口时,归还预定座位
+        cancelReservationIfAny(engine, student);
         double preference = student == null ? 1.0 : student.getPackPreference();
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
         engine.recordTakeawayDecision(
@@ -110,6 +112,8 @@ public class ServiceFinishEvent extends BaseEvent {
                                      double preference,
                                      double roll,
                                      TakeawayDecisionPolicy.DecisionProbability probability) {
+        Student student = engine.getStudent(studentId);
+        cancelReservationIfAny(engine, student);
         engine.recordTakeawayDecision(
                 studentId,
                 "MODEL_TRIGGER",
@@ -126,7 +130,7 @@ public class ServiceFinishEvent extends BaseEvent {
                 probability.queuePressureFactor(),
                 probability.weatherFactor(),
                 "普通窗口完成服务",
-                probability.decisionReason());
+                "到达时已决定打包(意图前置),普通窗口兼做打包");
         engine.recordTakeaway(partySize);
         if (probability.weatherFactor() > 0.001) {
             engine.recordWeatherDrivenTakeaway(partySize);
@@ -159,7 +163,7 @@ public class ServiceFinishEvent extends BaseEvent {
                 probability.queuePressureFactor(),
                 probability.weatherFactor(),
                 "普通窗口完成服务",
-                "随机数高于最终打包概率，继续堂食");
+                "到达时已决定堂食(意图前置)");
         engine.setStudentState(studentId, StudentState.WALKING_TO_SEAT);
         engine.recordSeatDecisionPending(partySize);
         long movementTime = engine.resolveMovementTimeSeconds();
@@ -169,5 +173,13 @@ public class ServiceFinishEvent extends BaseEvent {
                 MovementEvent.Purpose.TO_SEAT,
                 engine.getCurrentTime()));
         engine.recordState(studentId + " finished service and started walking to dining area with partySize=" + partySize);
+    }
+
+    private void cancelReservationIfAny(SimulationEngine engine, Student student) {
+        if (student == null || student.getSeatAllocation() == null) {
+            return;
+        }
+        engine.getCanteenState().cancelReservation(student.getSeatAllocation());
+        student.setSeatAllocation(null);
     }
 }

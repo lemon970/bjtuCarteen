@@ -44,6 +44,13 @@ class StudentProfileFactory {
         double packPreference = discretizeProbability(rawPackPreference, 0.05);
         Student.PackPreferenceLevel packPreferenceLevel = resolvePackPreferenceLevel(packPreference);
 
+        double weatherFactor = config.getWeatherConfig() == null
+                ? 1.0
+                : SimulationMath.clamp(config.getWeatherConfig().getWeatherImpactFactor(), 0.5, 2.0);
+        double basePack = SimulationMath.clamp(config.getPackProbability(), 0.0, 1.0);
+        double intentProbability = SimulationMath.clamp(basePack * weatherFactor, 0.0, 0.95);
+        boolean wantsTakeaway = random.nextDouble() < intentProbability;
+
         int queueLimit = Math.max(0, config.getQueueLimit());
         Student.PatienceLevel patienceLevel = samplePatienceLevel(random);
         int patienceLimit = resolvePatienceLimit(queueLimit, patienceLevel, random);
@@ -64,7 +71,8 @@ class StudentProfileFactory {
                 Math.max(1, partySize),
                 groupId,
                 groupSize,
-                groupMemberIndex);
+                groupMemberIndex,
+                wantsTakeaway);
     }
 
     private Student.PackPreferenceLevel resolvePackPreferenceLevel(double packPreference) {

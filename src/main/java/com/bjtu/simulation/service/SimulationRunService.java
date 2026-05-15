@@ -103,7 +103,8 @@ public class SimulationRunService {
                 totalSeats,
                 engine.getWindowTypes(),
                 normalWindowCount,
-                takeawayWindowCount);
+                takeawayWindowCount,
+                engine.getWaitTimeSamples());
 
         return new SimulationSummary(
                 engine.getHistory(),
@@ -162,7 +163,13 @@ public class SimulationRunService {
                 engine.getGroupedStudentCount(),
                 SimulationMath.rate(engine.getGroupedStudentCount(), engine.getGroupCount()),
                 SimulationMath.rate(engine.getSameTableGroupCount(), engine.getGroupCount()),
-                SimulationMath.rate(engine.getSplitGroupCount(), engine.getGroupCount()));
+                SimulationMath.rate(engine.getSplitGroupCount(), engine.getGroupCount()),
+                engine.getNoSeatAbandonedCount(),
+                SimulationMath.rate(engine.getNoSeatAbandonedCount(),
+                        Math.max(1, engine.getArrivedCount())),
+                engine.getSeatWaitQueueMax(),
+                SimulationMath.round3(engine.getSeatWaitAvgSeconds()),
+                SimulationMath.round3(engine.getReservedSeatsAvg()));
     }
 
     private com.bjtu.simulation.dto.ProbabilityModelSummary buildProbabilityModel(SimConfig config,

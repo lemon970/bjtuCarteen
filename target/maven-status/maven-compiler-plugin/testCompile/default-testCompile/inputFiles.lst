@@ -1,7 +1,12 @@
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\controller\SimulationApiIntegrationTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\controller\SimulationControllerTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\SeatReservationTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\SeatWaitQueueTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\TakeawayDecisionPolicyTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\TakeawayRateBoundTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ExternalAnalysisServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\WaitTimeMetricsCalculatorTest.java

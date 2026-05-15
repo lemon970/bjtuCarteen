@@ -3,8 +3,7 @@ package com.bjtu.simulation.engine;
 import com.bjtu.simulation.service.SimulationMath;
 
 class TakeawayDecisionPolicy {
-    private static final double MAX_MODEL_PACK_PROBABILITY = 0.75;
-    private static final double TAKEAWAY_RATE_SOFT_CAP = 0.45;
+    private static final double MAX_MODEL_PACK_PROBABILITY = 0.55;
 
     DecisionProbability resolve(double basePackProbability,
                                 double studentPackPreference,
@@ -30,11 +29,12 @@ class TakeawayDecisionPolicy {
                 0.02,
                 localCap);
 
+        double softCap = Math.max(0.10, base * 1.5);
         if (currentServedCount >= 20) {
             double runningRate = (double) currentTakeawayCount / currentServedCount;
-            if (runningRate > TAKEAWAY_RATE_SOFT_CAP) {
-                double overflow = SimulationMath.clamp((runningRate - TAKEAWAY_RATE_SOFT_CAP) / 0.20, 0.0, 1.0);
-                modelProbability *= (1.0 - 0.45 * overflow);
+            if (runningRate > softCap) {
+                double overflow = SimulationMath.clamp((runningRate - softCap) / 0.15, 0.0, 1.0);
+                modelProbability *= (1.0 - 0.65 * overflow);
             }
         }
 
@@ -49,13 +49,13 @@ class TakeawayDecisionPolicy {
     }
 
     private double resolveLocalCap(double base, double seat, double waitMinutes, double queue) {
-        double localCap = base + 0.05;
+        double localCap = base + 0.04;
         if (seat >= 0.98 || (seat >= 0.92 && waitMinutes >= 12.0)) {
-            localCap = 0.65;
+            localCap = Math.max(0.30, base + 0.15);
         } else if (seat >= 0.90) {
-            localCap = 0.45;
+            localCap = Math.max(0.22, base + 0.10);
         } else if (waitMinutes >= 18.0 && queue >= 0.90) {
-            localCap = 0.35;
+            localCap = Math.max(0.18, base + 0.08);
         }
         return SimulationMath.clamp(localCap, 0.02, MAX_MODEL_PACK_PROBABILITY);
     }

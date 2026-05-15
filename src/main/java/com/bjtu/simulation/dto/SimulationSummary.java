@@ -75,6 +75,11 @@ public class SimulationSummary {
     private final double avgGroupSize;
     private final double sameTableGroupRate;
     private final double splitGroupRate;
+    private final int noSeatAbandonedCount;
+    private final double noSeatAbandonedRate;
+    private final int seatWaitQueueMax;
+    private final double seatWaitAvgSeconds;
+    private final double reservedSeatsAvg;
 
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
@@ -132,7 +137,12 @@ public class SimulationSummary {
                              int groupedStudentCount,
                              double avgGroupSize,
                              double sameTableGroupRate,
-                             double splitGroupRate) {
+                             double splitGroupRate,
+                             int noSeatAbandonedCount,
+                             double noSeatAbandonedRate,
+                             int seatWaitQueueMax,
+                             double seatWaitAvgSeconds,
+                             double reservedSeatsAvg) {
         this.history = history;
         this.timeline = timeline;
         this.arrivedCount = arrivedCount;
@@ -190,6 +200,11 @@ public class SimulationSummary {
         this.avgGroupSize = avgGroupSize;
         this.sameTableGroupRate = sameTableGroupRate;
         this.splitGroupRate = splitGroupRate;
+        this.noSeatAbandonedCount = noSeatAbandonedCount;
+        this.noSeatAbandonedRate = noSeatAbandonedRate;
+        this.seatWaitQueueMax = seatWaitQueueMax;
+        this.seatWaitAvgSeconds = seatWaitAvgSeconds;
+        this.reservedSeatsAvg = reservedSeatsAvg;
     }
 
     public List<SimulationResult> getHistory() {
@@ -458,5 +473,25 @@ public class SimulationSummary {
 
     public double getSplitGroupRate() {
         return splitGroupRate;
+    }
+
+    public int getNoSeatAbandonedCount() {
+        return noSeatAbandonedCount;
+    }
+
+    public double getNoSeatAbandonedRate() {
+        return noSeatAbandonedRate;
+    }
+
+    public int getSeatWaitQueueMax() {
+        return seatWaitQueueMax;
+    }
+
+    public double getSeatWaitAvgSeconds() {
+        return seatWaitAvgSeconds;
+    }
+
+    public double getReservedSeatsAvg() {
+        return reservedSeatsAvg;
     }
 }

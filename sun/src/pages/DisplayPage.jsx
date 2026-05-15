@@ -7,6 +7,7 @@ import QueueBarChart from '../components/charts/QueueBarChart'
 import ScenarioCompareTabs from '../components/ScenarioCompareTabs'
 import SeatHeatmap from '../components/SeatHeatmap'
 import SeatUtilizationLine from '../components/charts/SeatUtilizationLine'
+import TakeawayRatePanel from '../components/TakeawayRatePanel'
 import TimelinePlayer from '../components/TimelinePlayer'
 import TrendChart from '../components/charts/TrendChart'
 import WaitTimePanel from '../components/WaitTimePanel'
@@ -16,6 +17,7 @@ import { useEcharts } from '../utils/useEcharts'
 
 function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading, onLoadHistory, onLoadLatest }) {
   const summary = report?.summary || {}
+  const config = report?.config || {}
   const reportId = read(report, 'report_id', 'reportId') || ''
   const timeline = Array.isArray(summary.timeline) ? summary.timeline : []
   const seatCells = read(summary, 'seat_cells', 'seatCells') || []
@@ -51,6 +53,8 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
     [currentPoint, selectedTimelineIndex]
   )
   const currentWindowQueues = read(currentPoint, 'window_queue_sizes', 'windowQueueSizes', 'queue_sizes', 'queueSizes') || []
+  const currentWaitWindow = Number(read(currentPoint, 'avg_wait_minutes_window', 'avgWaitMinutesWindow')) || 0
+  const currentWaitSamples = Number(read(currentPoint, 'wait_sample_count_window', 'waitSampleCountWindow')) || 0
   const typicalWait = read(summary, 'typical_wait_time_minutes', 'typicalWaitTimeMinutes', 'avg_wait_time_minutes', 'avgWaitTimeMinutes') ?? 0
   const waitStatus = read(read(summary, 'wait_time_insight', 'waitTimeInsight') || {}, 'status') || 'info'
   const utilization = read(summary, 'seat_utilization_rate', 'seatUtilizationRate') ?? 0
@@ -100,6 +104,8 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
         />
       </section>
 
+      <TakeawayRatePanel summary={summary} config={config} />
+
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard title="到达人数" value={read(summary, 'arrived_count', 'arrivedCount') ?? 0} benchmark="由到达率和时长决定" />
         <MetricCard title="完成服务" value={read(summary, 'served_count', 'servedCount') ?? 0} benchmark="应接近到达人数" />
@@ -137,7 +143,9 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
         <p className="mt-4 text-sm text-slate-500">
           第 <strong className="text-bjtu-700">{currentFrame.minute}</strong> 分钟 · 占用
           <strong className="ml-1 text-bjtu-700">{currentFrame.seats}</strong> / 总 {totalSeats} 座位 · 当前总排队
-          <strong className="ml-1 text-bjtu-700">{currentFrame.queue}</strong> 人
+          <strong className="ml-1 text-bjtu-700">{currentFrame.queue}</strong> 人 · 过去 5 分钟均值等待
+          <strong className="ml-1 text-accent-teal">{formatNumber(currentWaitWindow, 1)}</strong> 分钟
+          <span className="ml-1 text-xs text-slate-400">({currentWaitSamples} 人样本)</span>
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
           <div className="rounded-2xl border border-canvas-border bg-canvas-surface p-4">

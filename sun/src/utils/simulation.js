@@ -137,6 +137,141 @@ function compactSeatCells(cells, totalSeats, occupiedSeats) {
   })
 }
 
+export function buildSeatTables(point, fallbackCells = []) {
+  const tables = read(point, 'table_snapshots', 'tableSnapshots')
+  if (Array.isArray(tables) && tables.length > 0) {
+    const fallback = Array.isArray(fallbackCells) ? fallbackCells : []
+    const fallbackByTable = new Map()
+    for (const cell of fallback) {
+      const tableId = read(cell, 'table_id', 'tableId')
+      if (tableId === undefined || tableId === null) {
+        continue
+      }
+      const list = fallbackByTable.get(tableId) || []
+      list.push(cell)
+      fallbackByTable.set(tableId, list)
+    }
+
+    const result = []
+    let seatCounter = 0
+    for (const table of tables) {
+      const tableId = read(table, 'table_id', 'tableId') ?? -1
+      const capacity = Math.max(0, Math.floor(toNumber(read(table, 'capacity'), 0)))
+      const occupied = Math.max(
+        0,
+        Math.min(capacity, Math.floor(toNumber(read(table, 'occupied_seats', 'occupiedSeats'), 0)))
+      )
+      const reserved = Math.max(
+        0,
+        Math.min(capacity - occupied, Math.floor(toNumber(read(table, 'reserved_seats', 'reservedSeats'), 0)))
+      )
+      const groupIds = read(table, 'occupied_group_ids', 'occupiedGroupIds')
+      const groupList = Array.isArray(groupIds) ? groupIds : []
+      const reservedGroupIds = read(table, 'reserved_group_ids', 'reservedGroupIds')
+      const reservedList = Array.isArray(reservedGroupIds) ? reservedGroupIds : []
+      const fallbackList = fallbackByTable.get(tableId) || []
+      const seats = []
+      for (let seatIndex = 0; seatIndex < capacity; seatIndex++) {
+        const fallbackCell = fallbackList[seatIndex] || {}
+        const isOccupied = seatIndex < occupied
+        const isReserved = !isOccupied && seatIndex < occupied + reserved
+        let status = 'FREE'
+        let groupId = ''
+        if (isOccupied) {
+          status = 'OCCUPIED'
+          const fromTable = groupList[seatIndex]
+          if (fromTable !== undefined && fromTable !== null) {
+            groupId = String(fromTable)
+          }
+        } else if (isReserved) {
+          status = 'RESERVED'
+          const fromReserved = reservedList[seatIndex - occupied]
+          if (fromReserved !== undefined && fromReserved !== null) {
+            groupId = String(fromReserved)
+          }
+        }
+        seats.push({
+          seatId: read(fallbackCell, 'seat_id', 'seatId') ?? seatCounter,
+          status,
+          occupied: isOccupied,
+          reserved: isReserved,
+          groupId,
+          tableId,
+          row: read(fallbackCell, 'row') ?? Math.floor(seatCounter / 12),
+          column: read(fallbackCell, 'column') ?? (seatCounter % 12)
+        })
+        seatCounter++
+      }
+      result.push({
+        tableId,
+        capacity,
+        occupied,
+        reserved,
+        area: read(fallbackList[0], 'area') || ['A', 'B', 'C'][Math.max(0, Number(tableId) || 0) % 3],
+        seats
+      })
+    }
+    return result
+  }
+
+  // Fallback: derive tables from flat seat cells (legacy path)
+  const cells = buildSeatCells(point, fallbackCells)
+  if (!cells.length) return []
+  const tableMap = new Map()
+  let counter = 0
+  for (const cell of cells) {
+    const tableId = read(cell, 'table_id', 'tableId') ?? Math.floor(counter / 4)
+    counter++
+    const entry = tableMap.get(tableId) || {
+      tableId,
+      capacity: 0,
+      occupied: 0,
+      area: read(cell, 'area') || 'A',
+      seats: []
+    }
+    const status = String(read(cell, 'status') || 'FREE').toUpperCase()
+    const isOccupied = status === 'OCCUPIED' || read(cell, 'occupied') === true
+    entry.seats.push({
+      seatId: read(cell, 'seat_id', 'seatId') ?? entry.seats.length,
+      status: isOccupied ? 'OCCUPIED' : status,
+      occupied: isOccupied,
+      groupId: isOccupied ? String(read(cell, 'group_id', 'groupId') || '') : '',
+      tableId,
+      row: read(cell, 'row') ?? 0,
+      column: read(cell, 'column') ?? 0
+    })
+    entry.capacity += 1
+    if (isOccupied) entry.occupied += 1
+    tableMap.set(tableId, entry)
+  }
+  return [...tableMap.values()]
+}
+
+export function summarizeGroupsOnFrame(tables) {
+  const groupMap = new Map()
+  for (const table of Array.isArray(tables) ? tables : []) {
+    for (const seat of table.seats || []) {
+      if (!seat.occupied || !seat.groupId) continue
+      const entry = groupMap.get(seat.groupId) || {
+        groupId: seat.groupId,
+        seatCount: 0,
+        tableIds: new Set()
+      }
+      entry.seatCount += 1
+      entry.tableIds.add(table.tableId)
+      groupMap.set(seat.groupId, entry)
+    }
+  }
+  return [...groupMap.values()]
+    .map((entry) => ({
+      groupId: entry.groupId,
+      seatCount: entry.seatCount,
+      tableIds: [...entry.tableIds],
+      tableCount: entry.tableIds.size
+    }))
+    .sort((a, b) => b.seatCount - a.seatCount)
+}
+
 export function summarizeSeatAreas(cells) {
   const areaMap = new Map()
   for (const cell of Array.isArray(cells) ? cells : []) {
@@ -159,18 +294,20 @@ export function summarizeSeatAreas(cells) {
 }
 
 export function summarizeSeatCells(cells) {
-  const summary = { occupied: 0, cleaning: 0, free: 0, grouped: 0, total: 0 }
+  const summary = { occupied: 0, reserved: 0, cleaning: 0, free: 0, grouped: 0, total: 0 }
   for (const cell of Array.isArray(cells) ? cells : []) {
     summary.total += 1
     const status = String(read(cell, 'status') || '').toUpperCase()
     if (status === 'OCCUPIED' || read(cell, 'occupied') === true) {
       summary.occupied += 1
+    } else if (status === 'RESERVED' || read(cell, 'reserved') === true) {
+      summary.reserved += 1
     } else if (status === 'CLEANING') {
       summary.cleaning += 1
     } else {
       summary.free += 1
     }
-    if (read(cell, 'group_id', 'groupId')) {
+    if (read(cell, 'group_id', 'groupId') && (status === 'OCCUPIED' || read(cell, 'occupied') === true)) {
       summary.grouped += 1
     }
   }

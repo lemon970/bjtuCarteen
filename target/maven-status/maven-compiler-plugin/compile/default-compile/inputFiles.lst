@@ -27,6 +27,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\Ba
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\CanteenState.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\MovementEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\SeatSearchEvent.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\SeatWaitEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\ServiceFinishEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\SimulationDurationPolicy.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\SimulationEngine.java

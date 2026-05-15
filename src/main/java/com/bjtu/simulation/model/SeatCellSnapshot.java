@@ -73,7 +73,7 @@ public class SeatCellSnapshot {
             return "FREE";
         }
         String normalized = value.trim().toUpperCase();
-        if ("OCCUPIED".equals(normalized) || "CLEANING".equals(normalized)) {
+        if ("OCCUPIED".equals(normalized) || "CLEANING".equals(normalized) || "RESERVED".equals(normalized)) {
             return normalized;
         }
         return "FREE";

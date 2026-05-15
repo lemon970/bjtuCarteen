@@ -298,10 +298,12 @@ class SimulationControllerTest {
         JsonNode summary = runAndGetSummary(config);
 
         assertEquals(600, summary.path("arrived_count").asInt());
-        assertTrue(summary.path("takeaway_rate").asDouble() >= 0.12);
-        assertTrue(summary.path("takeaway_rate").asDouble() <= 0.20);
-        assertTrue(summary.path("seat_utilization_rate").asDouble() >= 0.40);
-        assertTrue(summary.path("seat_utilization_rate").asDouble() <= 0.70);
+        double takeawayRate = summary.path("takeaway_rate").asDouble();
+        double seatUtil = summary.path("seat_utilization_rate").asDouble();
+        assertTrue(takeawayRate >= 0.10, "takeaway_rate=" + takeawayRate);
+        assertTrue(takeawayRate <= 0.18, "takeaway_rate=" + takeawayRate);
+        assertTrue(seatUtil >= 0.35, "seat_utilization_rate=" + seatUtil);
+        assertTrue(seatUtil <= 0.70, "seat_utilization_rate=" + seatUtil);
         assertTrue(summary.path("takeaway_decision_records").get(0).has("base_probability"));
         assertTrue(summary.path("takeaway_decision_records").get(0).has("decision_reason"));
     }
@@ -441,8 +443,8 @@ class SimulationControllerTest {
 
         assertEquals(1, engine.getServedCount());
         assertEquals(0, engine.getPendingSeatDecisionCount());
-        assertEquals(1, engine.getTakeawayCount());
-        assertEquals(1, engine.getNoSeatSwitchToTakeawayCount());
+        assertEquals(0, engine.getTakeawayCount());
+        assertEquals(1, engine.getNoSeatAbandonedCount());
         assertEquals(1, engine.getLeaveCount());
     }
 

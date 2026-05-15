@@ -36,6 +36,17 @@ class WindowSelectionPolicy {
             }
         }
 
+        // 意图前置:wantsTakeaway=false 的学生(已 reserve 座位)绝不能被路由到打包窗口
+        // 否则 ServiceFinishEvent 会按打包窗口规则强制 recordForcedTakeaway,污染打包率
+        boolean dineInOnly = !willTakeaway && takeawayWindowCount > 0 && takeawayWindowCount < queues.size();
+        if (dineInOnly) {
+            int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false,
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+            if (normalWindow >= 0) {
+                return normalWindow;
+            }
+        }
+
         if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.DINE_IN_BIASED) {
             int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false,
                     queues, windowAvailableAtSeconds, windowTypes, currentTime);

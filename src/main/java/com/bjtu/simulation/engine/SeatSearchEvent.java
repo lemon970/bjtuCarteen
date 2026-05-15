@@ -3,16 +3,18 @@ package com.bjtu.simulation.engine;
 import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
 
+/**
+ * @deprecated 第六轮重构后,座位预定在到达时一次性完成(reserve-then-queue),
+ * 学生不再需要在用餐区"找座"。该事件类保留仅为向后兼容旧测试或异常调度路径,
+ * 内部走 no_seat_abandoned 兜底,不再调用 recordTakeaway,避免污染打包率。
+ */
+@Deprecated
 public class SeatSearchEvent extends BaseEvent {
-    private static final long SEAT_SEARCH_RETRY_SECONDS = 30L;
-
     private final String studentId;
-    private final int remainingAttempts;
 
     public SeatSearchEvent(long eventTime, String studentId, int remainingAttempts) {
         super(eventTime);
         this.studentId = studentId;
-        this.remainingAttempts = Math.max(0, remainingAttempts);
     }
 
     @Override
@@ -20,54 +22,23 @@ public class SeatSearchEvent extends BaseEvent {
         Student student = engine.getStudent(studentId);
         int partySize = student == null ? 1 : student.getPartySize();
 
-        if (engine.trySeatStudent(student) != null) {
+        // 兼容路径:若旧调用进来,先尝试 reserve(可能已经从 walkToSeat 到这里)
+        if (student != null && student.getSeatAllocation() != null) {
+            engine.confirmReservation(student);
             engine.resolveSeatDecisionPending(partySize);
             engine.recordDineIn(partySize);
             long leaveTime = engine.getCurrentTime() + engine.resolveDiningTimeSeconds();
             engine.setStudentState(studentId, StudentState.DINING);
             engine.scheduleEvent(new StudentLeaveEvent(leaveTime, studentId));
-            engine.recordState(studentId + " found table after searching with partySize=" + partySize);
+            engine.recordState(studentId + " (deprecated SeatSearchEvent) confirmed reservation");
             return;
         }
 
-        if (remainingAttempts > 0) {
-            engine.setStudentState(studentId, StudentState.FIND_SEAT);
-            engine.scheduleEvent(new SeatSearchEvent(engine.getCurrentTime() + SEAT_SEARCH_RETRY_SECONDS, studentId, remainingAttempts - 1));
-            engine.recordState(studentId + " still searching table with partySize=" + partySize);
-            return;
-        }
-
-        double studentPackPreference = student == null ? 0.5 : student.getPackPreference();
-        double roll = engine.nextDouble();
-
+        // 没有预定 → 走 post-service no_seat 路径,而不再走 recordTakeaway
         engine.resolveSeatDecisionPending(partySize);
-        engine.recordTakeawayDecision(
-                studentId,
-                "NO_SEAT_SWITCH",
-                Math.max(0.50, studentPackPreference),
-                roll,
-                0.0,
-                studentPackPreference,
-                true,
-                partySize,
-                engine.getConfig() == null ? 0.2 : engine.getConfig().getPackProbability(),
-                0.0,
-                0.50,
-                0.0,
-                0.0,
-                0.0,
-                "TABLE_SEARCH_FAILED",
-                "座位搜索失败，转为打包离开");
-        engine.recordTakeaway(partySize);
-        engine.recordNoSeatSwitchToTakeaway(partySize);
+        engine.recordPostServiceNoSeat(partySize);
         engine.recordLeave(partySize);
-        engine.setStudentState(studentId, StudentState.PACK_LEAVE);
         engine.setStudentState(studentId, StudentState.LEAVE);
-
-        if (roll < studentPackPreference) {
-            engine.recordState(studentId + " switched to takeaway after table search with partySize=" + partySize);
-        } else {
-            engine.recordState(studentId + " gave up table search and left with food with partySize=" + partySize);
-        }
+        engine.recordState(studentId + " (deprecated SeatSearchEvent) no reservation, abandoned without takeaway");
     }
 }

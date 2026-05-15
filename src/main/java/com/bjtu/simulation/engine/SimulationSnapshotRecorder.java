@@ -33,6 +33,8 @@ class SimulationSnapshotRecorder {
         maxOccupiedSeats = Math.max(maxOccupiedSeats, occupiedSeats);
         updatePeak(engine.getCurrentTime(), currentQueues);
 
+        engine.sampleReservedSeats();
+
         int emptySeats = Math.max(0, engine.getCanteenState().getTotalSeats() - occupiedSeats);
         return new SimulationResult(
                 engine.getCurrentTime(),

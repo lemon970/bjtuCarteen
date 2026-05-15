@@ -32,6 +32,7 @@ public class Student {
     private final String groupId;
     private final int groupSize;
     private final int groupMemberIndex;
+    private final boolean wantsTakeaway;
     private StudentState state;
     private DiningArea.SeatAllocation seatAllocation;
 
@@ -56,7 +57,8 @@ public class Student {
                 1,
                 null,
                 1,
-                0);
+                0,
+                false);
     }
 
     public Student(String id,
@@ -81,7 +83,8 @@ public class Student {
                 partySize,
                 null,
                 partySize,
-                0);
+                0,
+                false);
     }
 
     public Student(String id,
@@ -97,6 +100,36 @@ public class Student {
                    String groupId,
                    int groupSize,
                    int groupMemberIndex) {
+        this(id,
+                packPreference,
+                patienceLimit,
+                windowPreference,
+                seatSearchPatience,
+                arrivalGroup,
+                packPreferenceLevel,
+                patienceLevel,
+                seatToleranceLevel,
+                partySize,
+                groupId,
+                groupSize,
+                groupMemberIndex,
+                false);
+    }
+
+    public Student(String id,
+                   double packPreference,
+                   int patienceLimit,
+                   int windowPreference,
+                   int seatSearchPatience,
+                   ArrivalGroup arrivalGroup,
+                   PackPreferenceLevel packPreferenceLevel,
+                   PatienceLevel patienceLevel,
+                   SeatToleranceLevel seatToleranceLevel,
+                   int partySize,
+                   String groupId,
+                   int groupSize,
+                   int groupMemberIndex,
+                   boolean wantsTakeaway) {
         this.id = id;
         this.packPreference = packPreference;
         this.patienceLimit = patienceLimit;
@@ -110,6 +143,7 @@ public class Student {
         this.groupId = groupId == null || groupId.isBlank() ? null : groupId;
         this.groupSize = Math.max(this.partySize, groupSize);
         this.groupMemberIndex = Math.max(0, groupMemberIndex);
+        this.wantsTakeaway = wantsTakeaway;
         this.state = StudentState.ARRIVED;
         this.seatAllocation = null;
     }
@@ -168,6 +202,10 @@ public class Student {
 
     public boolean isGrouped() {
         return groupId != null && partySize > 1;
+    }
+
+    public boolean wantsTakeaway() {
+        return wantsTakeaway;
     }
 
     public StudentState getState() {

@@ -23,8 +23,11 @@ class SimulationInvariantChecker {
         if (engine.getPendingSeatDecisionCount() < 0) {
             throw new IllegalStateException("pendingSeatDecisionCount must be >= 0");
         }
-        if (engine.getDineInCount() + engine.getTakeawayCount() + engine.getPendingSeatDecisionCount() != engine.getServedCount()) {
-            throw new IllegalStateException("dineInCount + takeawayCount + pendingSeatDecisionCount must equal servedCount");
+        if (engine.getDineInCount() + engine.getTakeawayCount()
+                + engine.getPostServiceNoSeatCount()
+                + engine.getPendingSeatDecisionCount() != engine.getServedCount()) {
+            throw new IllegalStateException(
+                    "dineInCount + takeawayCount + postServiceNoSeatCount + pendingSeatDecisionCount must equal servedCount");
         }
         if (engine.getAbandonedByQueueCount() > engine.getAbandonedCount()) {
             throw new IllegalStateException("abandonedByQueueCount cannot exceed abandonedCount");
