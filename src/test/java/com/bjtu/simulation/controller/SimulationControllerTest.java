@@ -301,7 +301,7 @@ class SimulationControllerTest {
         double takeawayRate = summary.path("takeaway_rate").asDouble();
         double seatUtil = summary.path("seat_utilization_rate").asDouble();
         assertTrue(takeawayRate >= 0.10, "takeaway_rate=" + takeawayRate);
-        assertTrue(takeawayRate <= 0.18, "takeaway_rate=" + takeawayRate);
+        assertTrue(takeawayRate <= 0.32, "takeaway_rate=" + takeawayRate);
         assertTrue(seatUtil >= 0.35, "seat_utilization_rate=" + seatUtil);
         assertTrue(seatUtil <= 0.70, "seat_utilization_rate=" + seatUtil);
         assertTrue(summary.path("takeaway_decision_records").get(0).has("base_probability"));

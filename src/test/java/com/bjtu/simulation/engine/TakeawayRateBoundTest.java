@@ -10,8 +10,10 @@ import com.bjtu.simulation.service.SimulationRunService;
 import org.junit.jupiter.api.Test;
 
 /**
- * 第六轮重构后,意图前置 + reserve-then-queue 把 takeaway_rate 锁定到
- * packProb × weatherFactor ± ε 区间。本测试断言常用场景的 takeaway_rate 在区间内。
+ * 第七轮重构后:WeatherFactorPolicy 把 weather 类型 × user factor 合并为 effectiveFactor;
+ * StudentProfileFactory 用 effectiveFactor 决定到达意图,ServiceFinishEvent 在服务完成时
+ * 通过 TakeawayDecisionPolicy 进一步根据队列/座位压力做动态翻转。所以最终
+ * takeaway_rate ≈ packProb × effectiveFactor + 动态压力 bump。本测试断言端到端区间。
  */
 class TakeawayRateBoundTest {
 
@@ -24,9 +26,10 @@ class TakeawayRateBoundTest {
         SimulationSummary summary = report.getSummary();
 
         double rate = summary.getTakeawayRate();
-        // base=0.10, weather=1.0,目标区间 7%-13%
-        assertTrue(rate >= 0.05, "takeaway_rate=" + rate);
-        assertTrue(rate <= 0.16, "takeaway_rate=" + rate);
+        // base=0.10, sunny canonical=1.0 → intent ≈ 10%;
+        // 加上 ServiceFinishEvent 动态决策的低压力 bump,端到端 12-30%
+        assertTrue(rate >= 0.12, "takeaway_rate=" + rate);
+        assertTrue(rate <= 0.30, "takeaway_rate=" + rate);
     }
 
     @Test
@@ -36,9 +39,10 @@ class TakeawayRateBoundTest {
         SimulationSummary summary = report.getSummary();
 
         double rate = summary.getTakeawayRate();
-        // base=0.20, weather=1.25 → 0.25,目标区间 22%-28%
-        assertTrue(rate >= 0.18, "takeaway_rate=" + rate);
-        assertTrue(rate <= 0.32, "takeaway_rate=" + rate);
+        // base=0.20, rainy canonical=1.30 × user 1.25 = 1.625 → intent ≈ 32.5%;
+        // 加上动态决策在 rain_emergency 高压场景下的 bump,端到端 30-55%
+        assertTrue(rate >= 0.30, "takeaway_rate=" + rate);
+        assertTrue(rate <= 0.55, "takeaway_rate=" + rate);
     }
 
     private SimConfig baselineConfig() {

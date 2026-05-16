@@ -169,7 +169,45 @@ public class SimulationRunService {
                         Math.max(1, engine.getArrivedCount())),
                 engine.getSeatWaitQueueMax(),
                 SimulationMath.round3(engine.getSeatWaitAvgSeconds()),
-                SimulationMath.round3(engine.getReservedSeatsAvg()));
+                SimulationMath.round3(engine.getReservedSeatsAvg()),
+                computeTimeWeightedUtilization(engine.getTableSnapshots(), totalSeats, endTimeSeconds),
+                SimulationMath.rate(engine.getDineInCount(), totalSeats),
+                SimulationMath.rate(engine.getMaxOccupiedSeats(), totalSeats),
+                computeSteadyStateUtilization(timeline, totalSeats));
+    }
+
+    private double computeTimeWeightedUtilization(List<com.bjtu.simulation.model.TableSnapshot> snapshots,
+                                                  int totalSeats,
+                                                  long endTimeSeconds) {
+        if (snapshots == null || snapshots.isEmpty() || totalSeats <= 0 || endTimeSeconds <= 0) {
+            return 0.0;
+        }
+        long occupiedSeatSeconds = 0L;
+        for (var snapshot : snapshots) {
+            occupiedSeatSeconds += Math.max(0L, snapshot.getOccupiedSeatSeconds());
+        }
+        double denominator = (double) totalSeats * (double) endTimeSeconds;
+        return denominator <= 0 ? 0.0 : occupiedSeatSeconds / denominator;
+    }
+
+    private double computeSteadyStateUtilization(List<SimulationTimePoint> timeline, int totalSeats) {
+        if (timeline == null || timeline.isEmpty() || totalSeats <= 0) {
+            return 0.0;
+        }
+        int n = timeline.size();
+        int from = (int) Math.floor(n * 0.1);
+        int to = (int) Math.ceil(n * 0.9);
+        if (to <= from) {
+            from = 0;
+            to = n;
+        }
+        double sum = 0.0;
+        int count = 0;
+        for (int i = from; i < to; i++) {
+            sum += timeline.get(i).getSeatUtilizationRate();
+            count++;
+        }
+        return count == 0 ? 0.0 : sum / count;
     }
 
     private com.bjtu.simulation.dto.ProbabilityModelSummary buildProbabilityModel(SimConfig config,

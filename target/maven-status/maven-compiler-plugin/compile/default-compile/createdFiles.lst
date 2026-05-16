@@ -30,6 +30,7 @@ com\bjtu\simulation\dto\ScenarioExpectedMetrics.class
 com\bjtu\simulation\service\SimulationArrivalScheduler.class
 com\bjtu\simulation\dto\WaitTimeMetrics.class
 com\bjtu\simulation\model\Student$SeatToleranceLevel.class
+com\bjtu\simulation\dto\FrameSeatLayout.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicy$DecisionProbability.class
 com\bjtu\simulation\service\WaitTimeMetricsCalculator.class
 com\bjtu\simulation\model\TakeawayDecisionRecord.class
@@ -46,6 +47,7 @@ com\bjtu\simulation\dto\QueueTheoryMetrics.class
 com\bjtu\simulation\controller\SimulationReportController.class
 com\bjtu\simulation\engine\SimulationInvariantChecker.class
 com\bjtu\simulation\controller\FrontendController.class
+com\bjtu\simulation\service\WeatherFactorPolicy.class
 com\bjtu\simulation\engine\StudentLeaveEvent.class
 com\bjtu\simulation\dto\SimulationResult.class
 com\bjtu\simulation\model\SeatCellSnapshot.class

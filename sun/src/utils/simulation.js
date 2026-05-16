@@ -36,7 +36,10 @@ export function buildSeatCells(point, fallbackCells = []) {
     return compactSeatCells(sourceCells, totalSeats || sourceCells.length, occupiedSeats)
   }
 
-  const tables = read(point, 'table_snapshots', 'tableSnapshots')
+  const layout = read(point, 'frame_seat_layout', 'frameSeatLayout')
+  const tables = Array.isArray(layout) && layout.length > 0
+    ? layout
+    : read(point, 'table_snapshots', 'tableSnapshots')
   if (Array.isArray(tables) && tables.length > 0) {
     const cellsFromTables = expandTablesToCells(tables, fallbackCells)
     if (cellsFromTables.length > 0) {
@@ -88,19 +91,46 @@ function expandTablesToCells(tableSnapshots, fallbackCells) {
     const tableId = read(table, 'table_id', 'tableId') ?? -1
     const capacity = Math.max(0, Math.floor(toNumber(read(table, 'capacity'), 0)))
     const occupied = Math.max(0, Math.min(capacity, Math.floor(toNumber(read(table, 'occupied_seats', 'occupiedSeats'), 0))))
+    const reserved = Math.max(
+      0,
+      Math.min(capacity - occupied, Math.floor(toNumber(read(table, 'reserved_seats', 'reservedSeats'), 0)))
+    )
+    const occupiedIds = read(table, 'occupied_group_ids', 'occupiedGroupIds')
+    const occupiedList = Array.isArray(occupiedIds) ? occupiedIds : []
+    const reservedIds = read(table, 'reserved_group_ids', 'reservedGroupIds')
+    const reservedList = Array.isArray(reservedIds) ? reservedIds : []
     const fallbackList = fallbackByTable.get(tableId) || []
     for (let seatIndex = 0; seatIndex < capacity; seatIndex++) {
       const fallbackCell = fallbackList[seatIndex] || {}
-      const status = seatIndex < occupied ? 'OCCUPIED' : 'FREE'
+      let status = 'FREE'
+      let groupId = ''
+      const isOccupied = seatIndex < occupied
+      const isReserved = !isOccupied && seatIndex < occupied + reserved
+      if (isOccupied) {
+        status = 'OCCUPIED'
+        const fromTable = occupiedList[seatIndex]
+        if (fromTable !== undefined && fromTable !== null) {
+          groupId = String(fromTable)
+        } else {
+          groupId = String(read(fallbackCell, 'group_id', 'groupId') || '')
+        }
+      } else if (isReserved) {
+        status = 'RESERVED'
+        const fromReserved = reservedList[seatIndex - occupied]
+        if (fromReserved !== undefined && fromReserved !== null) {
+          groupId = String(fromReserved)
+        }
+      }
       cells.push({
         seat_id: read(fallbackCell, 'seat_id', 'seatId') ?? seatId,
         table_id: tableId,
         row: read(fallbackCell, 'row') ?? Math.floor(seatId / 12),
         column: read(fallbackCell, 'column') ?? (seatId % 12),
-        area: read(fallbackCell, 'area') || ['A', 'B', 'C'][Math.max(0, tableId) % 3],
+        area: read(fallbackCell, 'area') || ['A', 'B', 'C'][Math.max(0, Number(tableId) || 0) % 3],
         status,
         occupied: status === 'OCCUPIED',
-        group_id: status === 'OCCUPIED' ? read(fallbackCell, 'group_id', 'groupId') || '' : ''
+        reserved: status === 'RESERVED',
+        group_id: groupId
       })
       seatId++
     }
@@ -138,7 +168,10 @@ function compactSeatCells(cells, totalSeats, occupiedSeats) {
 }
 
 export function buildSeatTables(point, fallbackCells = []) {
-  const tables = read(point, 'table_snapshots', 'tableSnapshots')
+  const layout = read(point, 'frame_seat_layout', 'frameSeatLayout')
+  const tables = Array.isArray(layout) && layout.length > 0
+    ? layout
+    : read(point, 'table_snapshots', 'tableSnapshots')
   if (Array.isArray(tables) && tables.length > 0) {
     const fallback = Array.isArray(fallbackCells) ? fallbackCells : []
     const fallbackByTable = new Map()
@@ -522,9 +555,13 @@ export function normalizePoint(point, index) {
     queue: read(point, 'total_queue_size', 'totalQueueSize', 'queueing_student_count', 'queueingStudentCount') ?? 0,
     seats: read(point, 'occupied_seats', 'occupiedSeats', 'dining_student_count', 'diningStudentCount') ?? 0,
     cleaningSeats: read(point, 'cleaning_seats', 'cleaningSeats') ?? 0,
+    reservedSeats: read(point, 'reserved_seats', 'reservedSeats') ?? 0,
     totalSeats: read(point, 'total_seats', 'totalSeats') ?? 0,
     seatCells: read(point, 'seat_cells', 'seatCells') || [],
     seatRate: read(point, 'seat_utilization_rate', 'seatUtilizationRate') ?? 0,
+    seatUnavailableRate: read(point, 'seat_unavailable_rate', 'seatUnavailableRate') ?? 0,
+    seatReservedShare: read(point, 'seat_reserved_share', 'seatReservedShare') ?? 0,
+    seatFreeRate: read(point, 'seat_free_rate', 'seatFreeRate') ?? 0,
     arrived: read(point, 'cumulative_arrived_count', 'cumulativeArrivedCount', 'arrived_count', 'arrivedCount') ?? 0,
     served: read(point, 'cumulative_served_count', 'cumulativeServedCount', 'served_count', 'servedCount') ?? 0,
     eventMessage: read(point, 'event_message', 'eventMessage') || ''

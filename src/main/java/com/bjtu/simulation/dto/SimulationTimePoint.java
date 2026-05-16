@@ -43,6 +43,20 @@ public class SimulationTimePoint {
     private final double avgWaitMinutesWindow;
     private final int waitSampleCountWindow;
     private final List<TableSnapshot> tableSnapshots;
+    /**
+     * 第八轮:逐帧轻量座位布局。默认随 timeline 保留(table_snapshots 仍按既有
+     * 策略剥除),前端时间轴回放据此渲染成组占用色块。
+     */
+    private final List<FrameSeatLayout> frameSeatLayout;
+
+    /** 第八轮:学生视角"座位不可用率" = (occupied + reserved) / totalSeats。 */
+    private final double seatUnavailableRate;
+    /** 第八轮:reservedSeats / totalSeats,反映"在途/正在落座"的占比。 */
+    private final double seatReservedShare;
+    /** 第八轮:1 - seatUnavailableRate,前端读取直观。 */
+    private final double seatFreeRate;
+    /** 第八轮:绝对预定座位数,与 frame_seat_layout 互为冗余但便于直接展示。 */
+    private final int reservedSeats;
 
     public SimulationTimePoint(long timeSeconds,
                                long minute,
@@ -82,6 +96,62 @@ public class SimulationTimePoint {
                                double avgWaitMinutesWindow,
                                int waitSampleCountWindow,
                                List<TableSnapshot> tableSnapshots) {
+        this(timeSeconds, minute, windowQueueSizes, windowTypes, windowCount,
+                normalWindowCount, takeawayWindowCount, totalQueueSize, normalWindowQueueSize,
+                takeawayWindowQueueSize, queueingStudentCount, busiestWindowId, busiestWindowQueueSize,
+                totalSeats, occupiedSeats, diningStudentCount, emptySeats, seatUtilizationRate,
+                eventMessage, cumulativeArrivedCount, cumulativeNormalArrivalCount,
+                cumulativeClassPeakArrivalCount, cumulativeRainPeakArrivalCount,
+                cumulativeAbandonedCount, cumulativeAbandonedByQueueCount, cumulativeServedCount,
+                cumulativeDineInCount, cumulativeTakeawayCount, cumulativePendingSeatDecisionCount,
+                cumulativeNoSeatSwitchToTakeawayCount, cumulativeWeatherDrivenTakeawayCount,
+                cumulativeLeaveCount, movementSampleCount, totalMovementTimeMinutes,
+                avgMovementTimeMinutes, avgWaitMinutesWindow, waitSampleCountWindow,
+                tableSnapshots, 0, 0.0, 0.0, 0.0);
+    }
+
+    public SimulationTimePoint(long timeSeconds,
+                               long minute,
+                               List<Integer> windowQueueSizes,
+                               List<String> windowTypes,
+                               int windowCount,
+                               int normalWindowCount,
+                               int takeawayWindowCount,
+                               int totalQueueSize,
+                               int normalWindowQueueSize,
+                               int takeawayWindowQueueSize,
+                               int queueingStudentCount,
+                               int busiestWindowId,
+                               int busiestWindowQueueSize,
+                               int totalSeats,
+                               int occupiedSeats,
+                               int diningStudentCount,
+                               int emptySeats,
+                               double seatUtilizationRate,
+                               String eventMessage,
+                               int cumulativeArrivedCount,
+                               int cumulativeNormalArrivalCount,
+                               int cumulativeClassPeakArrivalCount,
+                               int cumulativeRainPeakArrivalCount,
+                               int cumulativeAbandonedCount,
+                               int cumulativeAbandonedByQueueCount,
+                               int cumulativeServedCount,
+                               int cumulativeDineInCount,
+                               int cumulativeTakeawayCount,
+                               int cumulativePendingSeatDecisionCount,
+                               int cumulativeNoSeatSwitchToTakeawayCount,
+                               int cumulativeWeatherDrivenTakeawayCount,
+                               int cumulativeLeaveCount,
+                               int movementSampleCount,
+                               double totalMovementTimeMinutes,
+                               double avgMovementTimeMinutes,
+                               double avgWaitMinutesWindow,
+                               int waitSampleCountWindow,
+                               List<TableSnapshot> tableSnapshots,
+                               int reservedSeats,
+                               double seatUnavailableRate,
+                               double seatReservedShare,
+                               double seatFreeRate) {
         this.timeSeconds = timeSeconds;
         this.minute = minute;
         this.windowQueueSizes = windowQueueSizes;
@@ -120,6 +190,18 @@ public class SimulationTimePoint {
         this.avgWaitMinutesWindow = avgWaitMinutesWindow;
         this.waitSampleCountWindow = waitSampleCountWindow;
         this.tableSnapshots = tableSnapshots;
+        this.frameSeatLayout = FrameSeatLayout.ofAll(tableSnapshots);
+        this.reservedSeats = Math.max(0, reservedSeats);
+        this.seatUnavailableRate = round3(seatUnavailableRate);
+        this.seatReservedShare = round3(seatReservedShare);
+        this.seatFreeRate = round3(seatFreeRate);
+    }
+
+    private static double round3(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return Math.round(value * 1000.0) / 1000.0;
     }
 
     public long getTimeSeconds() {
@@ -272,5 +354,25 @@ public class SimulationTimePoint {
 
     public List<TableSnapshot> getTableSnapshots() {
         return tableSnapshots;
+    }
+
+    public List<FrameSeatLayout> getFrameSeatLayout() {
+        return frameSeatLayout;
+    }
+
+    public int getReservedSeats() {
+        return reservedSeats;
+    }
+
+    public double getSeatUnavailableRate() {
+        return seatUnavailableRate;
+    }
+
+    public double getSeatReservedShare() {
+        return seatReservedShare;
+    }
+
+    public double getSeatFreeRate() {
+        return seatFreeRate;
     }
 }

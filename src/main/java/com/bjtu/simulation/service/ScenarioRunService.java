@@ -48,6 +48,10 @@ public class ScenarioRunService {
     }
 
     public ObjectNode runScenarios(ScenarioBatchRunRequest request) {
+        return runScenarios(request, false);
+    }
+
+    public ObjectNode runScenarios(ScenarioBatchRunRequest request, boolean includeHistory) {
         List<String> scenarioIds = request == null ? List.of() : request.getScenarioIds();
         if (scenarioIds == null || scenarioIds.isEmpty()) {
             scenarioIds = catalog.list().stream().map(ScenarioPreset::id).toList();
@@ -71,7 +75,8 @@ public class ScenarioRunService {
             item.set("expected_metrics", mapper.valueToTree(preset.expectedMetrics()));
             item.put("report_id", report.getReportId());
             item.set("config", mapper.valueToTree(report.getConfig()));
-            item.set("summary", mapper.valueToTree(report.getSummary()));
+            JsonNode summaryTree = mapper.valueToTree(report.getSummary());
+            item.set("summary", includeHistory ? summaryTree : stripHeavyFields(summaryTree));
             results.add(item);
         }
 
@@ -80,6 +85,30 @@ public class ScenarioRunService {
         data.set("results", results);
         data.set("comparison_summary", buildComparison(results));
         return data;
+    }
+
+    /**
+     * 第七轮:批量场景默认轻量响应。剥掉每个 summary 里超大的 timeline / history /
+     * seat_cells / table_snapshots / arrival_samples / takeaway_decision_records,
+     * 保留所有数值聚合指标(arrived_count、takeaway_rate、typical_wait_time_minutes 等)。
+     * 调用方需要完整时间线可通过 /api/simulation/report/{id} 拉取。
+     */
+    private JsonNode stripHeavyFields(JsonNode summary) {
+        if (!(summary instanceof ObjectNode obj)) {
+            return summary;
+        }
+        ObjectNode lightweight = obj.deepCopy();
+        for (String heavy : List.of(
+                "timeline",
+                "history",
+                "seat_cells",
+                "table_snapshots",
+                "arrival_samples",
+                "takeaway_decision_records",
+                "wait_time_metrics")) {
+            lightweight.remove(heavy);
+        }
+        return lightweight;
     }
 
     private SimConfig cloneConfig(SimConfig config) {
@@ -131,6 +160,10 @@ public class ScenarioRunService {
         target.setWeatherConfig(source.getWeatherConfig());
         target.setRandomBounds(source.getRandomBounds());
         target.setPeakConfig(source.getPeakConfig());
+        // 第七轮:之前漏掉 groupConfig,导致批量场景 group override 静默失效
+        if (source.getGroupConfig() != null) {
+            target.setGroupConfig(source.getGroupConfig());
+        }
     }
 
     private ObjectNode buildComparison(ArrayNode results) {

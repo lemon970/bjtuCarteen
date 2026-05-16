@@ -9,6 +9,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controlle
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationReportController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationScenarioController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ApiResponse.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FrameSeatLayout.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\OptimizationRequest.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ProbabilityModelSummary.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\QueueTheoryMetrics.java
@@ -64,4 +65,5 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\S
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationTaskService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationTimelineBuilder.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WaitTimeMetricsCalculator.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WeatherFactorPolicy.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\SimulationApplication.java

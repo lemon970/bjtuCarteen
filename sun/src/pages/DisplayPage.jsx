@@ -58,6 +58,9 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
   const typicalWait = read(summary, 'typical_wait_time_minutes', 'typicalWaitTimeMinutes', 'avg_wait_time_minutes', 'avgWaitTimeMinutes') ?? 0
   const waitStatus = read(read(summary, 'wait_time_insight', 'waitTimeInsight') || {}, 'status') || 'info'
   const utilization = read(summary, 'seat_utilization_rate', 'seatUtilizationRate') ?? 0
+  const peakUtilization = read(summary, 'peak_seat_utilization_rate', 'peakSeatUtilizationRate') ?? 0
+  const turnoverRate = read(summary, 'seat_turnover_rate', 'seatTurnoverRate') ?? 0
+  const timeWeightedUtilization = read(summary, 'seat_time_weighted_utilization', 'seatTimeWeightedUtilization') ?? 0
   const occupiedNow = read(currentFrame, 'seats') ?? 0
   const totalSeats = read(summary, 'total_seats', 'totalSeats') ?? read(currentPoint, 'total_seats', 'totalSeats') ?? 0
   const windowCount = (read(summary, 'window_served_counts', 'windowServedCounts') || []).length
@@ -110,9 +113,9 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
         <MetricCard title="到达人数" value={read(summary, 'arrived_count', 'arrivedCount') ?? 0} benchmark="由到达率和时长决定" />
         <MetricCard title="完成服务" value={read(summary, 'served_count', 'servedCount') ?? 0} benchmark="应接近到达人数" />
         <MetricCard title="典型等待" value={`${formatNumber(typicalWait)} 分钟`} benchmark="0-5 分钟正常" status={waitStatus} />
-        <MetricCard title="座位利用率" value={formatPercent(utilization)} benchmark="高峰常见 40%-70%" />
+        <MetricCard title="座位利用率" value={formatPercent(utilization)} benchmark={`时间加权 ${formatPercent(timeWeightedUtilization)} · 峰值 ${formatPercent(peakUtilization)}`} />
+        <MetricCard title="座位翻台率" value={`${formatNumber(turnoverRate, 2)} 人/座`} benchmark="一次仿真内单个座位平均接待人次" />
         <MetricCard title="打包比例" value={formatPercent(read(summary, 'takeaway_rate', 'takeawayRate') ?? 0)} benchmark="晴天约 12%-20%" />
-        <MetricCard title="峰值排队" value={read(summary, 'max_total_queue_size', 'maxTotalQueueSize') ?? 0} benchmark="判断窗口瓶颈" />
       </section>
 
       <GroupStatsPanel summary={summary} />
@@ -173,7 +176,7 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
         <ChartPanel title="队列与占座趋势" description={reportId ? `报告编号:${reportId}` : '暂无报告。'}>
           <TrendChart timeline={timeline} />
         </ChartPanel>
-        <ChartPanel title="座位占用率" description="按座位秒积分得到的百分比,叠加 70% 舒适阈值。">
+        <ChartPanel title="座位占用率" description="蓝色为已占用 (`seat_utilization_rate`),橙色虚线为不可用率 (含预定)。叠加 70% 舒适阈值。">
           <SeatUtilizationLine timeline={timeline} />
         </ChartPanel>
       </div>

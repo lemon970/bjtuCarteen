@@ -26,9 +26,10 @@ class StudentProfileFactoryTakeawayIntentTest {
 
     @Test
     void wantsTakeawayShouldScaleWithWeatherFactor() {
+        // rainy canonical=1.30 × user 1.25 = 1.625 → intent ≈ 0.20 × 1.625 = 0.325
         SimConfig config = newConfig(0.20, "rainy", 1.25);
         double rate = sampleTakeawayRate(config);
-        assertTrue(rate >= 0.21 && rate <= 0.30,
+        assertTrue(rate >= 0.28 && rate <= 0.37,
                 "wantsTakeaway rate=" + rate + " should reflect weather scaling");
     }
 

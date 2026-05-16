@@ -36,7 +36,7 @@ flowchart LR
   J --> K["AnalysisController"]
   K --> L["ExternalAnalysisService"]
   L --> M["canteen-analyze.exe (mode=analyze)"]
-  M -->|binary missing| N["available: false 降级"]
+  M -->|binary missing| N["InternalStatisticsAnalyzer (Java fallback)"]
   M -->|success| O["confidence_intervals / bottleneck_score / anova"]
   O --> P["前端 AdvancedStatsPanel"]
   N --> P
@@ -65,5 +65,5 @@ flowchart LR
 - 默认响应不包含完整 `history`。
 - 前端不展示原始 JSON，只展示聚合指标和必要解释。
 - 后端核心仿真规则保持兼容，新增场景接口和分析接口不替代原 `/run` 接口。
-- C++ binary 缺失时分析接口返回 `code: 503` + `available: false`，**不抛异常**，确保 Java 端独立可运行。
+- 分析接口降级口径(由 `ExternalAnalysisService.runForReport` 决定): 报告不存在 → `code: 503`; C++ binary 缺失但报告存在 → `code: 0` + Java fallback 结果(`InternalStatisticsAnalyzer`); 二进制调用 / 解析 / 超时失败 → `code: 503`。**不抛异常**,确保 Java 端独立可运行。
 - 不在 Spring 容器中注册 `ObjectMapper` Bean（会触发 `@ConditionalOnMissingBean` 关闭默认 mapper），统一通过 `AppBeansConfig.createReportObjectMapper()` 静态方法获取。

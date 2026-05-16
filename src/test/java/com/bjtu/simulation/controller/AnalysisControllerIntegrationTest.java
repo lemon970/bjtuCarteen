@@ -31,12 +31,25 @@ class AnalysisControllerIntegrationTest {
     }
 
     @Test
-    void runEndpointShouldReturn503WhenBinaryMissing() throws Exception {
-        // No canteen-analyze.exe is present in CI / dev shells, so the service degrades to 503.
+    void runEndpointShouldReturn503WhenReportMissing() throws Exception {
+        // missing-id 不存在,服务返回 503;此场景与 C++ binary 缺失无关,
+        // binary 缺失时 ExternalAnalysisService 走 Java fallback,见 ExternalAnalysisServiceTest。
         MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         mockMvc.perform(post("/api/analysis/run")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reportId\":\"missing-id\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(503));
+    }
+
+    @Test
+    void runEndpointShouldAcceptSnakeCaseReportId() throws Exception {
+        // 第七轮:RunRequest.reportId 加 @JsonAlias("report_id"),前端按 API.md 文档发送
+        // snake_case 同样进入相同处理路径(此处用 missing-id 触发 503,验证字段被解析)
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value(503));
     }

@@ -92,6 +92,7 @@ public class SimulationTimelineBuilder {
                                                int normalWindowCount,
                                                int takeawayWindowCount) {
         int safeTotalSeats = Math.max(0, totalSeats);
+        double freeRate = safeTotalSeats > 0 ? 1.0 : 0.0;
         return new SimulationTimePoint(
                 minute * 60,
                 minute,
@@ -130,7 +131,11 @@ public class SimulationTimelineBuilder {
                 0.0,
                 0.0,
                 0,
-                List.of());
+                List.of(),
+                0,
+                0.0,
+                0.0,
+                freeRate);
     }
 
     private SimulationTimePoint toTimePoint(long minute,
@@ -150,6 +155,23 @@ public class SimulationTimelineBuilder {
         int emptySeats = Math.max(0, safeTotalSeats - occupiedSeats);
         double seatUtilizationRate = safeTotalSeats == 0 ? 0 : round3((double) occupiedSeats / safeTotalSeats);
         WaitWindowStats waitWindow = computeWaitWindow(last.getTime(), waitTimeSamples);
+
+        int reservedSeats = 0;
+        if (last.getTableSnapshots() != null) {
+            for (var snapshot : last.getTableSnapshots()) {
+                reservedSeats += Math.max(0, snapshot.getReservedSeats());
+            }
+        }
+        reservedSeats = Math.min(reservedSeats, Math.max(0, safeTotalSeats - occupiedSeats));
+        double seatUnavailableRate = safeTotalSeats == 0
+                ? 0.0
+                : (double) (occupiedSeats + reservedSeats) / safeTotalSeats;
+        double seatReservedShare = safeTotalSeats == 0
+                ? 0.0
+                : (double) reservedSeats / safeTotalSeats;
+        double seatFreeRate = safeTotalSeats == 0
+                ? 0.0
+                : Math.max(0.0, 1.0 - seatUnavailableRate);
 
         return new SimulationTimePoint(
                 last.getTime(),
@@ -189,7 +211,11 @@ public class SimulationTimelineBuilder {
                 round3(last.getAvgMovementTimeMinutes()),
                 waitWindow.avgWaitMinutes(),
                 waitWindow.sampleCount(),
-                last.getTableSnapshots() == null ? List.of() : last.getTableSnapshots());
+                last.getTableSnapshots() == null ? List.of() : last.getTableSnapshots(),
+                reservedSeats,
+                seatUnavailableRate,
+                seatReservedShare,
+                seatFreeRate);
     }
 
     private List<Integer> normalizeQueues(List<Integer> source, int windowCount) {

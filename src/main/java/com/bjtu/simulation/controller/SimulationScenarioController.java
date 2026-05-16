@@ -18,6 +18,7 @@ import com.bjtu.simulation.service.SimulationReportRepository;
 import com.bjtu.simulation.service.SimulationRunService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/simulation")
@@ -49,7 +50,9 @@ public class SimulationScenarioController {
     }
 
     @PostMapping("/scenarios/run")
-    public ResponseEntity<ApiResponse<JsonNode>> runScenarios(@RequestBody(required = false) ScenarioBatchRunRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(scenarioRunService.runScenarios(request)));
+    public ResponseEntity<ApiResponse<JsonNode>> runScenarios(
+            @RequestBody(required = false) ScenarioBatchRunRequest request,
+            @RequestParam(name = "include_history", defaultValue = "false") boolean includeHistory) {
+        return ResponseEntity.ok(ApiResponse.success(scenarioRunService.runScenarios(request, includeHistory)));
     }
 }

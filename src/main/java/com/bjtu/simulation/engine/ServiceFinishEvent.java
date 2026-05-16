@@ -3,7 +3,7 @@ package com.bjtu.simulation.engine;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
-import com.bjtu.simulation.service.SimulationMath;
+import com.bjtu.simulation.service.WeatherFactorPolicy;
 
 public class ServiceFinishEvent extends BaseEvent {
     private final TakeawayDecisionPolicy decisionPolicy = new TakeawayDecisionPolicy();
@@ -46,15 +46,16 @@ public class ServiceFinishEvent extends BaseEvent {
         TakeawayDecisionPolicy.DecisionProbability probability = resolveProbability(engine, student);
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
         double preference = student == null ? probability.finalProbability() : student.getPackPreference();
-        boolean wantsTakeaway = student != null && student.wantsTakeaway();
+        boolean initialTakeawayIntent = student != null && student.wantsTakeaway();
+        double roll = initialTakeawayIntent ? 0.0 : engine.nextDouble();
 
         engine.setStudentState(studentId, StudentState.DECIDE_DINE_IN_OR_PACK);
-        if (wantsTakeaway) {
-            recordModelTakeaway(engine, partySize, waitMinutes, preference, 0.0, probability);
+        if (initialTakeawayIntent || roll < probability.finalProbability()) {
+            recordModelTakeaway(engine, partySize, waitMinutes, preference, roll, probability, initialTakeawayIntent);
             return;
         }
 
-        recordDineInDecision(engine, partySize, waitMinutes, preference, 0.0, probability);
+        recordDineInDecision(engine, partySize, waitMinutes, preference, roll, probability);
     }
 
     private TakeawayDecisionPolicy.DecisionProbability resolveProbability(SimulationEngine engine, Student student) {
@@ -63,7 +64,8 @@ public class ServiceFinishEvent extends BaseEvent {
         double studentPackPreference = student == null ? basePackProbability : student.getPackPreference();
         double weatherFactor = 1.0;
         if (config != null && config.getWeatherConfig() != null) {
-            weatherFactor = SimulationMath.clamp(config.getWeatherConfig().getWeatherImpactFactor(), 0.0, 5.0);
+            SimConfig.WeatherConfig wc = config.getWeatherConfig();
+            weatherFactor = WeatherFactorPolicy.resolveEffectiveFactor(wc.getCurrentWeather(), wc.getWeatherImpactFactor());
         }
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
         return decisionPolicy.resolve(
@@ -78,7 +80,6 @@ public class ServiceFinishEvent extends BaseEvent {
     }
 
     private void recordForcedTakeaway(SimulationEngine engine, Student student, int partySize) {
-        // 防御:dine-in 学生意外被路由到打包窗口时,归还预定座位
         cancelReservationIfAny(engine, student);
         double preference = student == null ? 1.0 : student.getPackPreference();
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
@@ -97,8 +98,8 @@ public class ServiceFinishEvent extends BaseEvent {
                 0.0,
                 0.0,
                 0.0,
-                "已选择打包窗口",
-                "窗口类型决定打包离开");
+                "dedicated takeaway window",
+                "window type forces takeaway");
         engine.recordTakeaway(partySize);
         engine.recordLeave(partySize);
         engine.setStudentState(studentId, StudentState.PACK_LEAVE);
@@ -111,9 +112,13 @@ public class ServiceFinishEvent extends BaseEvent {
                                      double waitMinutes,
                                      double preference,
                                      double roll,
-                                     TakeawayDecisionPolicy.DecisionProbability probability) {
+                                     TakeawayDecisionPolicy.DecisionProbability probability,
+                                     boolean initialTakeawayIntent) {
         Student student = engine.getStudent(studentId);
         cancelReservationIfAny(engine, student);
+        String decisionReason = initialTakeawayIntent
+                ? "arrival takeaway intent retained; normal window serves takeaway"
+                : "dynamic probability roll selected takeaway";
         engine.recordTakeawayDecision(
                 studentId,
                 "MODEL_TRIGGER",
@@ -129,8 +134,8 @@ public class ServiceFinishEvent extends BaseEvent {
                 probability.waitPressureFactor(),
                 probability.queuePressureFactor(),
                 probability.weatherFactor(),
-                "普通窗口完成服务",
-                "到达时已决定打包(意图前置),普通窗口兼做打包");
+                "normal window service completed",
+                decisionReason);
         engine.recordTakeaway(partySize);
         if (probability.weatherFactor() > 0.001) {
             engine.recordWeatherDrivenTakeaway(partySize);
@@ -162,8 +167,8 @@ public class ServiceFinishEvent extends BaseEvent {
                 probability.waitPressureFactor(),
                 probability.queuePressureFactor(),
                 probability.weatherFactor(),
-                "普通窗口完成服务",
-                "到达时已决定堂食(意图前置)");
+                "normal window service completed",
+                "dynamic probability roll kept dine-in");
         engine.setStudentState(studentId, StudentState.WALKING_TO_SEAT);
         engine.recordSeatDecisionPending(partySize);
         long movementTime = engine.resolveMovementTimeSeconds();

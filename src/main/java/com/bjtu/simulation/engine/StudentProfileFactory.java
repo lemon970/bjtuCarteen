@@ -6,6 +6,7 @@ import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.model.ArrivalGroup;
 import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.service.SimulationMath;
+import com.bjtu.simulation.service.WeatherFactorPolicy;
 
 class StudentProfileFactory {
 
@@ -44,9 +45,10 @@ class StudentProfileFactory {
         double packPreference = discretizeProbability(rawPackPreference, 0.05);
         Student.PackPreferenceLevel packPreferenceLevel = resolvePackPreferenceLevel(packPreference);
 
-        double weatherFactor = config.getWeatherConfig() == null
-                ? 1.0
-                : SimulationMath.clamp(config.getWeatherConfig().getWeatherImpactFactor(), 0.5, 2.0);
+        SimConfig.WeatherConfig weatherConfig = config.getWeatherConfig();
+        String weatherType = weatherConfig == null ? null : weatherConfig.getCurrentWeather();
+        double userWeatherFactor = weatherConfig == null ? 1.0 : weatherConfig.getWeatherImpactFactor();
+        double weatherFactor = WeatherFactorPolicy.resolveEffectiveFactor(weatherType, userWeatherFactor);
         double basePack = SimulationMath.clamp(config.getPackProbability(), 0.0, 1.0);
         double intentProbability = SimulationMath.clamp(basePack * weatherFactor, 0.0, 0.95);
         boolean wantsTakeaway = random.nextDouble() < intentProbability;

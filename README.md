@@ -85,6 +85,7 @@ Content-Type: application/json
 | `seat_shortage` | 座位紧张模型 | 验证占座与打包触发 |
 | `takeaway_intervention` | 打包窗口干预 | 验证增设打包窗口效果 |
 | `rain_emergency` | 雨天应急预案 | 验证天气与压力联动 |
+| `group_high_concentration` | 群体高密度到达 | 验证拼桌、成组占座、打包率联动 |
 
 示例请求文件见 [examples/scenarios/canteen-scenario-set.json](examples/scenarios/canteen-scenario-set.json)。
 
@@ -94,6 +95,7 @@ Content-Type: application/json
 - 比较干预效果：同时运行 `lunch_peak_pressure` 和 `takeaway_intervention`，比较典型等待、打包率和座位利用率。
 - 检查座位压力：运行 `seat_shortage`，查看等待体验和座位状态图。
 - 验证雨天预案：运行 `rain_emergency`，观察天气因子对打包率和排队压力的影响。
+- 验证成组占座：运行 `group_high_concentration`，检查座位热力图中橙色「成组占用」格子是否每帧均在显示，并核对打包率联动。
 
 ## 分析子系统
 
@@ -113,7 +115,8 @@ Content-Type: application/json
 { "scenario_ids": ["lunch_peak_pressure", "takeaway_intervention"] }
 ```
 
-返回 `data` 包含 `confidence_intervals.{wait,utilization,takeaway_rate}` / `bottleneck_score` / `anova` 三类字段。binary 缺失时返回 503 + `available: false`，前端 `<AdvancedStatsPanel>` 优雅降级显示「分析二进制未找到」。
+返回 `data` 包含 `confidence_intervals.{wait,utilization,takeaway_rate}` / `bottleneck_score` / `anova` 三类字段。
+报告不存在 → 返回 503 + `available: false`；C++ binary 缺失但报告存在 → 返回 200 + Java fallback 实现的统计结果（由 `InternalStatisticsAnalyzer` 提供，标记 `source: "java_fallback"`）。前端 `<AdvancedStatsPanel>` 在两种情况下都能正常渲染。
 
 设计依据见 `docs/analysis/adr/002-cpp-as-postprocessor.md`。
 

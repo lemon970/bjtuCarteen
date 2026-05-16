@@ -8,6 +8,7 @@ import com.bjtu.simulation.dto.ScenarioBatchRunRequest;
 import com.bjtu.simulation.service.ExternalAnalysisService;
 import com.bjtu.simulation.service.ExternalAnalysisService.AnalysisResult;
 import com.bjtu.simulation.service.ScenarioRunService;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -104,6 +105,7 @@ public class AnalysisController {
     }
 
     public static class RunRequest {
+        @JsonAlias("report_id")
         private String reportId;
 
         public String getReportId() { return reportId; }

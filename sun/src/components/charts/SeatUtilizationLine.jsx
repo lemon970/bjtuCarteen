@@ -14,8 +14,10 @@ function SeatUtilizationLine({ timeline }) {
       (best, p, idx) => (p.seatRate > best.value ? { value: p.seatRate, index: idx, minute: p.minute } : best),
       { value: 0, index: 0, minute: 0 }
     )
+    const hasUnavailable = points.some((p) => p.seatUnavailableRate > 0 && p.seatUnavailableRate >= p.seatRate)
     return {
       grid: { left: 56, right: 28, top: 32, bottom: 36 },
+      legend: hasUnavailable ? { top: 4, right: 12, textStyle: { color: '#475569', fontSize: 11 } } : { show: false },
       tooltip: {
         trigger: 'axis',
         valueFormatter: (v) => `${(Number(v) * 100).toFixed(1)}%`
@@ -32,30 +34,23 @@ function SeatUtilizationLine({ timeline }) {
       },
       yAxis: {
         type: 'value',
-        name: '座位占用率',
+        name: '座位状态',
         nameTextStyle: { color: '#64748b' },
         axisLabel: { color: '#64748b', formatter: (v) => `${Math.round(v * 100)}%` },
         splitLine: { lineStyle: { color: '#e2e8f0' } },
         max: 1,
         min: 0
       },
-      visualMap: {
-        show: false,
-        type: 'continuous',
-        min: 0,
-        max: 1,
-        seriesIndex: 0,
-        inRange: {
-          color: ['#0d9488', '#1e40af', '#b45309']
-        }
-      },
       series: [
         {
+          name: '已占用',
           type: 'line',
           smooth: true,
           showSymbol: false,
           data: points.map((p) => p.seatRate),
-          areaStyle: { opacity: 0.18 },
+          lineStyle: { color: '#1e40af', width: 2 },
+          itemStyle: { color: '#1e40af' },
+          areaStyle: { color: '#1e40af', opacity: 0.18 },
           markPoint: {
             symbolSize: 60,
             data: peak.value > 0
@@ -72,6 +67,15 @@ function SeatUtilizationLine({ timeline }) {
               { yAxis: 0.7, label: { formatter: '舒适阈值 70%', color: '#475569' } }
             ]
           }
+        },
+        {
+          name: '不可用 (含预定)',
+          type: 'line',
+          smooth: true,
+          showSymbol: false,
+          data: points.map((p) => p.seatUnavailableRate),
+          lineStyle: { color: '#b45309', width: 1.5, type: 'dashed' },
+          itemStyle: { color: '#b45309' }
         }
       ]
     }

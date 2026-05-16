@@ -81,6 +81,15 @@ public class SimulationSummary {
     private final double seatWaitAvgSeconds;
     private final double reservedSeatsAvg;
 
+    /** 第八轮:运营视角的"时间加权座位占用率" = 座位×秒 / (totalSeats × 仿真总秒数)。 */
+    private final double seatTimeWeightedUtilization;
+    /** 第八轮:吞吐视角的"翻台率" = dineInCount / totalSeats,反映每个座位平均接待人数。 */
+    private final double seatTurnoverRate;
+    /** 第八轮:峰值座位占用率 = maxOccupiedSeats / totalSeats。 */
+    private final double peakSeatUtilizationRate;
+    /** 第八轮:稳态座位占用率,排除前 10% 与后 10% 帧后的均值,避免被冷启动/排空拉偏。 */
+    private final double steadyStateSeatUtilization;
+
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
                              int arrivedCount,
@@ -142,7 +151,11 @@ public class SimulationSummary {
                              double noSeatAbandonedRate,
                              int seatWaitQueueMax,
                              double seatWaitAvgSeconds,
-                             double reservedSeatsAvg) {
+                             double reservedSeatsAvg,
+                             double seatTimeWeightedUtilization,
+                             double seatTurnoverRate,
+                             double peakSeatUtilizationRate,
+                             double steadyStateSeatUtilization) {
         this.history = history;
         this.timeline = timeline;
         this.arrivedCount = arrivedCount;
@@ -205,6 +218,17 @@ public class SimulationSummary {
         this.seatWaitQueueMax = seatWaitQueueMax;
         this.seatWaitAvgSeconds = seatWaitAvgSeconds;
         this.reservedSeatsAvg = reservedSeatsAvg;
+        this.seatTimeWeightedUtilization = round3(seatTimeWeightedUtilization);
+        this.seatTurnoverRate = round3(seatTurnoverRate);
+        this.peakSeatUtilizationRate = round3(peakSeatUtilizationRate);
+        this.steadyStateSeatUtilization = round3(steadyStateSeatUtilization);
+    }
+
+    private static double round3(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return Math.round(value * 1000.0) / 1000.0;
     }
 
     public List<SimulationResult> getHistory() {
@@ -493,5 +517,21 @@ public class SimulationSummary {
 
     public double getReservedSeatsAvg() {
         return reservedSeatsAvg;
+    }
+
+    public double getSeatTimeWeightedUtilization() {
+        return seatTimeWeightedUtilization;
+    }
+
+    public double getSeatTurnoverRate() {
+        return seatTurnoverRate;
+    }
+
+    public double getPeakSeatUtilizationRate() {
+        return peakSeatUtilizationRate;
+    }
+
+    public double getSteadyStateSeatUtilization() {
+        return steadyStateSeatUtilization;
     }
 }

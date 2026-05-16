@@ -16,7 +16,9 @@ function ScenarioCompareTabs({ results = [] }) {
 
   const rows = [
     ['typical_wait_time_minutes', 'typicalWaitTimeMinutes', '典型等待 / 分钟'],
-    ['seat_utilization_rate', 'seatUtilizationRate', '座位利用率', 'percent'],
+    ['seat_utilization_rate', 'seatUtilizationRate', '座位利用率(均值)', 'percent'],
+    ['peak_seat_utilization_rate', 'peakSeatUtilizationRate', '座位利用率(峰值)', 'percent'],
+    ['seat_turnover_rate', 'seatTurnoverRate', '座位翻台率(人/座)'],
     ['takeaway_rate', 'takeawayRate', '打包率', 'percent'],
     ['arrived_count', 'arrivedCount', '到达人数'],
     ['max_total_queue_size', 'maxTotalQueueSize', '峰值排队']

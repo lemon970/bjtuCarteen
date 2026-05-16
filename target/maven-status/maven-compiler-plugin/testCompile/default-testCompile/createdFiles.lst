@@ -1,4 +1,6 @@
 com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.class
+com\bjtu\simulation\engine\DynamicTakeawayDecisionTest.class
+com\bjtu\simulation\service\SimulationTaskServiceLifecycleTest.class
 com\bjtu\simulation\engine\TakeawayRateBoundTest.class
 com\bjtu\simulation\controller\SimulationControllerTest.class
 com\bjtu\simulation\engine\SeatWaitQueueTest.class
@@ -10,5 +12,10 @@ com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicyTest.class
 com\bjtu\simulation\service\WaitTimeMetricsCalculatorTest.class
+com\bjtu\simulation\service\ScenarioRunServiceContractTest.class
+com\bjtu\simulation\service\SeatUtilizationMetricsTest.class
+com\bjtu\simulation\service\TimelineFrameLayoutTest.class
+com\bjtu\simulation\service\WeatherFactorPolicyTest.class
+com\bjtu\simulation\engine\WindowBalancingTest.class
 com\bjtu\simulation\controller\SimulationApiIntegrationTest.class
 com\bjtu\simulation\engine\SeatReservationTest.class

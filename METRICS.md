@@ -75,11 +75,48 @@ Associated fields:
 
 ## Seat metrics
 
-- `occupiedSeats`: seats occupied at final state
+### 基础占用指标(向后兼容,瞬时占用比)
+
+- `occupiedSeats`:当前仿真终态的占用座位数
 - `emptySeats = max(0, totalSeats - occupiedSeats)`
-- `avgOccupiedSeats`: sample mean over snapshots
-- `maxOccupiedSeats`: max sampled occupied seats
-- `seatUtilizationRate = avgOccupiedSeats / totalSeats` (0 when `totalSeats = 0`)
+- `avgOccupiedSeats`:运行期采样均值
+- `maxOccupiedSeats`:运行期采样最大值
+- `seatUtilizationRate = avgOccupiedSeats / totalSeats`(`totalSeats = 0` 时为 0)— 反映"平均瞬时占用比",对热身/排空敏感
+
+### 第八轮:分层占用指标(按视角分组)
+
+按需选用,而非用 `seatUtilizationRate` 一个数解释一切。
+
+**学生视角 — 找不找得到座(基于每帧)**:
+
+- `seat_unavailable_rate = (occupiedSeats + reservedSeats) / totalSeats`
+  - 包含已落座 + 已预定但未落座的座位,代表"目前实际可坐的座位比例"
+- `seat_reserved_share = reservedSeats / totalSeats`
+  - 在途/正在落座的占比,可观察反向 → 大量预定但少量落座意味着寻位耗时长
+- `seat_free_rate = 1 - seat_unavailable_rate`
+  - 直观的"剩余可用座位比例"
+- 不变量:`seat_unavailable_rate ≥ seat_utilization_rate`(因 reserved 加在分子上)
+
+**运营视角 — 整体利用是否充分(基于全程)**:
+
+- `seatTimeWeightedUtilization = Σ(table.occupiedSeatSeconds) / (totalSeats × simulationEndTimeSeconds)`
+  - 直接由 `TableSnapshot.occupiedSeatSeconds` 累加,**真实的时间加权占用率**,不会被采样间隔与帧数偏好影响
+- `peakSeatUtilizationRate = maxOccupiedSeats / totalSeats`
+  - 整次仿真出现的最高瞬时占用率
+- `steadyStateSeatUtilization`
+  - 排除前 10% 与后 10% 的 timeline 帧后的均值,代表稳态(午峰中段)负载;实现位于 `SimulationRunService.computeSteadyStateUtilization`
+
+**吞吐视角 — 每个座位接待了多少人**:
+
+- `seatTurnoverRate = dineInCount / totalSeats`
+  - 翻台率,可大于 1。`5.0` 意味着仿真期间每个座位平均接待 5 人次
+
+### 选用建议
+
+- 评估"高峰期座位是否够用":看 `peakSeatUtilizationRate` + `seat_unavailable_rate`(峰值帧)
+- 评估"全天座位资源是否合理":看 `seatTimeWeightedUtilization`
+- 评估"运营效率":看 `seatTurnoverRate`
+- 与历史报告/旧前端对照:沿用 `seatUtilizationRate`,但需明白它只是"采样均值"
 
 ## Window throughput metrics
 
@@ -93,7 +130,8 @@ Associated fields:
 - time: `timeSeconds`, `minute`, `eventMessage`
 - window state: `windowQueueSizes`, `windowCount`, `totalQueueSize`, `queueingStudentCount`
 - busiest window state: `busiestWindowId`, `busiestWindowQueueSize`
-- seat state: `totalSeats`, `occupiedSeats`, `diningStudentCount`, `emptySeats`, `seatUtilizationRate`
+- seat state: `totalSeats`, `occupiedSeats`, `diningStudentCount`, `emptySeats`, `seatUtilizationRate`(瞬时占用比), `reservedSeats`, `seatUnavailableRate`, `seatReservedShare`, `seatFreeRate`
+- per-frame seat layout: `frameSeatLayout[]` — 第八轮新增,每张桌子的紧凑结构(`tableId` / `capacity` / `occupiedSeats` / `reservedSeats` / `occupiedGroupIds` / `reservedGroupIds`),前端时间轴回放据此渲染成组占用色块。完整的 `tableSnapshots` 仍按既有策略剥除以控制响应大小。
 - cumulative arrival counters: arrived/normal/classPeak/rainPeak
 - cumulative outcome counters: abandoned/abandonedByQueue/served/dineIn/takeaway/pendingSeatDecision/noSeatSwitch/weatherDrivenTakeaway/leave
 
@@ -162,9 +200,14 @@ Interpretation:
 
 Dynamic takeaway probability:
 
-- `ServiceFinishEvent` now adds queue-pressure feedback to the takeaway decision.
-- Feedback input is current total queue size after the student leaves the service queue.
-- Feedback pressure is normalized by `windowCount * queueLimit` and capped before being converted into a probability bonus.
+- `ServiceFinishEvent` 在每次服务完成时调用 `TakeawayDecisionPolicy.resolve(...)` 计算 `finalProbability`,然后:
+  - 若学生 `initialTakeawayIntent=true`(到达时已倾向打包,通常受天气驱动),`roll = 0.0`,直接判定为打包,`decisionReason="arrival takeaway intent retained; normal window serves takeaway"`
+  - 若 `initialTakeawayIntent=false`(dine-in 倾向),`roll = engine.nextDouble()`,当 `roll < finalProbability` 时翻转为打包,`decisionReason="dynamic probability roll selected takeaway"`,并自动取消已预约的座位(`cancelReservationIfAny`),不污染座位统计
+- `finalProbability = clamp(packProbability × weatherEffectiveFactor + queuePressureBonus + seatPressureBonus, 0, 1)`
+  - `weatherEffectiveFactor = WeatherFactorPolicy.resolveEffectiveFactor(weatherType, userFactor)`,典型基线 sunny=1.00 / rainy=1.30 / stormy=1.55,与用户给出的 `weather_impact_factor` 相乘,clamp 到 [0.5, 3.0]
+  - `queuePressureBonus`:当前总队长 / `(windowCount × queueLimit)` 归一化后转概率
+  - `seatPressureBonus`:座位占用率高时加权
+- 因此 `pack_probability`(配置)是**基础概率**,**运行时由 `TakeawayDecisionPolicy` 重算并真实参与决策**,而非仅记录用字段
 
 Overlapping class peaks:
 

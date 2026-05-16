@@ -21,7 +21,7 @@
 - `duration`：仿真时长，单位小时。
 - `arrival_rate` / `arrivalRate`：到达率，单位人/小时，是权威人数来源。
 - `queue_limit` / `queueLimit`：单窗口排队阈值。
-- `pack_probability` / `packProbability`：基础打包概率。
+- `pack_probability` / `packProbability`:基础打包概率。运行时 `ServiceFinishEvent` 通过 `TakeawayDecisionPolicy.resolve` 把它与 `WeatherFactorPolicy` 解析出的天气有效因子、队列压力、座位压力共同加权得到 `finalProbability`,真正参与决策(详见 `METRICS.md` "Dynamic feedback")。
 - `base_config.window_count`：窗口总数。
 - `base_config.takeaway_window_count`：打包窗口数。
 - `base_config.total_seats`：座位总数。
@@ -40,6 +40,7 @@
 - `seat_shortage`
 - `takeaway_intervention`
 - `rain_emergency`
+- `group_high_concentration`
 
 每个模型包含：
 
@@ -54,6 +55,8 @@
 
 批量运行一个或多个预设模型。
 
+可选 query 参数:`include_history`(默认 `false`)。默认情况下批量响应会从每个 `summary` 中**剥除大字段**(`history` / `timeline` / `seat_cells` / `table_snapshots` / `arrival_samples` / `takeaway_decision_records` / `wait_time_metrics`),仅保留聚合数值指标(如 `arrived_count`、`takeaway_rate`、`typical_wait_time_minutes`),把 6 场景响应体从约 1MB+ 压到 100KB 内。需要完整时间轴时显式传 `?include_history=true`。
+
 ```json
 {
   "scenario_ids": [
@@ -61,10 +64,13 @@
     "lunch_peak_pressure"
   ],
   "overrides": {
-    "seed": 20260610
+    "seed": 20260610,
+    "group_config": { "enabled": true, "group_count": 20 }
   }
 }
 ```
+
+`overrides` 顶层键采用 snake_case(由全局 mapper 命名策略决定),其中 `group_config` 也会经 `ScenarioRunService.copyInto` 真实传入到达调度器。
 
 响应 `data`：
 
@@ -133,7 +139,11 @@
 | `dine_in_count` | integer | 人 | 堂食人数 |
 | `takeaway_count` | integer | 人 | 打包人数 |
 | `takeaway_rate` | number | 比例 | `takeaway_count / served_count` |
-| `seat_utilization_rate` | number | 比例 | 占用座位秒 / 总座位秒 |
+| `seat_utilization_rate` | number | 比例 | 兼容字段:运行期采样均值 / 总座位数(瞬时占用比) |
+| `seat_time_weighted_utilization` | number | 比例 | **第八轮新增**·运营视角·占用座次秒 / (总座位 × 仿真总秒) |
+| `peak_seat_utilization_rate` | number | 比例 | **第八轮新增**·`max_occupied_seats / total_seats` 峰值瞬时占用率 |
+| `steady_state_seat_utilization` | number | 比例 | **第八轮新增**·剔除前 10% 与后 10% 帧后的均值,稳态负载 |
+| `seat_turnover_rate` | number | 倍数 | **第八轮新增**·吞吐视角·`dine_in_count / total_seats`,翻台率,可大于 1 |
 | `max_total_queue_size` | integer | 人 | 所有窗口总队列峰值 |
 | `avg_wait_time_minutes` | number | 分钟 | 旧全量均值，兼容字段 |
 | `raw_avg_wait_time_minutes` | number | 分钟 | 全量等待均值 |
@@ -146,7 +156,7 @@
 | `edge_wait_sample_rate` | number | 比例 | 开头和结尾阶段样本占比 |
 | `wait_time_distribution` | array | - | 等待分桶 |
 | `wait_time_insight` | object | - | 等待体验状态和归因 |
-| `timeline` | array | - | 分钟级快照 |
+| `timeline` | array | - | 分钟级快照。每帧除已有 `seat_utilization_rate` 外,还包含 `seat_unavailable_rate` / `seat_reserved_share` / `seat_free_rate` / `reserved_seats`,以及 `frame_seat_layout[]`(每张桌子的紧凑结构,前端时间轴回放据此渲染成组占用色块)。`table_snapshots` 仍按既有策略剥除以控制响应大小。|
 | `total_peak_time_minutes` | number | 分钟 | 总队列峰值出现的首个分钟（与 `peakTimeMinutes` 单窗口峰值口径区分）|
 
 ## 6. 等待体验模型
@@ -174,7 +184,12 @@ wait = serviceStartTime - queueEnterTime
 
 ## 7. 高级统计后处理（C++ 子系统）
 
-由 `AnalysisController` 提供，内部通过 `ProcessBuilder` 调用 `dataAnalyze/bin/canteen-analyze.exe`，30 秒超时。binary 缺失或调用失败时返回 `code: 503`，`data` 退化为 `{ "available": false, "reason": "..." }`，**前端可据此优雅降级**。
+由 `AnalysisController` 提供，内部通过 `ProcessBuilder` 调用 `dataAnalyze/bin/canteen-analyze.exe`，30 秒超时。
+
+降级语义:
+- **报告不存在**(`reportId` 在 `reports/` 目录中找不到)→ 返回 `code: 503`，`data = { "available": false, "reason": "report not found: ..." }`
+- **C++ binary 缺失但报告存在** → 返回 `code: 0` + 由 `InternalStatisticsAnalyzer`(Java)计算的统计结果,响应中带 `source: "java_fallback"` 标记,**前端无需特殊处理**
+- **C++ binary 调用失败 / 解析失败 / 超时** → 返回 `code: 503`,`data` 标记 `available: false`
 
 ### `POST /api/analysis/run`
 
@@ -182,13 +197,16 @@ wait = serviceStartTime - queueEnterTime
 { "report_id": "<simulation report id>" }
 ```
 
-约束：`report_id` 必须通过 `SimulationReportRepository.isSafeReportId` 校验（仅字母、数字、下划线、横线），否则 `code: 400`。
+请求体兼容 snake_case 与 camelCase:`report_id` 与 `reportId` 二者任一即可(由 `RunRequest` 上的 `@JsonAlias("report_id")` 提供)。
+
+约束:`report_id` 必须通过 `SimulationReportRepository.isSafeReportId` 校验(仅字母、数字、下划线、横线),否则 `code: 400`。
 
 成功响应 `data` 主要字段：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `available` | boolean | 是否成功调用 C++ binary |
+| `available` | boolean | 报告存在且分析可用(C++ 直接成功 或 Java fallback 成功)|
+| `source` | string | `"cpp-canteen-analyze"`(C++ 路径)或 `"java_fallback"`(binary 缺失时由 `InternalStatisticsAnalyzer` 计算)|
 | `report_id` | string | 回显报告 ID |
 | `confidence_intervals.wait` | object | `{ point, lower, upper, alpha }` 等待时间 95% CI |
 | `confidence_intervals.utilization` | object | 同上结构，座位利用率 95% CI |
@@ -219,6 +237,6 @@ wait = serviceStartTime - queueEnterTime
 |---|---|
 | 0 | 成功 |
 | 400 | 参数缺失 / 非法 report_id / 场景数不足 |
-| 503 | C++ binary 缺失或超时（30s）→ `available: false` |
+| 503 | 报告不存在 / C++ binary 调用失败 / 超时(30s)→ `available: false`(注:binary 缺失但报告存在时不再返回 503,会落到 Java fallback) |
 
 详见 `docs/analysis/adr/002-cpp-as-postprocessor.md`。

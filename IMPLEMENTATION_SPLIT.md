@@ -24,7 +24,7 @@
 9. Minute-level timeline output added for frontend charting.
 10. Spring DI 全面落地：11 个 Service `@Service` + Controller 构造器注入；`SimulationTaskService` `@PreDestroy shutdown()`。
 11. C++ 后处理接入：`AnalysisController` + `ExternalAnalysisService`，binary 缺失优雅降级。
-12. Baseline + integration tests added — 共 50 项全绿。
+12. Baseline + integration tests added — 第七轮迭代后共 88 项全绿(`mvn -DskipFrontend=true test`)。
 
 ## Backend stable surface
 
@@ -53,4 +53,4 @@
 1. Confirm all field names from `API.md` before UI binding.
 2. Confirm metric formulas from `METRICS.md` before chart labels.
 3. Confirm timeline granularity (minute) for all chart axes.
-4. Confirm error handling flow using `code/message`（含 `code: 503` + `available: false` 的降级路径）。
+4. Confirm error handling flow using `code/message`(报告不存在 → `code: 503`; binary 缺失但报告存在 → `code: 0` + Java fallback,响应内带 `source: "java_fallback"`)。

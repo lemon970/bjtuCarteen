@@ -61,7 +61,8 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
         title="结论摘要"
         items={[
           `典型等待 ${formatNumber(typicalWait)} 分钟,全量均值 ${formatNumber(read(summary, 'raw_avg_wait_time_minutes', 'rawAvgWaitTimeMinutes', 'avg_wait_time_minutes', 'avgWaitTimeMinutes') ?? 0)} 分钟。`,
-          `峰值座位利用率 ${formatPercent(analysis.peak.seatRate)},出现在第 ${analysis.peak.minute} 分钟。`,
+          `峰值座位利用率 ${formatPercent(read(summary, 'peak_seat_utilization_rate', 'peakSeatUtilizationRate') ?? analysis.peak.seatRate)},稳态(中段 80%)均值 ${formatPercent(read(summary, 'steady_state_seat_utilization', 'steadyStateSeatUtilization') ?? 0)},时间加权均值 ${formatPercent(read(summary, 'seat_time_weighted_utilization', 'seatTimeWeightedUtilization') ?? 0)}。`,
+          `座位翻台率 ${formatNumber(read(summary, 'seat_turnover_rate', 'seatTurnoverRate') ?? 0, 2)} 人/座(单座位平均接待人次,可大于 1)。`,
           `最大总排队人数 ${analysis.maxQueue},到达间隔模型拟合度 ${lowSample ? `样本不足(${arrivalSampleCount})` : formatPercent(interarrivalAccuracy)}。`
         ]}
       />
