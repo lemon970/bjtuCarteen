@@ -5,7 +5,13 @@ import { useEcharts } from '../utils/useEcharts'
 
 function TakeawayRatePanel({ summary, config }) {
   const actualRate = toNumber(read(summary, 'takeaway_rate', 'takeawayRate'), 0)
-  const baseRate = toNumber(read(config || {}, 'pack_probability', 'packProbability'), 0)
+  const rawPack = toNumber(read(config || {}, 'pack_probability', 'packProbability'), 0)
+  const theoretical = toNumber(read(summary, 'theoretical_takeaway_rate', 'theoreticalTakeawayRate'), null)
+  const baseRate = theoretical != null && theoretical > 0 ? theoretical : rawPack
+  const breakdown = read(summary, 'takeaway_rate_breakdown', 'takeawayRateBreakdown') || {}
+  const initialIntentRate = toNumber(read(breakdown, 'initial_intent_rate', 'initialIntentRate'), 0)
+  const dynamicFlipRate = toNumber(read(breakdown, 'dynamic_flip_rate', 'dynamicFlipRate'), 0)
+  const noSeatForcedRate = toNumber(read(breakdown, 'no_seat_forced_rate', 'noSeatForcedRate'), 0)
   const takeawayCount = toNumber(read(summary, 'takeaway_count', 'takeawayCount'), 0)
   const servedCount = toNumber(read(summary, 'served_count', 'servedCount'), 0)
   const takeawayWindowServed = toNumber(read(summary, 'takeaway_window_served_count', 'takeawayWindowServedCount'), 0)
@@ -37,6 +43,7 @@ function TakeawayRatePanel({ summary, config }) {
       const rate = denom > 0 ? takeaway / denom : 0
       points.push([minute, rate])
     }
+    const yMax = Math.max(0.6, Math.max(baseRate, actualRate) * 1.5)
     return {
       grid: { left: 0, right: 0, top: 4, bottom: 4 },
       tooltip: {
@@ -47,7 +54,7 @@ function TakeawayRatePanel({ summary, config }) {
         }
       },
       xAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
-      yAxis: { type: 'value', show: false, min: 0, max: Math.max(0.5, baseRate * 2) },
+      yAxis: { type: 'value', show: false, min: 0, max: yMax },
       series: [
         {
           type: 'line',
@@ -71,7 +78,7 @@ function TakeawayRatePanel({ summary, config }) {
         }
       ]
     }
-  }, [timeline, baseRate, status])
+  }, [timeline, baseRate, actualRate, status])
 
   const sparkRef = useEcharts(sparkOption, [sparkOption])
 
@@ -80,7 +87,7 @@ function TakeawayRatePanel({ summary, config }) {
       <div className="panel-title">
         <div>
           <h2>打包率主面板</h2>
-          <p>实际打包率 vs 基准 pack_probability,偏离度超过 15% 转黄,超过 30% 转红。</p>
+          <p>实际打包率 vs 理论基准(packProbability × weatherFactor),偏离度超过 15% 转黄,超过 30% 转红。</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-medium ${badgeClass}`}>{badgeText}</span>
       </div>
@@ -94,15 +101,24 @@ function TakeawayRatePanel({ summary, config }) {
             {takeawayWindowServed > 0 && ` · 打包窗口服务 ${takeawayWindowServed} 人`}
           </p>
           <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-            <Fact label="基准 pack_probability" value={formatPercent(baseRate, 1)} hint="config 输入" />
+            <Fact
+              label="基准(已含天气)"
+              value={formatPercent(baseRate, 1)}
+              hint={theoretical != null ? `= packProb ${formatPercent(rawPack, 1)} × weatherFactor` : 'config 输入(无 weather 调整)'}
+            />
             <Fact label="天气驱动打包" value={weatherDriven} hint="rainy/snowy 偏好抬升" />
             <Fact label="无座离开" value={`${noSeatAbandoned} (${formatPercent(noSeatAbandonedRate, 1)})`} hint="想堂食但无座,不计打包" />
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+            <Fact label="初始意图占比" value={formatPercent(initialIntentRate, 1)} hint="到达即决定打包" />
+            <Fact label="动态翻转占比" value={formatPercent(dynamicFlipRate, 1)} hint={`完成服务后翻转 ${weatherDriven}`} />
+            <Fact label="无座强制占比" value={formatPercent(noSeatForcedRate, 1)} hint={`堂食意图无座 ${noSeatSwitch}`} />
           </div>
         </div>
         <div className="rounded-2xl border border-canvas-border bg-canvas-surface p-5">
           <div className="flex items-center justify-between">
             <p className="field-label">累计打包率走势</p>
-            <span className="text-xs text-slate-400">虚线 = 基准</span>
+            <span className="text-xs text-slate-400">虚线 = 理论基准</span>
           </div>
           <div ref={sparkRef} className="mt-3 h-24 w-full" />
           <p className="mt-2 text-xs text-slate-500">
@@ -125,3 +141,4 @@ function Fact({ label, value, hint }) {
 }
 
 export default TakeawayRatePanel
+

@@ -112,6 +112,40 @@ class TimelineFrameLayoutTest {
                 "expected at least one frame to expose occupied_group_ids in JSON");
     }
 
+    /**
+     * 第十轮 C3:frame_seat_layout 应当稀疏化 — 完全空桌(occupied=0 && reserved=0)
+     * 不再出现在 layout 数组里。仿真开头(无人到达)和无活动桌应该是空 layout 或仅包含
+     * 有占用/预定的桌子,JSON 体积显著降低。
+     */
+    @Test
+    void emptyTablesShouldBeOmittedFromFrameSeatLayout() {
+        SimulationReport report = runService.run(highGroupPressureConfig());
+        List<SimulationTimePoint> timeline = report.getSummary().getTimeline();
+        int totalTables = report.getSummary().getTableSnapshots() == null
+                ? 0 : report.getSummary().getTableSnapshots().size();
+        assertTrue(totalTables > 0, "expected non-zero table count");
+
+        // 至少有一帧的 layout 长度严格 < totalTables(证明稀疏化生效)
+        boolean anyFrameSparser = false;
+        // 对每一个非空 layout 帧:任何条目都必须有 occupied 或 reserved > 0
+        for (SimulationTimePoint point : timeline) {
+            if (point.getFrameSeatLayout() == null) continue;
+            int layoutSize = point.getFrameSeatLayout().size();
+            if (layoutSize > 0 && layoutSize < totalTables) {
+                anyFrameSparser = true;
+            }
+            point.getFrameSeatLayout().forEach(layout -> {
+                int sum = layout.getOccupiedSeats() + layout.getReservedSeats();
+                assertTrue(sum > 0,
+                        "every entry in frame_seat_layout must have occupied+reserved > 0, got 0 for tableId="
+                                + layout.getTableId());
+            });
+        }
+        assertTrue(anyFrameSparser,
+                "expected at least one frame where layout is sparser than full table count, "
+                        + "totalTables=" + totalTables);
+    }
+
     private SimConfig highGroupPressureConfig() {
         SimConfig config = new SimConfig();
         config.setSimulationName("test-frame-layout");

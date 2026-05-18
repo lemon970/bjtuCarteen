@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SimulationTimelineBuilder {
-    private static final int MAX_TIMELINE_POINTS = 1000;
+    // 16h 仿真上限 = 960 分钟，加上末尾 dining 长尾后 endMinute 可达 ~1100；
+    // 上限保持为 2000 以确保 stepMinutes 始终为 1（保证 timeline 分钟级语义）。
+    private static final int MAX_TIMELINE_POINTS = 2000;
     private static final long WAIT_WINDOW_SECONDS = 300L;
 
     public List<SimulationTimePoint> build(List<SimulationResult> history,

@@ -11,6 +11,7 @@ import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.bjtu.simulation.dto.SimulationSummary;
 import com.bjtu.simulation.dto.SimulationTimePoint;
+import com.bjtu.simulation.dto.TakeawayRateBreakdown;
 import com.bjtu.simulation.dto.WaitTimeMetrics;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.model.ArrivalSample;
@@ -106,6 +107,10 @@ public class SimulationRunService {
                 takeawayWindowCount,
                 engine.getWaitTimeSamples());
 
+        double theoreticalTakeawayRate = computeTheoreticalTakeawayRate(config);
+        TakeawayRateBreakdown takeawayRateBreakdown = buildTakeawayRateBreakdown(
+                engine, theoreticalTakeawayRate);
+
         return new SimulationSummary(
                 engine.getHistory(),
                 timeline,
@@ -173,7 +178,41 @@ public class SimulationRunService {
                 computeTimeWeightedUtilization(engine.getTableSnapshots(), totalSeats, endTimeSeconds),
                 SimulationMath.rate(engine.getDineInCount(), totalSeats),
                 SimulationMath.rate(engine.getMaxOccupiedSeats(), totalSeats),
-                computeSteadyStateUtilization(timeline, totalSeats));
+                computeSteadyStateUtilization(timeline, totalSeats),
+                theoreticalTakeawayRate,
+                takeawayRateBreakdown);
+    }
+
+    private double computeTheoreticalTakeawayRate(SimConfig config) {
+        if (config == null) {
+            return 0.0;
+        }
+        double basePack = SimulationMath.clamp(config.getPackProbability(), 0.0, 1.0);
+        SimConfig.WeatherConfig weatherConfig = config.getWeatherConfig();
+        String weatherType = weatherConfig == null ? null : weatherConfig.getCurrentWeather();
+        double userFactor = weatherConfig == null ? 1.0 : weatherConfig.getWeatherImpactFactor();
+        double effective = WeatherFactorPolicy.resolveEffectiveFactor(weatherType, userFactor);
+        return SimulationMath.clamp(basePack * effective, 0.0, 0.95);
+    }
+
+    private TakeawayRateBreakdown buildTakeawayRateBreakdown(SimulationEngine engine,
+                                                             double theoreticalTakeawayRate) {
+        int arrived = Math.max(0, engine.getArrivedCount());
+        int served = Math.max(0, engine.getServedCount());
+        double initialIntentRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getInitialTakeawayIntentCount() / arrived, 0.0, 1.0);
+        double dynamicFlipRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getWeatherDrivenTakeawayCount() / arrived, 0.0, 1.0);
+        double noSeatForcedRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getNoSeatSwitchToTakeawayCount() / arrived, 0.0, 1.0);
+        double observedRate = served == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getTakeawayCount() / served, 0.0, 1.0);
+        return new TakeawayRateBreakdown(initialIntentRate, dynamicFlipRate, noSeatForcedRate,
+                observedRate, theoreticalTakeawayRate);
     }
 
     private double computeTimeWeightedUtilization(List<com.bjtu.simulation.model.TableSnapshot> snapshots,

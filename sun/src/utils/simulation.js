@@ -85,9 +85,29 @@ function expandTablesToCells(tableSnapshots, fallbackCells) {
     fallbackByTable.set(tableId, list)
   }
 
+  // 第十轮 C3:稀疏 frame_seat_layout 兼容 — 缺失的 tableId 视为空桌
+  const presentTableIds = new Set()
+  for (const t of tableSnapshots) {
+    const id = read(t, 'table_id', 'tableId')
+    if (id !== undefined && id !== null) presentTableIds.add(id)
+  }
+  const missingFromLayout = []
+  for (const [tableId, cells] of fallbackByTable.entries()) {
+    if (presentTableIds.has(tableId)) continue
+    missingFromLayout.push({
+      table_id: tableId,
+      capacity: cells.length,
+      occupied_seats: 0,
+      reserved_seats: 0,
+      occupied_group_ids: [],
+      reserved_group_ids: []
+    })
+  }
+  const allSnapshots = [...tableSnapshots, ...missingFromLayout]
+
   const cells = []
   let seatId = 0
-  for (const table of tableSnapshots) {
+  for (const table of allSnapshots) {
     const tableId = read(table, 'table_id', 'tableId') ?? -1
     const capacity = Math.max(0, Math.floor(toNumber(read(table, 'capacity'), 0)))
     const occupied = Math.max(0, Math.min(capacity, Math.floor(toNumber(read(table, 'occupied_seats', 'occupiedSeats'), 0))))
@@ -185,9 +205,30 @@ export function buildSeatTables(point, fallbackCells = []) {
       fallbackByTable.set(tableId, list)
     }
 
+    // 第十轮 C3:后端 frame_seat_layout 已稀疏化(空桌不发送)。
+    // 前端从 fallbackCells 推断完整 tableId 列表,缺失的桌子按"空桌"补齐。
+    const presentTableIds = new Set()
+    for (const t of tables) {
+      const id = read(t, 'table_id', 'tableId')
+      if (id !== undefined && id !== null) presentTableIds.add(id)
+    }
+    const missingFromLayout = []
+    for (const [tableId, cells] of fallbackByTable.entries()) {
+      if (presentTableIds.has(tableId)) continue
+      missingFromLayout.push({
+        table_id: tableId,
+        capacity: cells.length,
+        occupied_seats: 0,
+        reserved_seats: 0,
+        occupied_group_ids: [],
+        reserved_group_ids: []
+      })
+    }
+    const allTables = [...tables, ...missingFromLayout]
+
     const result = []
     let seatCounter = 0
-    for (const table of tables) {
+    for (const table of allTables) {
       const tableId = read(table, 'table_id', 'tableId') ?? -1
       const capacity = Math.max(0, Math.floor(toNumber(read(table, 'capacity'), 0)))
       const occupied = Math.max(

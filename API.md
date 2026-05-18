@@ -16,6 +16,14 @@
 
 运行一个 `SimConfig`，默认返回轻量报告，不包含完整 `history`。
 
+第十轮 JSON 减重(默认 `include_history=false` 路径):
+
+- `summary.history` 已剥(沿用既有)
+- `summary.arrival_samples` **第十轮新剥**(每学生一条记录,1000 学生 ≈ 80 KB)。需要时通过 `?include_history=true` 获取
+- `summary.timeline[].table_snapshots` 已剥(沿用既有,完整桌位见 `summary.table_snapshots` 末态)
+- `summary.timeline[].window_types` / `window_count` / `normal_window_count` / `takeaway_window_count` / `total_seats` **第十轮通过 `@JsonIgnore` 移除**(整次仿真常量,前端从 `summary` 顶层读取)
+- `summary.timeline[].frame_seat_layout` **第十轮稀疏化**:`occupied_seats=0 && reserved_seats=0` 的桌子不再发送。前端 `expandTablesToCells` / `buildSeatTables` 已兼容,缺失 tableId 视为空桌
+
 常用字段：
 
 - `duration`：仿真时长，单位小时。
@@ -128,8 +136,6 @@
 }
 ```
 
-> ⚠️ `constraints` 与 `topN` 字段已标 `@Deprecated`，保留兼容性但不参与逻辑。详见 `dto/OptimizationRequest.java` 的 Javadoc。
-
 ## 5. Summary 关键字段
 
 | 字段 | 类型 | 单位 | 说明 |
@@ -139,6 +145,8 @@
 | `dine_in_count` | integer | 人 | 堂食人数 |
 | `takeaway_count` | integer | 人 | 打包人数 |
 | `takeaway_rate` | number | 比例 | `takeaway_count / served_count` |
+| `theoretical_takeaway_rate` | number | 比例 | **第九轮新增**·`clamp(packProbability × WeatherFactorPolicy.resolveEffectiveFactor(weather, userFactor), 0, 0.95)`。前端 TakeawayRatePanel 用它代替原始 `pack_probability` 作为偏离基准。 |
+| `takeaway_rate_breakdown` | object | - | **第九轮新增**·打包率三段分解:`initial_intent_rate`(到达即决定打包)、`dynamic_flip_rate`(完成服务后翻转)、`no_seat_forced_rate`(无座被迫打包)、`observed_rate`(= takeaway_rate)、`theoretical_rate`(= theoretical_takeaway_rate)。所有比率按 `arrived_count` 归一。 |
 | `seat_utilization_rate` | number | 比例 | 兼容字段:运行期采样均值 / 总座位数(瞬时占用比) |
 | `seat_time_weighted_utilization` | number | 比例 | **第八轮新增**·运营视角·占用座次秒 / (总座位 × 仿真总秒) |
 | `peak_seat_utilization_rate` | number | 比例 | **第八轮新增**·`max_occupied_seats / total_seats` 峰值瞬时占用率 |

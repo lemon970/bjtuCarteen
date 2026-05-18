@@ -63,11 +63,3 @@ export function runAnalysis(reportId) {
     body: JSON.stringify({ reportId })
   }, ANALYSIS_BASE)
 }
-
-export function runCrossScenarioAnalysis(scenarioIds) {
-  return requestJson('/cross-scenario', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenarioIds })
-  }, ANALYSIS_BASE)
-}

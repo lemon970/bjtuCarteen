@@ -182,6 +182,17 @@ Configuration:
 - `baseConfig.takeawayWindowCount`: number of dedicated takeaway windows.
 - `baseConfig.takeawayServiceTimeMultiplier`: multiplier applied to service time at dedicated takeaway windows. Default is `1.15`.
 
+### Window selection (Round 10)
+
+`WindowSelectionPolicy.choose` 在第十轮把 `wantsTakeaway` 重新接通为窗口选择的一阶因子。流程:
+
+1. 若 `willTakeaway=true` 且至少有一个打包窗口 → 优先尝试 `chooseBestWindow(takeawayOnly=true)`(队列 + 偏好 + 延迟 + 类型惩罚仍参与评分,只是限制候选)。命中即返回。
+2. 若所有打包窗口都超耐心 → fallthrough 到统一评分,保留 packPreferenceLevel 软分支。
+3. `wantsTakeaway=false` 完全走原 packPreferenceLevel 路径,行为不变。
+
+第七轮删掉硬路由后该参数曾退化为无效占位,导致雨天 32% intent 打包学生(包括成组学生)全部走普通窗口。第十轮修复后,意图打包学生在 `ServiceFinishEvent` 命中 `recordForcedTakeaway`,`decisionReason="window type forces takeaway"`(此前为 `"arrival takeaway intent retained"`)。
+
+
 Summary metrics:
 
 - `takeawayRate = takeawayCount / servedCount`
@@ -195,6 +206,20 @@ Interpretation:
 - Higher `takeawayWindowRatio` may reduce `seatUtilizationRate` and dine-in pressure.
 - Higher `takeawayServiceTimeMultiplier` may increase queue length and average waiting time.
 - Compare `takeawayWindowRatio` with `takeawayWindowServedRate` to see whether takeaway windows are over-used or under-used.
+
+## Takeaway rate theoretical baseline (Round 9)
+
+The raw `pack_probability` config alone is NOT a fair theoretical baseline because students sample their initial intent against `packProbability × WeatherFactorPolicy.resolveEffectiveFactor(weather, userFactor)`, then later may flip dynamically at service-finish time. Round 9 exposes:
+
+- `summary.theoretical_takeaway_rate = clamp(packProbability × effectiveWeatherFactor, 0, 0.95)`. This is the expected initial-intent rate before any in-flight feedback. It matches `StudentProfileFactory.intentProbability` exactly.
+- `summary.takeaway_rate_breakdown` decomposes the actual takeaway flow:
+  - `initial_intent_rate = initialTakeawayIntentCount / arrivedCount` — students whose intent was set to takeaway at arrival.
+  - `dynamic_flip_rate = weatherDrivenTakeawayCount / arrivedCount` — students whose dynamic decision at service finish flipped to takeaway.
+  - `no_seat_forced_rate = noSeatSwitchToTakeawayCount / arrivedCount` — students who wanted dine-in but no seat was available.
+  - `observed_rate = takeawayCount / servedCount` — equal to `summary.takeaway_rate`.
+  - `theoretical_rate` — mirrors `summary.theoretical_takeaway_rate`.
+
+Use the theoretical rate (not raw `pack_probability`) when reporting "expected vs observed" deviation in dashboards. The breakdown clarifies which path is responsible when actual deviates from theoretical (e.g. a high `no_seat_forced_rate` indicates seat shortage, not weather mis-tuning).
 
 ## Dynamic feedback and overlapping peaks
 

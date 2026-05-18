@@ -20,12 +20,12 @@ com\bjtu\simulation\engine\WindowSelectionPolicy.class
 com\bjtu\simulation\engine\ServiceFinishEvent.class
 com\bjtu\simulation\model\DiningArea$SeatAllocation.class
 com\bjtu\simulation\engine\CanteenState.class
-com\bjtu\simulation\engine\SeatSearchEvent.class
 com\bjtu\simulation\model\DiningArea$TablePart.class
 com\bjtu\simulation\config\AppBeansConfig.class
 com\bjtu\simulation\dto\OptimizationRequest.class
 com\bjtu\simulation\controller\SimulationScenarioController.class
 com\bjtu\simulation\service\SimulationConfigNormalizer.class
+com\bjtu\simulation\dto\TakeawayRateBreakdown.class
 com\bjtu\simulation\dto\ScenarioExpectedMetrics.class
 com\bjtu\simulation\service\SimulationArrivalScheduler.class
 com\bjtu\simulation\dto\WaitTimeMetrics.class

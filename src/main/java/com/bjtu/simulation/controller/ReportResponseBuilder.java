@@ -58,6 +58,8 @@ class ReportResponseBuilder {
             JsonNode summary = reportObject.path("summary");
             if (summary instanceof ObjectNode summaryObject) {
                 summaryObject.remove("history");
+                // arrival_samples 默认剥除(每学生一条 ≈ 80 KB),需要时传 include_history=true。
+                summaryObject.remove("arrival_samples");
                 stripTimelineTableSnapshots(summaryObject);
             }
         }

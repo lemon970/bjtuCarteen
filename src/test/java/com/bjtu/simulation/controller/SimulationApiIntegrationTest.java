@@ -110,7 +110,9 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.history").doesNotExist())
                 .andExpect(jsonPath("$.data.summary.timeline[0].time_seconds").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].window_queue_sizes").isArray())
-                .andExpect(jsonPath("$.data.summary.timeline[0].window_types").isArray())
+                // 常量字段从每帧移除,改读 summary 顶层
+                .andExpect(jsonPath("$.data.summary.timeline[0].window_types").doesNotExist())
+                .andExpect(jsonPath("$.data.summary.timeline[0].window_count").doesNotExist())
                 .andExpect(jsonPath("$.data.summary.timeline[0].dining_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].queueing_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())

@@ -7,10 +7,8 @@ import java.util.List;
 import com.bjtu.simulation.model.TableSnapshot;
 
 /**
- * 第八轮:每帧的桌位紧凑布局,只保留前端时间轴回放需要的座位状态信息。
- * 与重量级 {@link TableSnapshot} 区分:不带 occupiedSeconds / occupiedSeatSeconds /
- * utilizationRate 等冗余字段,默认随 timeline 保留;table_snapshots 仍按既有
- * 策略剥除以控制响应大小。
+ * 每帧的桌位紧凑布局,只保留前端时间轴回放需要的座位状态。
+ * 与重量级 {@link TableSnapshot} 区分:不带 occupiedSeconds / utilizationRate 等冗余字段。
  */
 public class FrameSeatLayout {
     private final int tableId;
@@ -54,6 +52,13 @@ public class FrameSeatLayout {
         }
         List<FrameSeatLayout> result = new ArrayList<>(snapshots.size());
         for (TableSnapshot snapshot : snapshots) {
+            // 跳过完全空桌(occupied=0 && reserved=0)以减小 JSON 体积;
+            // 前端缺失 tableId 时按"空桌"渲染。
+            if (snapshot != null
+                    && snapshot.getOccupiedSeats() == 0
+                    && snapshot.getReservedSeats() == 0) {
+                continue;
+            }
             result.add(of(snapshot));
         }
         return Collections.unmodifiableList(result);

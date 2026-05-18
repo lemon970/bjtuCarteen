@@ -49,6 +49,7 @@ public class StudentArriveEvent extends BaseEvent {
 
         // 打包意图学生:跳过座位预定,直接走向窗口
         if (student != null && student.wantsTakeaway()) {
+            engine.recordInitialTakeawayIntent(student.getPartySize());
             scheduleWalkToWindow(engine);
             engine.recordState(studentId
                     + " arrived(" + groupTag

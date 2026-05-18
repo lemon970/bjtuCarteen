@@ -81,14 +81,20 @@ public class SimulationSummary {
     private final double seatWaitAvgSeconds;
     private final double reservedSeatsAvg;
 
-    /** 第八轮:运营视角的"时间加权座位占用率" = 座位×秒 / (totalSeats × 仿真总秒数)。 */
+    /** 运营视角:时间加权座位占用率 = 座位×秒 / (totalSeats × 仿真总秒数)。 */
     private final double seatTimeWeightedUtilization;
-    /** 第八轮:吞吐视角的"翻台率" = dineInCount / totalSeats,反映每个座位平均接待人数。 */
+    /** 吞吐视角:翻台率 = dineInCount / totalSeats。 */
     private final double seatTurnoverRate;
-    /** 第八轮:峰值座位占用率 = maxOccupiedSeats / totalSeats。 */
+    /** 峰值座位占用率 = maxOccupiedSeats / totalSeats。 */
     private final double peakSeatUtilizationRate;
-    /** 第八轮:稳态座位占用率,排除前 10% 与后 10% 帧后的均值,避免被冷启动/排空拉偏。 */
+    /** 稳态座位占用率:排除前 10% 与后 10% 帧后的均值,避免被冷启动/排空拉偏。 */
     private final double steadyStateSeatUtilization;
+
+    /** 基础理论打包率 = clamp(packProbability × effectiveWeatherFactor, 0, 0.95)。
+     *  来源 StudentProfileFactory.intentProbability;不含动态翻转和无座强制。 */
+    private final double theoreticalTakeawayRate;
+    /** 打包率三段分解,辅助理解实际 vs 理论的差距来源。 */
+    private final TakeawayRateBreakdown takeawayRateBreakdown;
 
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
@@ -156,6 +162,95 @@ public class SimulationSummary {
                              double seatTurnoverRate,
                              double peakSeatUtilizationRate,
                              double steadyStateSeatUtilization) {
+        this(history, timeline, arrivedCount, normalArrivalCount, classPeakArrivalCount,
+                rainPeakArrivalCount, abandonedCount, abandonedByQueueCount, servedCount,
+                dineInCount, takeawayCount, pendingSeatDecisionCount,
+                noSeatSwitchToTakeawayCount, weatherDrivenTakeawayCount, leaveCount,
+                avgWaitTimeMinutes, totalWaitTimeMinutes, waitTimeMetrics,
+                avgMovementTimeMinutes, totalMovementTimeMinutes, movementSampleCount,
+                peakTimeMinutes, totalPeakTimeMinutes, peakWindowId, maxQueueSize,
+                maxTotalQueueSize, avgTotalQueueSize, maxOccupiedSeats, avgOccupiedSeats,
+                seatUtilizationRate, windowServedCounts, windowTypes, normalWindowCount,
+                takeawayWindowCount, normalWindowServedCount, takeawayWindowServedCount,
+                takeawayRate, dineInRate, takeawayWindowRatio, normalWindowServedRate,
+                takeawayWindowServedRate, simulationEndTimeSeconds, simulationEndTimeMinutes,
+                totalSeats, occupiedSeats, emptySeats, tableSnapshots, seatCells,
+                arrivalSamples, takeawayDecisionRecords, probabilityModel, queueTheoryMetrics,
+                groupCount, groupedStudentCount, avgGroupSize, sameTableGroupRate,
+                splitGroupRate, noSeatAbandonedCount, noSeatAbandonedRate, seatWaitQueueMax,
+                seatWaitAvgSeconds, reservedSeatsAvg, seatTimeWeightedUtilization,
+                seatTurnoverRate, peakSeatUtilizationRate, steadyStateSeatUtilization,
+                0.0, null);
+    }
+
+    public SimulationSummary(List<SimulationResult> history,
+                             List<SimulationTimePoint> timeline,
+                             int arrivedCount,
+                             int normalArrivalCount,
+                             int classPeakArrivalCount,
+                             int rainPeakArrivalCount,
+                             int abandonedCount,
+                             int abandonedByQueueCount,
+                             int servedCount,
+                             int dineInCount,
+                             int takeawayCount,
+                             int pendingSeatDecisionCount,
+                             int noSeatSwitchToTakeawayCount,
+                             int weatherDrivenTakeawayCount,
+                             int leaveCount,
+                             double avgWaitTimeMinutes,
+                             double totalWaitTimeMinutes,
+                             WaitTimeMetrics waitTimeMetrics,
+                             double avgMovementTimeMinutes,
+                             double totalMovementTimeMinutes,
+                             int movementSampleCount,
+                             long peakTimeMinutes,
+                             long totalPeakTimeMinutes,
+                             int peakWindowId,
+                             int maxQueueSize,
+                             int maxTotalQueueSize,
+                             double avgTotalQueueSize,
+                             int maxOccupiedSeats,
+                             double avgOccupiedSeats,
+                             double seatUtilizationRate,
+                             List<Integer> windowServedCounts,
+                             List<String> windowTypes,
+                             int normalWindowCount,
+                             int takeawayWindowCount,
+                             int normalWindowServedCount,
+                             int takeawayWindowServedCount,
+                             double takeawayRate,
+                             double dineInRate,
+                             double takeawayWindowRatio,
+                             double normalWindowServedRate,
+                             double takeawayWindowServedRate,
+                             long simulationEndTimeSeconds,
+                             long simulationEndTimeMinutes,
+                             int totalSeats,
+                             int occupiedSeats,
+                             int emptySeats,
+                             List<TableSnapshot> tableSnapshots,
+                             List<SeatCellSnapshot> seatCells,
+                             List<ArrivalSample> arrivalSamples,
+                             List<TakeawayDecisionRecord> takeawayDecisionRecords,
+                             ProbabilityModelSummary probabilityModel,
+                             QueueTheoryMetrics queueTheoryMetrics,
+                             int groupCount,
+                             int groupedStudentCount,
+                             double avgGroupSize,
+                             double sameTableGroupRate,
+                             double splitGroupRate,
+                             int noSeatAbandonedCount,
+                             double noSeatAbandonedRate,
+                             int seatWaitQueueMax,
+                             double seatWaitAvgSeconds,
+                             double reservedSeatsAvg,
+                             double seatTimeWeightedUtilization,
+                             double seatTurnoverRate,
+                             double peakSeatUtilizationRate,
+                             double steadyStateSeatUtilization,
+                             double theoreticalTakeawayRate,
+                             TakeawayRateBreakdown takeawayRateBreakdown) {
         this.history = history;
         this.timeline = timeline;
         this.arrivedCount = arrivedCount;
@@ -222,6 +317,8 @@ public class SimulationSummary {
         this.seatTurnoverRate = round3(seatTurnoverRate);
         this.peakSeatUtilizationRate = round3(peakSeatUtilizationRate);
         this.steadyStateSeatUtilization = round3(steadyStateSeatUtilization);
+        this.theoreticalTakeawayRate = round3(theoreticalTakeawayRate);
+        this.takeawayRateBreakdown = takeawayRateBreakdown;
     }
 
     private static double round3(double value) {
@@ -533,5 +630,13 @@ public class SimulationSummary {
 
     public double getSteadyStateSeatUtilization() {
         return steadyStateSeatUtilization;
+    }
+
+    public double getTheoreticalTakeawayRate() {
+        return theoreticalTakeawayRate;
+    }
+
+    public TakeawayRateBreakdown getTakeawayRateBreakdown() {
+        return takeawayRateBreakdown;
     }
 }

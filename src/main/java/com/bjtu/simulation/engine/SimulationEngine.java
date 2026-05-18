@@ -65,6 +65,7 @@ public class SimulationEngine {
     private int pendingSeatDecisionCount = 0;
     private int noSeatSwitchToTakeawayCount = 0;
     private int weatherDrivenTakeawayCount = 0;
+    private int initialTakeawayIntentCount = 0;
     private int leaveCount = 0;
     private int groupCount = 0;
     private int groupedStudentCount = 0;
@@ -282,15 +283,6 @@ public class SimulationEngine {
         }
         canteenState.releaseSeats(student.getSeatAllocation(), currentTime);
         student.setSeatAllocation(null);
-    }
-
-    /**
-     * 任何座位释放后调用:尝试立即唤醒队首等位学生(如果可 reserve)。
-     * 实际重试由 SeatWaitEvent 周期触发,这里仅用于在释放瞬间快速消化队列。
-     */
-    public void tryWakeSeatWaitQueue() {
-        // 真实调度由各 SeatWaitEvent 自己驱动,此处不主动 dispatch,
-        // 仅保留 API 以便未来扩展(例如基于优先级的 wake)。
     }
 
     public Student registerStudent(String id, ArrivalGroup arrivalGroup, int partySize) {
@@ -549,6 +541,14 @@ public class SimulationEngine {
 
     public int getWeatherDrivenTakeawayCount() {
         return weatherDrivenTakeawayCount;
+    }
+
+    public int getInitialTakeawayIntentCount() {
+        return initialTakeawayIntentCount;
+    }
+
+    public void recordInitialTakeawayIntent(int partySize) {
+        this.initialTakeawayIntentCount += Math.max(1, partySize);
     }
 
     public int getLeaveCount() {

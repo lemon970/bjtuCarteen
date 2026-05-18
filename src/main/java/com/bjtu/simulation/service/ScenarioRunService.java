@@ -88,10 +88,9 @@ public class ScenarioRunService {
     }
 
     /**
-     * 第七轮:批量场景默认轻量响应。剥掉每个 summary 里超大的 timeline / history /
+     * 批量场景默认轻量响应:剥掉每个 summary 里超大的 timeline / history /
      * seat_cells / table_snapshots / arrival_samples / takeaway_decision_records,
-     * 保留所有数值聚合指标(arrived_count、takeaway_rate、typical_wait_time_minutes 等)。
-     * 调用方需要完整时间线可通过 /api/simulation/report/{id} 拉取。
+     * 保留所有数值聚合指标。完整时间线可通过 /api/simulation/report/{id} 拉取。
      */
     private JsonNode stripHeavyFields(JsonNode summary) {
         if (!(summary instanceof ObjectNode obj)) {
@@ -160,7 +159,6 @@ public class ScenarioRunService {
         target.setWeatherConfig(source.getWeatherConfig());
         target.setRandomBounds(source.getRandomBounds());
         target.setPeakConfig(source.getPeakConfig());
-        // 第七轮:之前漏掉 groupConfig,导致批量场景 group override 静默失效
         if (source.getGroupConfig() != null) {
             target.setGroupConfig(source.getGroupConfig());
         }

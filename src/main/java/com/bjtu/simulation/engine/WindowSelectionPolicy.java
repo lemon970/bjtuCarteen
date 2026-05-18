@@ -28,13 +28,20 @@ class WindowSelectionPolicy {
         int patienceLimit = Math.max(0, student.getPatienceLimit());
         int partySize = Math.max(1, student.getPartySize());
 
-        // 第七轮:删除 willTakeaway 硬路由和 dineInOnly 反向硬路由。让所有学生进入统一
-        // chooseBestWindow,score = queueSize + preferencePenalty + delayPenalty + windowTypePenalty。
-        // dine-in 学生在打包窗口的 windowTypePenalty 提到 +1.50,提供倾向但不强制,
-        // 队列长度差(每多 1 人 score+1)能在打包窗口爆 ≥ 4 人时压倒偏好,实现自然分流。
-        // DINE_IN_BIASED 仍保留"先试普通窗口"的软分支:如果普通窗口可达,直接用;
-        // 否则才 fallback 到统一评分。这避免了 DINE_IN_BIASED 在普通窗口轻度排队时
-        // 跑去打包窗口、被 ServiceFinishEvent.recordForcedTakeaway 强制打包。
+        // 意图打包学生优先选打包窗口(StudentArriveEvent 已跳过座位预定),
+        // 走 chooseBestWindow(takeawayOnly=true) 复用现有评分,
+        // 所有打包窗口超耐心时 fallthrough 到统一评分。
+        if (willTakeaway && takeawayWindowCount > 0) {
+            int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true,
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+            if (takeawayWindow >= 0) {
+                return takeawayWindow;
+            }
+        }
+
+        // 统一评分路径:score = queueSize + preferencePenalty + delayPenalty + windowTypePenalty。
+        // DINE_IN_BIASED 先试普通窗口软分支,避免在普通窗口轻度排队时被路由到打包窗口
+        // 后被 ServiceFinishEvent.recordForcedTakeaway 强制打包。
 
         if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.DINE_IN_BIASED) {
             int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false,
@@ -115,8 +122,7 @@ class WindowSelectionPolicy {
 
     private double windowTypePenalty(Student student, int windowId, List<String> windowTypes) {
         boolean takeawayWindow = isTakeawayWindow(windowId, windowTypes);
-        // 第七轮:DINE_IN_BIASED 在打包窗口从 +3.00 改为 +1.50。+3.00 在实践中过于绝对,
-        // 即使打包窗口空闲也基本不会用;+1.50 能让队列差 ≥ 2 人时切换,保留分流可能。
+        // DINE_IN_BIASED 在打包窗口 +1.50:提供软偏好,队列差 ≥ 2 人时仍能自然切换。
         return switch (student.getPackPreferenceLevel()) {
             case TAKEAWAY_BIASED -> takeawayWindow ? -0.40 : 0.55;
             case BALANCED -> takeawayWindow ? 0.30 : 0.00;

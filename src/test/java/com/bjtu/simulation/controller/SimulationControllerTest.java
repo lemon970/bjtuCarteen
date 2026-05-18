@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 
 import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.SimConfig;
-import com.bjtu.simulation.engine.SeatSearchEvent;
 import com.bjtu.simulation.engine.ServiceFinishEvent;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.engine.StudentLeaveEvent;
@@ -205,7 +204,9 @@ class SimulationControllerTest {
 
     @Test
     void probabilityModelShouldExposePoissonExponentialSamplesAndSeatGrid() {
-        JsonNode summary = runAndGetSummary(highLoadConfig());
+        // arrival_samples 默认从 /run 响应剥除,需要时通过 include_history=true 取
+        JsonNode report = runAndGetReportFull(highLoadConfig());
+        JsonNode summary = report.path("summary");
 
         JsonNode model = summary.path("probability_model");
         assertEquals("POISSON", model.path("arrival_count_distribution").asText());
@@ -428,27 +429,6 @@ class SimulationControllerTest {
     }
 
     @Test
-    void seatSearchShouldResolvePendingDecisionToTakeawayWhenNoSeatAvailable() {
-        SimConfig config = baseConfig();
-        config.getBaseConfig().setTotalSeats(0);
-        SimulationEngine engine = new SimulationEngine(config);
-
-        engine.recordArrival(ArrivalGroup.NORMAL, 1);
-        engine.recordWaitTime(0L, 0L, 1);
-        engine.recordWindowServed(0, 1);
-        engine.recordSeatDecisionPending(1);
-        engine.scheduleEvent(new SeatSearchEvent(30L, "student-seat-search", 1));
-
-        engine.runAll();
-
-        assertEquals(1, engine.getServedCount());
-        assertEquals(0, engine.getPendingSeatDecisionCount());
-        assertEquals(0, engine.getTakeawayCount());
-        assertEquals(1, engine.getNoSeatAbandonedCount());
-        assertEquals(1, engine.getLeaveCount());
-    }
-
-    @Test
     void studentLeaveShouldReleaseOccupiedSeat() {
         SimulationEngine engine = new SimulationEngine(baseConfig());
 
@@ -537,6 +517,16 @@ class SimulationControllerTest {
 
     private JsonNode runAndGetReport(SimConfig config) {
         ResponseEntity<ApiResponse<JsonNode>> response = controller.startWithOptions(config, false);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(0, response.getBody().getCode());
+        assertNotNull(response.getBody().getData());
+        return response.getBody().getData();
+    }
+
+    private JsonNode runAndGetReportFull(SimConfig config) {
+        // include_history=true 才返回完整 summary(含 arrival_samples)
+        ResponseEntity<ApiResponse<JsonNode>> response = controller.startWithOptions(config, true);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(0, response.getBody().getCode());

@@ -21,26 +21,10 @@ public class OptimizationRequest {
     @JsonAlias("objective")
     private String objective = "minimize typical_wait_time_minutes";
 
-    /**
-     * 保留以兼容历史前端,已不参与逻辑;详见 ADR 005 / API.md §7。
-     */
-    @Deprecated
-    @JsonAlias("constraints")
-    private List<String> constraints = new ArrayList<>();
-
     @JsonAlias("max_candidates")
     @Min(value = 1, message = "maxCandidates must be >= 1")
     @Max(value = 500, message = "maxCandidates must be <= 500")
     private int maxCandidates = 100;
-
-    /**
-     * 保留以兼容历史前端,已不参与逻辑;详见 ADR 005 / API.md §7。
-     */
-    @Deprecated
-    @JsonAlias("top_n")
-    @Min(value = 1, message = "topN must be >= 1")
-    @Max(value = 10, message = "topN must be <= 10")
-    private int topN = 3;
 
     public SimConfig getConfig() {
         return config;
@@ -66,31 +50,11 @@ public class OptimizationRequest {
         this.objective = objective;
     }
 
-    @Deprecated
-    public List<String> getConstraints() {
-        return constraints;
-    }
-
-    @Deprecated
-    public void setConstraints(List<String> constraints) {
-        this.constraints = constraints;
-    }
-
     public int getMaxCandidates() {
         return maxCandidates;
     }
 
     public void setMaxCandidates(int maxCandidates) {
         this.maxCandidates = maxCandidates;
-    }
-
-    @Deprecated
-    public int getTopN() {
-        return topN;
-    }
-
-    @Deprecated
-    public void setTopN(int topN) {
-        this.topN = topN;
     }
 }

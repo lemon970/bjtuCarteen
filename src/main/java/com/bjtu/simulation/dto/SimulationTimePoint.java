@@ -3,6 +3,7 @@ package com.bjtu.simulation.dto;
 import java.util.List;
 
 import com.bjtu.simulation.model.TableSnapshot;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class SimulationTimePoint {
     private final long timeSeconds;
@@ -43,19 +44,16 @@ public class SimulationTimePoint {
     private final double avgWaitMinutesWindow;
     private final int waitSampleCountWindow;
     private final List<TableSnapshot> tableSnapshots;
-    /**
-     * 第八轮:逐帧轻量座位布局。默认随 timeline 保留(table_snapshots 仍按既有
-     * 策略剥除),前端时间轴回放据此渲染成组占用色块。
-     */
+    /** 逐帧轻量座位布局,前端时间轴回放据此渲染成组占用色块。 */
     private final List<FrameSeatLayout> frameSeatLayout;
 
-    /** 第八轮:学生视角"座位不可用率" = (occupied + reserved) / totalSeats。 */
+    /** 学生视角:座位不可用率 = (occupied + reserved) / totalSeats。 */
     private final double seatUnavailableRate;
-    /** 第八轮:reservedSeats / totalSeats,反映"在途/正在落座"的占比。 */
+    /** reservedSeats / totalSeats — "在途/正在落座"占比。 */
     private final double seatReservedShare;
-    /** 第八轮:1 - seatUnavailableRate,前端读取直观。 */
+    /** 1 - seatUnavailableRate。 */
     private final double seatFreeRate;
-    /** 第八轮:绝对预定座位数,与 frame_seat_layout 互为冗余但便于直接展示。 */
+    /** 绝对预定座位数,与 frame_seat_layout 互为冗余但便于直接展示。 */
     private final int reservedSeats;
 
     public SimulationTimePoint(long timeSeconds,
@@ -216,18 +214,23 @@ public class SimulationTimePoint {
         return windowQueueSizes;
     }
 
+    // 常量字段(整次仿真不变),summary 顶层已暴露,不再逐帧序列化。
+    @JsonIgnore
     public List<String> getWindowTypes() {
         return windowTypes;
     }
 
+    @JsonIgnore
     public int getWindowCount() {
         return windowCount;
     }
 
+    @JsonIgnore
     public int getNormalWindowCount() {
         return normalWindowCount;
     }
 
+    @JsonIgnore
     public int getTakeawayWindowCount() {
         return takeawayWindowCount;
     }

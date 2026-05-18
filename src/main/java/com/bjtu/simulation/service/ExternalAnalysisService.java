@@ -219,7 +219,9 @@ public class ExternalAnalysisService {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(false);
             Process process = pb.start();
-            StringBuilder stderr = new StringBuilder();
+            // StringBuffer (vs StringBuilder) 因为 errReader 线程在 join 超时后仍可能 append，
+            // 主线程随后调用 toString() 形成跨线程读写；StringBuffer 内置同步保证原子性。
+            StringBuffer stderr = new StringBuffer();
             Thread errReader = new Thread(() -> {
                 try (var in = process.getErrorStream()) {
                     byte[] buf = new byte[2048];

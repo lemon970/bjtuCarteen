@@ -31,7 +31,7 @@ import jakarta.annotation.PreDestroy;
 @Service
 public class SimulationTaskService {
 
-    /** 第七轮:已完成或失败任务保留 30 分钟后清理。 */
+    /** 已完成或失败任务保留 30 分钟后清理。 */
     static final long DEFAULT_RETENTION_MILLIS = 30L * 60L * 1000L;
     /** 最大任务数。超出后优先清理最旧的已终结任务。 */
     static final int DEFAULT_MAX_TASKS = 200;
@@ -41,7 +41,7 @@ public class SimulationTaskService {
     private final ObjectMapper reportMapper;
     private final ConcurrentHashMap<String, SimulationTaskRecord> tasks = new ConcurrentHashMap<>();
     private final ExecutorService taskExecutor = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
-    // 第七轮:streamExecutor 改为有界,避免无限制 SSE 并发吃光线程。
+    // streamExecutor 改为有界线程池,避免无限制 SSE 并发吃光线程。
     private final ThreadPoolExecutor streamExecutor = new ThreadPoolExecutor(
             4,
             16,
@@ -88,7 +88,7 @@ public class SimulationTaskService {
     }
 
     public SimulationTaskRecord submit(SimConfig config) {
-        // 第七轮:每次新任务到来时,顺手清理已过 TTL 的终结任务,避免后台线程依赖。
+        // 顺手清理已过 TTL 的终结任务,避免后台调度线程。
         purgeExpired();
         if (tasks.size() >= maxTasks) {
             evictOldestTerminal();

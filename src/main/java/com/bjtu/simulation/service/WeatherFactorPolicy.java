@@ -6,9 +6,8 @@ import java.util.Map;
 /**
  * 天气类型 → 打包率基线倍率的映射 + 用户自定义 factor 叠加。
  *
- * 设计:effectiveFactor = canonical(weather) × userFactor,clamp 到 [0.5, 3.0]。
- * 第七轮重构前 currentWeather 字符串只展示不计算,导致 rainy + factor=1.0 与 sunny + factor=1.0
- * 完全等价。本类把"天气类型"提升为打包行为的一阶决定因素。
+ * effectiveFactor = canonical(weather) × userFactor,clamp 到 [0.5, 3.0]。
+ * 把"天气类型"作为打包行为的一阶决定因素,避免 rainy + factor=1.0 与 sunny + factor=1.0 等价。
  */
 public final class WeatherFactorPolicy {
 

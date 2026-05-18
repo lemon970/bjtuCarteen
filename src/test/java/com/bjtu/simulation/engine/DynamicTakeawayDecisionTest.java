@@ -19,11 +19,14 @@ import org.junit.jupiter.api.Test;
  * 当 dine-in 倾向学生命中 roll < finalProbability 时会真正翻转为打包,
  * 决策记录里写明 "dynamic probability roll selected takeaway"。
  *
+ * 第十轮更新:WindowSelectionPolicy 修复后,意图打包学生优先走打包窗口
+ * (recordForcedTakeaway → reason="window type forces takeaway"),
+ * 只在所有打包窗口都超耐心时才回退到普通窗口(reason="arrival takeaway intent retained")。
+ *
  * 本测试断言:
  *  1. 高压力(满座 + 长队)场景下,出现至少一条 dynamic 翻转记录
  *  2. 低压力场景下,几乎不出现 dynamic 翻转(决策记录 < 5%)
- *  3. 两种 reason("arrival takeaway intent retained" 与 "dynamic probability roll selected
- *     takeaway")在记录中可区分
+ *  3. 意图打包学生通过打包窗口路径(forced)被正确路由
  */
 class DynamicTakeawayDecisionTest {
 
@@ -40,17 +43,17 @@ class DynamicTakeawayDecisionTest {
                 .filter(r -> r.isTakeaway()
                         && "dynamic probability roll selected takeaway".equals(r.getDecisionReason()))
                 .count();
-        long arrivalRetained = records.stream()
+        long takeawayWindowForced = records.stream()
                 .filter(r -> r.isTakeaway()
-                        && "arrival takeaway intent retained; normal window serves takeaway".equals(r.getDecisionReason()))
+                        && "window type forces takeaway".equals(r.getDecisionReason()))
                 .count();
 
         assertTrue(records.size() > 0, "expected non-empty decision records");
         assertTrue(dynamicFlips > 0,
                 "expected at least one dynamic-flip takeaway record under high pressure, got 0 (records=" + records.size() + ")");
-        // 同时存在 arrival-retained 路径,证明两条 reason 都被使用
-        assertTrue(arrivalRetained > 0,
-                "expected initialTakeawayIntent path to also fire, got 0");
+        // 第十轮:意图打包学生应通过打包窗口路径被服务,而不是普通窗口的 retained 分支
+        assertTrue(takeawayWindowForced > 0,
+                "expected wantsTakeaway students to reach takeaway windows (forced path), got 0");
     }
 
     @Test
