@@ -69,6 +69,52 @@ class SimulationTimelineBuilderWaitWindowTest {
         assertTrue(timeline.get(0).getAvgWaitMinutesWindow() == 0.0);
     }
 
+    // P1-1 回归:16h 仿真 + dining 长尾导致 engine.currentTime ≈ 1000 min。
+    // MAX_TIMELINE_POINTS=2000 时 stepMinutes 仍=1,timeline 长度等于 endMinute+1。
+    // 若常量被改回 1000,这个断言立即破裂。
+    @Test
+    void timelineShouldKeepMinuteGranularityAtSixteenHourTail() {
+        List<SimulationResult> history = List.of(historyAt(60_000));
+        List<SimulationTimePoint> timeline = builder.build(history, 1, 0, List.of("NORMAL"), 1, 0, List.of());
+
+        assertEquals(1001, timeline.size(),
+                "expected 1001 minute-granular points (endMinute=1000), got " + timeline.size());
+        for (int i = 1; i < timeline.size(); i++) {
+            long delta = timeline.get(i).getMinute() - timeline.get(i - 1).getMinute();
+            assertEquals(1L, delta, "adjacent minutes must differ by 1, found " + delta + " at index " + i);
+        }
+    }
+
+    @Test
+    void emptyHistoryShouldProduceSinglePointTimeline() {
+        List<SimulationTimePoint> timeline = builder.build(List.of(), 2, 20, List.of("NORMAL", "NORMAL"), 2, 0);
+
+        assertEquals(1, timeline.size());
+        SimulationTimePoint only = timeline.get(0);
+        assertEquals(0L, only.getMinute());
+        assertEquals(List.of(0, 0), only.getWindowQueueSizes());
+        assertEquals(1.0, only.getSeatFreeRate(), 1e-9);
+    }
+
+    // 防御性裁剪:source 队列 5 项但 windowCount=3,windowTypes=null,normalCount=2。
+    @Test
+    void defensiveTruncationWhenSourceQueueExceedsWindowCount() {
+        SimulationResult oversized = new SimulationResult(
+                60, List.of(1, 2, 3, 4, 5), 15,
+                0, 0, "",
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0,
+                0, 0.0, 0.0,
+                new ArrayList<>());
+        List<SimulationTimePoint> timeline = builder.build(List.of(oversized), 3, 0, null, 2, 1, List.of());
+
+        SimulationTimePoint last = timeline.get(timeline.size() - 1);
+        assertEquals(3, last.getWindowQueueSizes().size(), "queues must be truncated to windowCount=3");
+        assertEquals(List.of(1, 2, 3), last.getWindowQueueSizes());
+        assertEquals(List.of("NORMAL", "NORMAL", "TAKEAWAY"), last.getWindowTypes(),
+                "null windowTypes should fall back to NORMAL[0..normal) + TAKEAWAY[normal..)");
+    }
+
     private SimulationResult historyAt(long timeSeconds) {
         return new SimulationResult(
                 timeSeconds,

@@ -121,6 +121,50 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.queue_theory_metrics.model_type").exists());
     }
 
+    // F1: 跨层契约 — 后端响应必须包含前端 normalizePoint (sun/src/utils/simulation.js:595-608)
+    // 实际读取的所有 snake_case 字段。前端 fallback 链 `?? 0` 会把任何后端字段重命名静默
+    // 吞成 0,这条测试是这个回归唯一的守门员。
+    @Test
+    void validRunResponseShouldExposeAllFrontendReadFields() throws Exception {
+        String json = """
+                {
+                  "duration": 0.2,
+                  "arrivalRate": 30,
+                  "queueLimit": 10,
+                  "packProbability": 0.2,
+                  "seed": 124,
+                  "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
+                  "weatherConfig": {"weatherImpactFactor": 1.0},
+                  "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                // normalizePoint 读取的 timeline 帧字段(后端实际承诺):
+                // cleaning_seats / seat_cells / event_message 是前端 fallback 字段,后端
+                // 因 NON_EMPTY 序列化策略可能在空帧上省略,故不入硬契约。
+                .andExpect(jsonPath("$.data.summary.timeline[0].time_seconds").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].total_queue_size").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].occupied_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].reserved_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].total_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_unavailable_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_reserved_share").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_free_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].cumulative_arrived_count").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].cumulative_served_count").exists())
+                // takeaway_rate_breakdown 五分量(前端 TakeawayRatePanel 读取)
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.initial_intent_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.dynamic_flip_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.no_seat_forced_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.observed_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.theoretical_rate").exists());
+    }
+
     @Test
     void asyncRunShouldReturnTaskStatusAndEventuallyProduceReport() throws Exception {
         String json = """

@@ -16,6 +16,9 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\I
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\RainEmergencyEndToEndTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ScenarioRunServiceContractTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SeatUtilizationMetricsTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationConfigNormalizerTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationReportRepositoryTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationRunServiceBoundaryTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationTaskServiceLifecycleTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SunnyLowPackTakeawayBoundsTest.java
