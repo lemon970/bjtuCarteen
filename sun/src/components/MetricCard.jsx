@@ -1,12 +1,22 @@
-// [重构] 将 KPI 卡片拆成独立组件，原因是展示页和分析页都会复用同一视觉结构。
-function MetricCard({ title, value, note }) {
+function MetricCard({ title, value, benchmark, status = 'info', trend, explanation }) {
   return (
-    <article className="metric-card">
-      <span>{title}</span>
+    <article className={`metric-card status-${status}`}>
+      <div className="metric-head">
+        <span>{title}</span>
+        <em>{trend || statusLabel(status)}</em>
+      </div>
       <strong>{value}</strong>
-      {note && <small>{note}</small>}
+      {benchmark && <small>参考：{benchmark}</small>}
+      {explanation && <p>{explanation}</p>}
     </article>
   )
+}
+
+function statusLabel(status) {
+  if (status === 'normal') return '正常'
+  if (status === 'warning') return '关注'
+  if (status === 'critical') return '严重'
+  return '信息'
 }
 
 export default MetricCard

@@ -1,4 +1,3 @@
-// [重构] 集中维护默认表单值和路由，避免三类页面重复定义同一批常量。
 export const API_BASE = '/api/simulation'
 export const MAX_STUDENTS = 1000
 export const MAX_SEATS = 1000
@@ -6,34 +5,34 @@ export const MAX_RENDERED_SEATS = 360
 export const HISTORY_PAGE_SIZE = 20
 
 export const ROUTES = [
-  { key: 'input', label: '信息输入', description: '设置流量、座位与概率模型' },
-  { key: 'display', label: '实时展示', description: '查看人流、座位热力与指标' },
-  { key: 'analysis', label: '模型分析', description: '验证分布、打包与拥挤风险' }
+  { key: 'input', label: '信息输入', description: '选择模型并调整参数' },
+  { key: 'display', label: '数据展示', description: '查看运行过程和座位状态' },
+  { key: 'analysis', label: '模型分析', description: '解释等待、打包和异常原因' }
 ]
 
 export const DEFAULT_FORM = {
-  simulationName: 'canteen-simulation',
-  duration: 1.0,
-  arrivalRate: 180,
-  queueLimit: 18,
+  simulationName: '午高峰压力测试',
+  duration: 2.0,
+  arrivalRate: 300,
+  queueLimit: 40,
   packProbability: 0.15,
-  seed: 12345,
-  windowCount: 6,
+  seed: 20260512,
+  windowCount: 8,
   takeawayWindowCount: 1,
   takeawayServiceTimeMultiplier: 1.2,
   totalSeats: 250,
   totalStudents: 1000,
   arrivalInterval: 0,
-  arrivalLambda: 180,
+  arrivalLambda: 300,
   serviceMean: 90,
   diningMean: 1500,
   peakEnabled: true,
   lunchPeakStart: 12,
-  lunchPeakEnd: 24,
-  lunchPeakMultiplier: 3.2,
-  dinnerPeakStart: 34,
-  dinnerPeakEnd: 48,
-  dinnerPeakMultiplier: 2.4,
+  lunchPeakEnd: 32,
+  lunchPeakMultiplier: 2.6,
+  dinnerPeakStart: 64,
+  dinnerPeakEnd: 86,
+  dinnerPeakMultiplier: 1.8,
   serviceMin: 45,
   serviceMax: 180,
   diningMin: 900,
@@ -42,8 +41,15 @@ export const DEFAULT_FORM = {
   preferenceMax: 0.2,
   currentWeather: 'sunny',
   weatherImpactFactor: 1.0,
-  groupArrivalProb: 0,
-  partySize: 1,
-  walkTimeMean: 0,
-  congestionPenalty: 0
+  groupArrivalProb: 0.08,
+  partySize: 3,
+  groupEnabled: false,
+  groupCount: 20,
+  groupSizeMin: 3,
+  groupSizeMax: 4,
+  groupArrivalSpreadSeconds: 0,
+  groupBehaviorCorrelation: 0.75,
+  preferAdjacentSeats: true,
+  walkTimeMean: 8,
+  congestionPenalty: 0.35
 }

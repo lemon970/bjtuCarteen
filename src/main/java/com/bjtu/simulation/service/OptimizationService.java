@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.bjtu.simulation.config.AppBeansConfig;
 import com.bjtu.simulation.dto.OptimizationRequest;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
@@ -13,10 +14,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
 public class OptimizationService {
     private final SimulationRunService simulationRunService;
     private final SimulationConfigNormalizer configNormalizer;
     private final ObjectMapper reportMapper;
+
+    @Autowired
+    public OptimizationService(SimulationRunService simulationRunService,
+                               SimulationConfigNormalizer configNormalizer) {
+        this(simulationRunService, configNormalizer, AppBeansConfig.createReportObjectMapper());
+    }
 
     public OptimizationService(SimulationRunService simulationRunService,
                                SimulationConfigNormalizer configNormalizer,
@@ -82,10 +93,10 @@ public class OptimizationService {
     }
 
     private Objective parseObjective(String objective) {
-        String raw = objective == null || objective.isBlank() ? "minimize avg_wait_time_minutes" : objective.trim().toLowerCase();
+        String raw = objective == null || objective.isBlank() ? "minimize typical_wait_time_minutes" : objective.trim().toLowerCase();
         String[] parts = raw.split("\\s+");
         String direction = parts.length > 0 && "maximize".equals(parts[0]) ? "maximize" : "minimize";
-        String metric = parts.length > 1 ? parts[1] : "avg_wait_time_minutes";
+        String metric = parts.length > 1 ? parts[1] : "typical_wait_time_minutes";
         return new Objective(direction, metric);
     }
 
@@ -97,6 +108,15 @@ public class OptimizationService {
             case "max_total_queue_size" -> summary.getMaxTotalQueueSize();
             case "seat_utilization_rate" -> summary.getSeatUtilizationRate();
             case "takeaway_rate" -> summary.getTakeawayRate();
+            case "raw_avg_wait_time_minutes", "avg_wait_time_minutes" -> summary.getAvgWaitTimeMinutes();
+            case "steady_avg_wait_time_minutes" -> summary.getSteadyAvgWaitTimeMinutes();
+            case "typical_wait_time_minutes" -> summary.getTypicalWaitTimeMinutes();
+            case "median_wait_time_minutes" -> summary.getMedianWaitTimeMinutes();
+            case "p75_wait_time_minutes" -> summary.getP75WaitTimeMinutes();
+            case "p90_wait_time_minutes" -> summary.getP90WaitTimeMinutes();
+            case "long_wait_rate" -> summary.getLongWaitRate();
+            case "zero_wait_rate" -> summary.getZeroWaitRate();
+            case "edge_wait_sample_rate" -> summary.getEdgeWaitSampleRate();
             default -> summary.getAvgWaitTimeMinutes();
         };
     }

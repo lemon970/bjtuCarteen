@@ -1,6 +1,6 @@
 ﻿# 食堂仿真系统 API 交接文档
 
-当前报告版本：`1.8.0`
+当前报告版本：`1.9.0`
 
 本文档用于前端、C++ 数据分析成员与后端联调。所有接口默认返回 JSON。
 
@@ -192,7 +192,7 @@ reports/simulation-report-latest.json
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `report_version` | string | 报告结构版本，当前 `1.8.0` |
+| `report_version` | string | 报告结构版本，当前 `1.9.0` |
 | `report_id` | string | 报告唯一 ID |
 | `effective_seed` | integer | 实际使用的随机种子 |
 | `config` | object | 本次仿真的归一化配置快照 |
@@ -315,6 +315,17 @@ reports/simulation-report-latest.json
 | `weather_driven_takeaway_count` | integer | 人 | 天气因素导致打包人数 |
 | `leave_count` | integer | 人 | 堂食后离开人数 |
 | `avg_wait_time_minutes` | number | 分钟 | 平均等待时间 |
+| `raw_avg_wait_time_minutes` | number | 分钟 | 全量等待均值，兼容旧平均等待口径 |
+| `steady_avg_wait_time_minutes` | number | 分钟 | 中间 80% 稳态样本均值 |
+| `typical_wait_time_minutes` | number | 分钟 | 稳态样本 10% 截尾均值，推荐作为主等待 KPI |
+| `median_wait_time_minutes` | number | 分钟 | 等待时间 P50 |
+| `p75_wait_time_minutes` | number | 分钟 | 等待时间 P75 |
+| `p90_wait_time_minutes` | number | 分钟 | 等待时间 P90 |
+| `long_wait_rate` | number | 比例 | 等待不少于 10 分钟的学生占比 |
+| `zero_wait_rate` | number | 比例 | 近似零等待学生占比 |
+| `edge_wait_sample_rate` | number | 比例 | 开头和结尾阶段等待样本占比 |
+| `wait_time_distribution` | array | 无 | 等待时间分桶，默认 `0-2`、`2-5`、`5-10`、`10-15`、`15+` |
+| `wait_time_insight` | object | 无 | 等待体验状态、参考范围和中文归因说明 |
 | `total_wait_time_minutes` | number | 分钟 | 总等待时间 |
 | `peak_time_minutes` | integer | 分钟 | 单窗口队列峰值出现时间 |
 | `peak_window_id` | integer | 窗口 ID | 单窗口峰值窗口；无峰值时为 `-1` |
@@ -574,7 +585,7 @@ reports/simulation-report-latest.json
 
 | 用途 | 字段 |
 |---|---|
-| 摘要卡片 | `summary.arrived_count`, `summary.abandoned_count`, `summary.avg_wait_time_minutes`, `summary.takeaway_rate`, `summary.seat_utilization_rate` |
+| 摘要卡片 | `summary.arrived_count`, `summary.abandoned_count`, `summary.typical_wait_time_minutes`, `summary.takeaway_rate`, `summary.seat_utilization_rate` |
 | 排队折线图 | `summary.timeline[].minute`, `summary.timeline[].total_queue_size` |
 | 各窗口压力 | `summary.timeline[].window_queue_sizes`, `summary.timeline[].window_types` |
 | 座位变化 | `summary.timeline[].occupied_seats`, `summary.timeline[].empty_seats` |

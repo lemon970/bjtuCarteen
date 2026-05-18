@@ -14,7 +14,6 @@ public class MovementEvent extends BaseEvent {
     }
 
     private static final int DEFAULT_QUEUE_LIMIT = 10;
-    private static final long SEAT_SEARCH_RETRY_SECONDS = 30L;
 
     private final String studentId;
     private final Purpose purpose;
@@ -43,6 +42,7 @@ public class MovementEvent extends BaseEvent {
 
         List<Integer> queues = engine.getCanteenState().getWindowQueues();
         if (queues.isEmpty()) {
+            cancelReservationOnAbandon(engine, student);
             engine.recordAbandonByQueue();
             engine.setStudentState(studentId, StudentState.LEAVE);
             engine.recordState(studentId + " abandoned after walking: no window available");
@@ -54,6 +54,7 @@ public class MovementEvent extends BaseEvent {
         int partySize = student == null ? 1 : student.getPartySize();
         boolean allBlockedByGlobalLimit = queues.stream().allMatch(q -> q + partySize > globalQueueLimit);
         if (allBlockedByGlobalLimit) {
+            cancelReservationOnAbandon(engine, student);
             engine.recordAbandonByQueue();
             engine.setStudentState(studentId, StudentState.LEAVE);
             engine.recordState(studentId + " abandoned after walking: global queue limit reached");
@@ -62,6 +63,7 @@ public class MovementEvent extends BaseEvent {
 
         boolean allBlockedByPersonalLimit = queues.stream().allMatch(q -> q + partySize > patienceLimit);
         if (allBlockedByPersonalLimit) {
+            cancelReservationOnAbandon(engine, student);
             engine.recordAbandonByQueue();
             engine.setStudentState(studentId, StudentState.LEAVE);
             engine.recordState(studentId + " abandoned after walking: personal patience limit reached");
@@ -70,6 +72,7 @@ public class MovementEvent extends BaseEvent {
 
         int windowId = engine.chooseWindowForStudent(student);
         if (windowId < 0) {
+            cancelReservationOnAbandon(engine, student);
             engine.recordAbandonByQueue();
             engine.setStudentState(studentId, StudentState.LEAVE);
             engine.recordState(studentId + " abandoned after walking: failed to choose window");
@@ -77,17 +80,20 @@ public class MovementEvent extends BaseEvent {
         }
         int chosenQueueSize = queues.get(windowId);
         if (chosenQueueSize + partySize > globalQueueLimit || chosenQueueSize + partySize > patienceLimit) {
+            cancelReservationOnAbandon(engine, student);
             engine.recordAbandonByQueue();
             engine.setStudentState(studentId, StudentState.LEAVE);
             engine.recordState(studentId + " abandoned after walking: chosen queue exceeds tolerance");
             return;
         }
 
-        // [重构] 队列长度按“人数”而非“事件数”累计，原因是组团到达时前端排队人数和后端统计口径必须一致。
+        // [重构] 队列长度按"人数"而非"事件数"累计,原因是组团到达时前端排队人数和后端统计口径必须一致。
         engine.getCanteenState().joinQueue(windowId, partySize);
         engine.setStudentState(studentId, StudentState.QUEUING);
 
-        long serviceTime = engine.resolveServiceTimeSeconds(windowId);
+        boolean willTakeaway = engine.isTakeawayWindow(windowId)
+                || (student != null && student.wantsTakeaway());
+        long serviceTime = engine.resolveServiceTimeSeconds(windowId, willTakeaway);
         long queueEnterTime = engine.getCurrentTime();
         long serviceStartTime = engine.reserveWindowService(windowId, queueEnterTime, serviceTime);
         long finishTime = serviceStartTime + serviceTime;
@@ -96,7 +102,8 @@ public class MovementEvent extends BaseEvent {
                 studentId,
                 windowId,
                 queueEnterTime,
-                serviceStartTime));
+                serviceStartTime,
+                chosenQueueSize));
 
         String groupTag = student == null || student.getArrivalGroup() == null
                 ? ArrivalGroup.NORMAL.name()
@@ -116,55 +123,47 @@ public class MovementEvent extends BaseEvent {
                 + ") and queued at " + windowType + " window " + windowId);
     }
 
+    /**
+     * 走向预定座位:reservation 必然存在(到达时已 reserve)。
+     * 仅做 RESERVED → OCCUPIED 转换,然后进入 DINING。
+     * 极端兜底:reservation 为 null 时记 no_seat_abandoned 离开,不计 takeaway。
+     */
     private void processWalkToSeat(SimulationEngine engine) {
         Student student = engine.getStudent(studentId);
         int partySize = student == null ? 1 : student.getPartySize();
-        DiningArea.SeatAllocation allocation = engine.trySeatStudent(student);
-        if (allocation != null) {
+
+        DiningArea.SeatAllocation reservation = student == null ? null : student.getSeatAllocation();
+        if (reservation != null) {
+            engine.confirmReservation(student);
             engine.resolveSeatDecisionPending(partySize);
             engine.recordDineIn(partySize);
             long diningTime = engine.resolveDiningTimeSeconds();
             long leaveTime = engine.getCurrentTime() + diningTime;
             engine.setStudentState(studentId, StudentState.DINING);
             engine.scheduleEvent(new StudentLeaveEvent(leaveTime, studentId));
-            engine.recordState(studentId + " seated for dine-in at table " + allocation.tableId() + " with partySize=" + partySize);
+            engine.recordState(studentId
+                    + " seated for dine-in at table " + reservation.tableId()
+                    + (reservation.splitGroup() ? " (split-group)" : "")
+                    + " with partySize=" + partySize);
             return;
         }
 
-        int seatSearchPatience = student == null ? 0 : student.getSeatSearchPatience();
-        if (seatSearchPatience <= 0) {
-            engine.resolveSeatDecisionPending(partySize);
-            engine.recordTakeawayDecision(
-                    studentId,
-                    "NO_SEAT_SWITCH",
-                    1.0,
-                    0.0,
-                    0.0,
-                    student == null ? 0.5 : student.getPackPreference(),
-                    true,
-                    partySize,
-                    engine.getConfig() == null ? 0.0 : engine.getConfig().getPackProbability(),
-                    0.0,
-                    1.0,
-                    0.0,
-                    engine.currentQueuePressure(),
-                    0.0,
-                    "普通窗口后尝试就座",
-                    "无可用座位，转为打包离开");
-            engine.recordTakeaway(partySize);
-            engine.recordNoSeatSwitchToTakeaway(partySize);
-            engine.recordLeave(partySize);
-            engine.setStudentState(studentId, StudentState.PACK_LEAVE);
-            engine.setStudentState(studentId, StudentState.LEAVE);
-            engine.recordState(studentId + " switched to takeaway after walking to full dining area");
+        // 兜底:reservation 丢失(理论上不应发生)— post-service 路径
+        engine.resolveSeatDecisionPending(partySize);
+        engine.recordPostServiceNoSeat(partySize);
+        engine.recordLeave(partySize);
+        engine.setStudentState(studentId, StudentState.LEAVE);
+        engine.recordState(studentId + " walked to seat but had no reservation, left without dining");
+    }
+
+    /**
+     * 学生在窗口阶段弃排队时,如果还持有座位预定,把它归还。
+     */
+    private void cancelReservationOnAbandon(SimulationEngine engine, Student student) {
+        if (student == null || student.getSeatAllocation() == null) {
             return;
         }
-
-        engine.setStudentState(studentId, StudentState.FIND_SEAT);
-        engine.scheduleEvent(new SeatSearchEvent(
-                engine.getCurrentTime() + SEAT_SEARCH_RETRY_SECONDS,
-                studentId,
-                seatSearchPatience));
-        engine.recordState(studentId + " searching table after walking to dining area");
+        engine.getCanteenState().cancelReservation(student.getSeatAllocation());
+        student.setSeatAllocation(null);
     }
 }

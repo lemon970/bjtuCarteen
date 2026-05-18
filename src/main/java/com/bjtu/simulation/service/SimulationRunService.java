@@ -11,32 +11,43 @@ import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.bjtu.simulation.dto.SimulationSummary;
 import com.bjtu.simulation.dto.SimulationTimePoint;
+import com.bjtu.simulation.dto.TakeawayRateBreakdown;
+import com.bjtu.simulation.dto.WaitTimeMetrics;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.model.ArrivalSample;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
 public class SimulationRunService {
-    private static final String REPORT_VERSION = "1.8.0";
+    private static final String REPORT_VERSION = "1.9.0";
 
     private final SimulationConfigNormalizer configNormalizer;
     private final SimulationArrivalScheduler arrivalScheduler;
     private final SimulationTimelineBuilder timelineBuilder;
     private final QueueTheoryMetricsCalculator queueTheoryMetricsCalculator;
+    private final WaitTimeMetricsCalculator waitTimeMetricsCalculator;
 
     public SimulationRunService() {
         this(new SimulationConfigNormalizer(),
                 new SimulationArrivalScheduler(),
                 new SimulationTimelineBuilder(),
-                new QueueTheoryMetricsCalculator());
+                new QueueTheoryMetricsCalculator(),
+                new WaitTimeMetricsCalculator());
     }
 
+    @Autowired
     public SimulationRunService(SimulationConfigNormalizer configNormalizer,
                                 SimulationArrivalScheduler arrivalScheduler,
                                 SimulationTimelineBuilder timelineBuilder,
-                                QueueTheoryMetricsCalculator queueTheoryMetricsCalculator) {
+                                QueueTheoryMetricsCalculator queueTheoryMetricsCalculator,
+                                WaitTimeMetricsCalculator waitTimeMetricsCalculator) {
         this.configNormalizer = configNormalizer;
         this.arrivalScheduler = arrivalScheduler;
         this.timelineBuilder = timelineBuilder;
         this.queueTheoryMetricsCalculator = queueTheoryMetricsCalculator;
+        this.waitTimeMetricsCalculator = waitTimeMetricsCalculator;
     }
 
     public SimulationReport run(SimConfig inputConfig) {
@@ -80,6 +91,10 @@ public class SimulationRunService {
         int normalWindowServedCount = engine.getNormalWindowServedCount();
         int takeawayWindowServedCount = engine.getTakeawayWindowServedCount();
         QueueTheoryMetrics queueTheoryMetrics = queueTheoryMetricsCalculator.build(config, windowCount);
+        WaitTimeMetrics waitTimeMetrics = waitTimeMetricsCalculator.build(
+                engine.getWaitTimeSamples(),
+                engine.getMaxTotalQueueSize(),
+                seatUtilizationRate);
         var arrivalSamples = new ArrayList<>(engine.getArrivalSamples());
         var takeawayDecisionRecords = new ArrayList<>(engine.getTakeawayDecisionRecords());
 
@@ -89,7 +104,12 @@ public class SimulationRunService {
                 totalSeats,
                 engine.getWindowTypes(),
                 normalWindowCount,
-                takeawayWindowCount);
+                takeawayWindowCount,
+                engine.getWaitTimeSamples());
+
+        double theoreticalTakeawayRate = computeTheoreticalTakeawayRate(config);
+        TakeawayRateBreakdown takeawayRateBreakdown = buildTakeawayRateBreakdown(
+                engine, theoreticalTakeawayRate);
 
         return new SimulationSummary(
                 engine.getHistory(),
@@ -107,30 +127,32 @@ public class SimulationRunService {
                 engine.getNoSeatSwitchToTakeawayCount(),
                 engine.getWeatherDrivenTakeawayCount(),
                 engine.getLeaveCount(),
-                round3(engine.getAvgWaitTimeMinutes()),
-                round3(engine.getTotalWaitTimeMinutes()),
-                round3(engine.getAvgMovementTimeMinutes()),
-                round3(engine.getTotalMovementTimeMinutes()),
+                SimulationMath.round3(engine.getAvgWaitTimeMinutes()),
+                SimulationMath.round3(engine.getTotalWaitTimeMinutes()),
+                waitTimeMetrics,
+                SimulationMath.round3(engine.getAvgMovementTimeMinutes()),
+                SimulationMath.round3(engine.getTotalMovementTimeMinutes()),
                 engine.getMovementSampleCount(),
                 engine.getPeakTime() / 60,
+                engine.getTotalPeakTime() / 60,
                 engine.getPeakWindowId(),
                 engine.getMaxQueueSizeEver(),
                 engine.getMaxTotalQueueSize(),
-                round3(engine.getAvgTotalQueueSize()),
+                SimulationMath.round3(engine.getAvgTotalQueueSize()),
                 engine.getMaxOccupiedSeats(),
-                round3(integratedAvgOccupiedSeats),
-                round3(seatUtilizationRate),
+                SimulationMath.round3(integratedAvgOccupiedSeats),
+                SimulationMath.round3(seatUtilizationRate),
                 new ArrayList<>(engine.getWindowServedCounts()),
                 new ArrayList<>(engine.getWindowTypes()),
                 normalWindowCount,
                 takeawayWindowCount,
                 normalWindowServedCount,
                 takeawayWindowServedCount,
-                rate(engine.getTakeawayCount(), engine.getServedCount()),
-                rate(engine.getDineInCount(), engine.getServedCount()),
-                rate(takeawayWindowCount, windowCount),
-                rate(normalWindowServedCount, engine.getServedCount()),
-                rate(takeawayWindowServedCount, engine.getServedCount()),
+                SimulationMath.rate(engine.getTakeawayCount(), engine.getServedCount()),
+                SimulationMath.rate(engine.getDineInCount(), engine.getServedCount()),
+                SimulationMath.rate(takeawayWindowCount, windowCount),
+                SimulationMath.rate(normalWindowServedCount, engine.getServedCount()),
+                SimulationMath.rate(takeawayWindowServedCount, engine.getServedCount()),
                 endTimeSeconds,
                 endTimeMinutes,
                 totalSeats,
@@ -141,7 +163,90 @@ public class SimulationRunService {
                 arrivalSamples,
                 takeawayDecisionRecords,
                 buildProbabilityModel(config, arrivalSamples, takeawayDecisionRecords.size()),
-                queueTheoryMetrics);
+                queueTheoryMetrics,
+                engine.getGroupCount(),
+                engine.getGroupedStudentCount(),
+                SimulationMath.rate(engine.getGroupedStudentCount(), engine.getGroupCount()),
+                SimulationMath.rate(engine.getSameTableGroupCount(), engine.getGroupCount()),
+                SimulationMath.rate(engine.getSplitGroupCount(), engine.getGroupCount()),
+                engine.getNoSeatAbandonedCount(),
+                SimulationMath.rate(engine.getNoSeatAbandonedCount(),
+                        Math.max(1, engine.getArrivedCount())),
+                engine.getSeatWaitQueueMax(),
+                SimulationMath.round3(engine.getSeatWaitAvgSeconds()),
+                SimulationMath.round3(engine.getReservedSeatsAvg()),
+                computeTimeWeightedUtilization(engine.getTableSnapshots(), totalSeats, endTimeSeconds),
+                SimulationMath.rate(engine.getDineInCount(), totalSeats),
+                SimulationMath.rate(engine.getMaxOccupiedSeats(), totalSeats),
+                computeSteadyStateUtilization(timeline, totalSeats),
+                theoreticalTakeawayRate,
+                takeawayRateBreakdown);
+    }
+
+    private double computeTheoreticalTakeawayRate(SimConfig config) {
+        if (config == null) {
+            return 0.0;
+        }
+        double basePack = SimulationMath.clamp(config.getPackProbability(), 0.0, 1.0);
+        SimConfig.WeatherConfig weatherConfig = config.getWeatherConfig();
+        String weatherType = weatherConfig == null ? null : weatherConfig.getCurrentWeather();
+        double userFactor = weatherConfig == null ? 1.0 : weatherConfig.getWeatherImpactFactor();
+        double effective = WeatherFactorPolicy.resolveEffectiveFactor(weatherType, userFactor);
+        return SimulationMath.clamp(basePack * effective, 0.0, 0.95);
+    }
+
+    private TakeawayRateBreakdown buildTakeawayRateBreakdown(SimulationEngine engine,
+                                                             double theoreticalTakeawayRate) {
+        int arrived = Math.max(0, engine.getArrivedCount());
+        int served = Math.max(0, engine.getServedCount());
+        double initialIntentRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getInitialTakeawayIntentCount() / arrived, 0.0, 1.0);
+        double dynamicFlipRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getWeatherDrivenTakeawayCount() / arrived, 0.0, 1.0);
+        double noSeatForcedRate = arrived == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getNoSeatSwitchToTakeawayCount() / arrived, 0.0, 1.0);
+        double observedRate = served == 0
+                ? 0.0
+                : SimulationMath.clamp((double) engine.getTakeawayCount() / served, 0.0, 1.0);
+        return new TakeawayRateBreakdown(initialIntentRate, dynamicFlipRate, noSeatForcedRate,
+                observedRate, theoreticalTakeawayRate);
+    }
+
+    private double computeTimeWeightedUtilization(List<com.bjtu.simulation.model.TableSnapshot> snapshots,
+                                                  int totalSeats,
+                                                  long endTimeSeconds) {
+        if (snapshots == null || snapshots.isEmpty() || totalSeats <= 0 || endTimeSeconds <= 0) {
+            return 0.0;
+        }
+        long occupiedSeatSeconds = 0L;
+        for (var snapshot : snapshots) {
+            occupiedSeatSeconds += Math.max(0L, snapshot.getOccupiedSeatSeconds());
+        }
+        double denominator = (double) totalSeats * (double) endTimeSeconds;
+        return denominator <= 0 ? 0.0 : occupiedSeatSeconds / denominator;
+    }
+
+    private double computeSteadyStateUtilization(List<SimulationTimePoint> timeline, int totalSeats) {
+        if (timeline == null || timeline.isEmpty() || totalSeats <= 0) {
+            return 0.0;
+        }
+        int n = timeline.size();
+        int from = (int) Math.floor(n * 0.1);
+        int to = (int) Math.ceil(n * 0.9);
+        if (to <= from) {
+            from = 0;
+            to = n;
+        }
+        double sum = 0.0;
+        int count = 0;
+        for (int i = from; i < to; i++) {
+            sum += timeline.get(i).getSeatUtilizationRate();
+            count++;
+        }
+        return count == 0 ? 0.0 : sum / count;
     }
 
     private com.bjtu.simulation.dto.ProbabilityModelSummary buildProbabilityModel(SimConfig config,
@@ -150,9 +255,24 @@ public class SimulationRunService {
         double lambdaPerHour = Math.max(0.0, config.getArrivalRate());
         double expectedMeanInterval = lambdaPerHour <= 0 ? 0.0 : 3600.0 / lambdaPerHour;
         double observedMeanInterval = averageInterval(arrivalSamples);
-        double accuracy = expectedMeanInterval <= 0 || observedMeanInterval <= 0
+        double durationHours = Math.max(1.0e-6, config.getDuration());
+        double observedRatePerHour = arrivalSamples == null || arrivalSamples.isEmpty()
                 ? 0.0
-                : Math.max(0.0, 1.0 - Math.abs(observedMeanInterval - expectedMeanInterval) / expectedMeanInterval);
+                : arrivalSamples.size() / durationHours;
+        double accuracy;
+        if (lambdaPerHour <= 0 || observedRatePerHour <= 0) {
+            accuracy = 0.0;
+        } else {
+            double rateAccuracy = SimulationMath.clamp(
+                    1.0 - Math.abs(observedRatePerHour - lambdaPerHour) / lambdaPerHour,
+                    0.0, 1.0);
+            double intervalAccuracy = expectedMeanInterval > 0 && observedMeanInterval > 0
+                    ? SimulationMath.clamp(
+                            1.0 - Math.abs(observedMeanInterval - expectedMeanInterval) / expectedMeanInterval,
+                            0.0, 1.0)
+                    : rateAccuracy;
+            accuracy = (rateAccuracy + intervalAccuracy) / 2.0;
+        }
         return new com.bjtu.simulation.dto.ProbabilityModelSummary(
                 normalizeDistributionName(config.getArrivalDist(), "POISSON"),
                 interarrivalDistributionName(config),
@@ -176,26 +296,21 @@ public class SimulationRunService {
         return "NEGATIVE_EXPONENTIAL";
     }
 
-    private double averageLambdaPerHour(List<ArrivalSample> arrivalSamples) {
-        if (arrivalSamples == null || arrivalSamples.isEmpty()) {
-            return 0.0;
-        }
-        double sum = 0.0;
-        for (ArrivalSample sample : arrivalSamples) {
-            sum += Math.max(0.0, sample.getLambdaPerHour());
-        }
-        return sum / arrivalSamples.size();
-    }
-
     private double averageInterval(List<ArrivalSample> arrivalSamples) {
-        if (arrivalSamples == null || arrivalSamples.isEmpty()) {
+        if (arrivalSamples == null || arrivalSamples.size() < 2) {
             return 0.0;
         }
         long sum = 0L;
-        for (ArrivalSample sample : arrivalSamples) {
-            sum += Math.max(0L, sample.getIntervalSeconds());
+        int counted = 0;
+        for (int i = 1; i < arrivalSamples.size(); i++) {
+            long interval = Math.max(0L, arrivalSamples.get(i).getIntervalSeconds());
+            if (interval == 0L) {
+                continue;
+            }
+            sum += interval;
+            counted++;
         }
-        return (double) sum / arrivalSamples.size();
+        return counted == 0 ? 0.0 : (double) sum / counted;
     }
 
     private double minuteVarianceMeanRatio(List<ArrivalSample> arrivalSamples) {
@@ -233,14 +348,4 @@ public class SimulationRunService {
         return spec.getType().trim().toUpperCase();
     }
 
-    private double rate(int numerator, int denominator) {
-        return denominator <= 0 ? 0.0 : round3((double) numerator / denominator);
-    }
-
-    private double round3(double value) {
-        if (Double.isNaN(value) || Double.isInfinite(value)) {
-            return 0.0;
-        }
-        return Math.round(value * 1000.0) / 1000.0;
-    }
 }

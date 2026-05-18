@@ -5,9 +5,16 @@ import java.util.List;
 
 import com.bjtu.simulation.dto.SimulationResult;
 import com.bjtu.simulation.dto.SimulationTimePoint;
+import com.bjtu.simulation.model.WaitTimeSample;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class SimulationTimelineBuilder {
-    private static final int MAX_TIMELINE_POINTS = 1000;
+    // 16h 仿真上限 = 960 分钟，加上末尾 dining 长尾后 endMinute 可达 ~1100；
+    // 上限保持为 2000 以确保 stepMinutes 始终为 1（保证 timeline 分钟级语义）。
+    private static final int MAX_TIMELINE_POINTS = 2000;
+    private static final long WAIT_WINDOW_SECONDS = 300L;
 
     public List<SimulationTimePoint> build(List<SimulationResult> history,
                                            int windowCount,
@@ -15,8 +22,19 @@ public class SimulationTimelineBuilder {
                                            List<String> windowTypes,
                                            int normalWindowCount,
                                            int takeawayWindowCount) {
+        return build(history, windowCount, totalSeats, windowTypes, normalWindowCount, takeawayWindowCount, List.of());
+    }
+
+    public List<SimulationTimePoint> build(List<SimulationResult> history,
+                                           int windowCount,
+                                           int totalSeats,
+                                           List<String> windowTypes,
+                                           int normalWindowCount,
+                                           int takeawayWindowCount,
+                                           List<WaitTimeSample> waitTimeSamples) {
         List<SimulationTimePoint> timeline = new ArrayList<>();
         List<String> normalizedWindowTypes = normalizeWindowTypes(windowTypes, windowCount, normalWindowCount);
+        List<WaitTimeSample> safeSamples = waitTimeSamples == null ? List.of() : waitTimeSamples;
         if (history == null || history.isEmpty()) {
             timeline.add(emptyTimePoint(0, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
             return timeline;
@@ -37,10 +55,36 @@ public class SimulationTimelineBuilder {
             if (last == null) {
                 timeline.add(emptyTimePoint(minute, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
             } else {
-                timeline.add(toTimePoint(minute, last, windowCount, totalSeats, normalizedWindowTypes, normalWindowCount, takeawayWindowCount));
+                timeline.add(toTimePoint(minute, last, windowCount, totalSeats, normalizedWindowTypes,
+                        normalWindowCount, takeawayWindowCount, safeSamples));
             }
         }
         return timeline;
+    }
+
+    private WaitWindowStats computeWaitWindow(long currentTimeSeconds, List<WaitTimeSample> samples) {
+        if (samples == null || samples.isEmpty() || currentTimeSeconds < 0) {
+            return new WaitWindowStats(0.0, 0);
+        }
+        long lowerInclusive = Math.max(0L, currentTimeSeconds - WAIT_WINDOW_SECONDS);
+        double weightedSum = 0.0;
+        int weightedCount = 0;
+        for (WaitTimeSample sample : samples) {
+            long serviceStart = sample.getServiceStartTimeSeconds();
+            if (serviceStart > currentTimeSeconds || serviceStart < lowerInclusive) {
+                continue;
+            }
+            int weight = Math.max(1, sample.getPartySize());
+            weightedSum += sample.getWaitMinutes() * weight;
+            weightedCount += weight;
+        }
+        if (weightedCount == 0) {
+            return new WaitWindowStats(0.0, 0);
+        }
+        return new WaitWindowStats(round3(weightedSum / weightedCount), weightedCount);
+    }
+
+    private record WaitWindowStats(double avgWaitMinutes, int sampleCount) {
     }
 
     private SimulationTimePoint emptyTimePoint(long minute,
@@ -50,6 +94,7 @@ public class SimulationTimelineBuilder {
                                                int normalWindowCount,
                                                int takeawayWindowCount) {
         int safeTotalSeats = Math.max(0, totalSeats);
+        double freeRate = safeTotalSeats > 0 ? 1.0 : 0.0;
         return new SimulationTimePoint(
                 minute * 60,
                 minute,
@@ -86,7 +131,13 @@ public class SimulationTimelineBuilder {
                 0,
                 0.0,
                 0.0,
-                List.of());
+                0.0,
+                0,
+                List.of(),
+                0,
+                0.0,
+                0.0,
+                freeRate);
     }
 
     private SimulationTimePoint toTimePoint(long minute,
@@ -95,7 +146,8 @@ public class SimulationTimelineBuilder {
                                             int totalSeats,
                                             List<String> windowTypes,
                                             int normalWindowCount,
-                                            int takeawayWindowCount) {
+                                            int takeawayWindowCount,
+                                            List<WaitTimeSample> waitTimeSamples) {
         List<Integer> queues = normalizeQueues(last.getQueueSizes(), windowCount);
         int totalQueueSize = sum(queues);
         int normalWindowQueueSize = sumRange(queues, 0, normalWindowCount);
@@ -104,6 +156,24 @@ public class SimulationTimelineBuilder {
         int safeTotalSeats = Math.max(0, totalSeats);
         int emptySeats = Math.max(0, safeTotalSeats - occupiedSeats);
         double seatUtilizationRate = safeTotalSeats == 0 ? 0 : round3((double) occupiedSeats / safeTotalSeats);
+        WaitWindowStats waitWindow = computeWaitWindow(last.getTime(), waitTimeSamples);
+
+        int reservedSeats = 0;
+        if (last.getTableSnapshots() != null) {
+            for (var snapshot : last.getTableSnapshots()) {
+                reservedSeats += Math.max(0, snapshot.getReservedSeats());
+            }
+        }
+        reservedSeats = Math.min(reservedSeats, Math.max(0, safeTotalSeats - occupiedSeats));
+        double seatUnavailableRate = safeTotalSeats == 0
+                ? 0.0
+                : (double) (occupiedSeats + reservedSeats) / safeTotalSeats;
+        double seatReservedShare = safeTotalSeats == 0
+                ? 0.0
+                : (double) reservedSeats / safeTotalSeats;
+        double seatFreeRate = safeTotalSeats == 0
+                ? 0.0
+                : Math.max(0.0, 1.0 - seatUnavailableRate);
 
         return new SimulationTimePoint(
                 last.getTime(),
@@ -141,7 +211,13 @@ public class SimulationTimelineBuilder {
                 last.getMovementSampleCount(),
                 round3(last.getTotalMovementTimeMinutes()),
                 round3(last.getAvgMovementTimeMinutes()),
-                List.of());
+                waitWindow.avgWaitMinutes(),
+                waitWindow.sampleCount(),
+                last.getTableSnapshots() == null ? List.of() : last.getTableSnapshots(),
+                reservedSeats,
+                seatUnavailableRate,
+                seatReservedShare,
+                seatFreeRate);
     }
 
     private List<Integer> normalizeQueues(List<Integer> source, int windowCount) {

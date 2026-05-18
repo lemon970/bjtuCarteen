@@ -2,3 +2,33 @@ reports/
 target/
 sun/dist/
 *.log
+
+# Node / Vite
+node_modules/
+sun/node_modules/
+
+# Visual Studio / MSBuild for dataAnalyze (C++)
+dataAnalyze/.vs/
+dataAnalyze/bin/
+dataAnalyze/Project3/x64/
+dataAnalyze/Project3/Debug/
+dataAnalyze/Project3/Release/
+*.vcxproj.user
+*.suo
+*.vsidx
+*.tlog
+*.obj
+*.ilk
+*.idb
+*.pdb
+*.ipch
+
+# CMake
+dataAnalyze/build/
+dataAnalyze/CMakeCache.txt
+dataAnalyze/CMakeFiles/
+
+# Local temp / runtime artifacts
+.tmp.json
+.tmp/
+.DS_Store

@@ -91,6 +91,11 @@ public class SimConfig {
     @JsonAlias("peak_config")
     private PeakConfig peakConfig = new PeakConfig();
 
+    @Valid
+    @NotNull
+    @JsonAlias("group_config")
+    private GroupConfig groupConfig = new GroupConfig();
+
     public static class BaseConfig {
         @JsonAlias("window_count")
         @Min(value = 1, message = "windowCount must be >= 1")
@@ -187,6 +192,91 @@ public class SimConfig {
 
         public void setLargeTableRatio(double largeTableRatio) {
             this.largeTableRatio = largeTableRatio;
+        }
+    }
+
+    public static class GroupConfig {
+        @JsonAlias("enabled")
+        private boolean enabled = false;
+
+        @JsonAlias("group_count")
+        @Min(value = 0, message = "groupCount must be >= 0")
+        private int groupCount = 0;
+
+        @JsonAlias("size_min")
+        @Min(value = 1, message = "group size min must be >= 1")
+        private int sizeMin = 2;
+
+        @JsonAlias("size_max")
+        @Min(value = 1, message = "group size max must be >= 1")
+        private int sizeMax = 4;
+
+        @JsonAlias("arrival_spread_seconds")
+        @Min(value = 0, message = "arrivalSpreadSeconds must be >= 0")
+        private int arrivalSpreadSeconds = 0;
+
+        @JsonAlias("behavior_correlation")
+        @DecimalMin(value = "0.0", message = "behaviorCorrelation must be in [0, 1]")
+        @DecimalMax(value = "1.0", message = "behaviorCorrelation must be in [0, 1]")
+        private double behaviorCorrelation = 0.75;
+
+        @JsonAlias("prefer_adjacent_seats")
+        private boolean preferAdjacentSeats = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getGroupCount() {
+            return groupCount;
+        }
+
+        public void setGroupCount(int groupCount) {
+            this.groupCount = groupCount;
+        }
+
+        public int getSizeMin() {
+            return sizeMin;
+        }
+
+        public void setSizeMin(int sizeMin) {
+            this.sizeMin = sizeMin;
+        }
+
+        public int getSizeMax() {
+            return sizeMax;
+        }
+
+        public void setSizeMax(int sizeMax) {
+            this.sizeMax = sizeMax;
+        }
+
+        public int getArrivalSpreadSeconds() {
+            return arrivalSpreadSeconds;
+        }
+
+        public void setArrivalSpreadSeconds(int arrivalSpreadSeconds) {
+            this.arrivalSpreadSeconds = arrivalSpreadSeconds;
+        }
+
+        public double getBehaviorCorrelation() {
+            return behaviorCorrelation;
+        }
+
+        public void setBehaviorCorrelation(double behaviorCorrelation) {
+            this.behaviorCorrelation = behaviorCorrelation;
+        }
+
+        public boolean isPreferAdjacentSeats() {
+            return preferAdjacentSeats;
+        }
+
+        public void setPreferAdjacentSeats(boolean preferAdjacentSeats) {
+            this.preferAdjacentSeats = preferAdjacentSeats;
         }
     }
 
@@ -603,6 +693,14 @@ public class SimConfig {
 
     public void setPeakConfig(PeakConfig peakConfig) {
         this.peakConfig = peakConfig;
+    }
+
+    public GroupConfig getGroupConfig() {
+        return groupConfig;
+    }
+
+    public void setGroupConfig(GroupConfig groupConfig) {
+        this.groupConfig = groupConfig;
     }
 
 }

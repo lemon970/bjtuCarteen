@@ -29,6 +29,10 @@ public class Student {
     private final PatienceLevel patienceLevel;
     private final SeatToleranceLevel seatToleranceLevel;
     private final int partySize;
+    private final String groupId;
+    private final int groupSize;
+    private final int groupMemberIndex;
+    private final boolean wantsTakeaway;
     private StudentState state;
     private DiningArea.SeatAllocation seatAllocation;
 
@@ -50,7 +54,11 @@ public class Student {
                 packPreferenceLevel,
                 patienceLevel,
                 seatToleranceLevel,
-                1);
+                1,
+                null,
+                1,
+                0,
+                false);
     }
 
     public Student(String id,
@@ -63,6 +71,65 @@ public class Student {
                    PatienceLevel patienceLevel,
                    SeatToleranceLevel seatToleranceLevel,
                    int partySize) {
+        this(id,
+                packPreference,
+                patienceLimit,
+                windowPreference,
+                seatSearchPatience,
+                arrivalGroup,
+                packPreferenceLevel,
+                patienceLevel,
+                seatToleranceLevel,
+                partySize,
+                null,
+                partySize,
+                0,
+                false);
+    }
+
+    public Student(String id,
+                   double packPreference,
+                   int patienceLimit,
+                   int windowPreference,
+                   int seatSearchPatience,
+                   ArrivalGroup arrivalGroup,
+                   PackPreferenceLevel packPreferenceLevel,
+                   PatienceLevel patienceLevel,
+                   SeatToleranceLevel seatToleranceLevel,
+                   int partySize,
+                   String groupId,
+                   int groupSize,
+                   int groupMemberIndex) {
+        this(id,
+                packPreference,
+                patienceLimit,
+                windowPreference,
+                seatSearchPatience,
+                arrivalGroup,
+                packPreferenceLevel,
+                patienceLevel,
+                seatToleranceLevel,
+                partySize,
+                groupId,
+                groupSize,
+                groupMemberIndex,
+                false);
+    }
+
+    public Student(String id,
+                   double packPreference,
+                   int patienceLimit,
+                   int windowPreference,
+                   int seatSearchPatience,
+                   ArrivalGroup arrivalGroup,
+                   PackPreferenceLevel packPreferenceLevel,
+                   PatienceLevel patienceLevel,
+                   SeatToleranceLevel seatToleranceLevel,
+                   int partySize,
+                   String groupId,
+                   int groupSize,
+                   int groupMemberIndex,
+                   boolean wantsTakeaway) {
         this.id = id;
         this.packPreference = packPreference;
         this.patienceLimit = patienceLimit;
@@ -73,6 +140,10 @@ public class Student {
         this.patienceLevel = patienceLevel == null ? PatienceLevel.MEDIUM : patienceLevel;
         this.seatToleranceLevel = seatToleranceLevel == null ? SeatToleranceLevel.MEDIUM : seatToleranceLevel;
         this.partySize = Math.max(1, partySize);
+        this.groupId = groupId == null || groupId.isBlank() ? null : groupId;
+        this.groupSize = Math.max(this.partySize, groupSize);
+        this.groupMemberIndex = Math.max(0, groupMemberIndex);
+        this.wantsTakeaway = wantsTakeaway;
         this.state = StudentState.ARRIVED;
         this.seatAllocation = null;
     }
@@ -115,6 +186,26 @@ public class Student {
 
     public int getPartySize() {
         return partySize;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public int getGroupSize() {
+        return groupSize;
+    }
+
+    public int getGroupMemberIndex() {
+        return groupMemberIndex;
+    }
+
+    public boolean isGrouped() {
+        return groupId != null && partySize > 1;
+    }
+
+    public boolean wantsTakeaway() {
+        return wantsTakeaway;
     }
 
     public StudentState getState() {
