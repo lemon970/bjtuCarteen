@@ -192,7 +192,22 @@ public class SimulationRunService {
         String weatherType = weatherConfig == null ? null : weatherConfig.getCurrentWeather();
         double userFactor = weatherConfig == null ? 1.0 : weatherConfig.getWeatherImpactFactor();
         double effective = WeatherFactorPolicy.resolveEffectiveFactor(weatherType, userFactor);
-        return SimulationMath.clamp(basePack * effective, 0.0, 0.95);
+        double pIntent = SimulationMath.clamp(basePack * effective, 0.0, 0.95);
+
+        // Bug-03 修复:补打包窗口路由强制分量。
+        // 仿真中 ServiceFinishEvent.recordForcedTakeaway 把所有从打包窗口完成
+        // 服务的学生强制打包。在 (1 - pIntent) 占比的"非初始打包"学生中,有
+        // takeawayWindowCount/windowCount 几何概率被路由到打包窗口而被迫打包。
+        // 旧公式只算 pIntent,系统性偏低;补这一项后基准能合理描述各预设观测值。
+        SimConfig.BaseConfig baseConfig = config.getBaseConfig();
+        int windowCount = baseConfig == null ? 0 : baseConfig.getWindowCount();
+        int takeawayWindowCount = baseConfig == null ? 0 : baseConfig.getTakeawayWindowCount();
+        double routedFraction = windowCount <= 0
+                ? 0.0
+                : SimulationMath.clamp((double) takeawayWindowCount / windowCount, 0.0, 1.0);
+        double routedComponent = (1.0 - pIntent) * routedFraction;
+
+        return SimulationMath.clamp(pIntent + routedComponent, 0.0, 0.95);
     }
 
     private TakeawayRateBreakdown buildTakeawayRateBreakdown(SimulationEngine engine,

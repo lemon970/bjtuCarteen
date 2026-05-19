@@ -167,7 +167,7 @@ function InputPage({
           <NumberField label="窗口总数" min="1" step="1" value={form.windowCount} onChange={(value) => onFieldChange('windowCount', value)} />
           <NumberField label="打包窗口数" min="0" step="1" value={form.takeawayWindowCount} onChange={(value) => onFieldChange('takeawayWindowCount', value)} />
           <NumberField label="普通服务均值 / 秒" min="1" step="1" value={form.serviceMean} onChange={(value) => onFieldChange('serviceMean', value)} />
-          <NumberField label="打包服务倍数" min="1" step="0.05" value={form.takeawayServiceTimeMultiplier} onChange={(value) => onFieldChange('takeawayServiceTimeMultiplier', value)} />
+          <NumberField label="打包服务倍数" min="1" step="0.01" value={form.takeawayServiceTimeMultiplier} onChange={(value) => onFieldChange('takeawayServiceTimeMultiplier', value)} />
         </ParameterSection>
 
         <ParameterSection title="座位策略">
@@ -186,7 +186,7 @@ function InputPage({
             options={[['sunny', '晴天'], ['cloudy', '阴天'], ['rainy', '雨天']]}
             onChange={(value) => onFieldChange('currentWeather', value)}
           />
-          <NumberField label="天气影响系数" min="0" step="0.1" value={form.weatherImpactFactor} onChange={(value) => onFieldChange('weatherImpactFactor', value)} />
+          <NumberField label="天气影响系数" min="0" step="0.05" value={form.weatherImpactFactor} onChange={(value) => onFieldChange('weatherImpactFactor', value)} />
         </ParameterSection>
 
         <details className="panel lg:col-span-2" open>
@@ -217,10 +217,10 @@ function InputPage({
             <NumberField label="偏好上限" min="0" max="1" step="0.01" value={form.preferenceMax} onChange={(value) => onFieldChange('preferenceMax', value)} />
             <NumberField label="午峰开始 / 分" min="0" step="1" value={form.lunchPeakStart} onChange={(value) => onFieldChange('lunchPeakStart', value)} />
             <NumberField label="午峰结束 / 分" min="0" step="1" value={form.lunchPeakEnd} onChange={(value) => onFieldChange('lunchPeakEnd', value)} />
-            <NumberField label="午峰倍数" min="1" step="0.1" value={form.lunchPeakMultiplier} onChange={(value) => onFieldChange('lunchPeakMultiplier', value)} />
+            <NumberField label="午峰倍数" min="1" step="0.05" value={form.lunchPeakMultiplier} onChange={(value) => onFieldChange('lunchPeakMultiplier', value)} />
             <NumberField label="晚峰开始 / 分" min="0" step="1" value={form.dinnerPeakStart} onChange={(value) => onFieldChange('dinnerPeakStart', value)} />
             <NumberField label="晚峰结束 / 分" min="0" step="1" value={form.dinnerPeakEnd} onChange={(value) => onFieldChange('dinnerPeakEnd', value)} />
-            <NumberField label="晚峰倍数" min="1" step="0.1" value={form.dinnerPeakMultiplier} onChange={(value) => onFieldChange('dinnerPeakMultiplier', value)} />
+            <NumberField label="晚峰倍数" min="1" step="0.05" value={form.dinnerPeakMultiplier} onChange={(value) => onFieldChange('dinnerPeakMultiplier', value)} />
             <label className="block text-sm">
               <span className="field-label">导入配置文件</span>
               <input type="file" accept=".json" onChange={onFileUpload} className="mt-1 block w-full text-sm" />

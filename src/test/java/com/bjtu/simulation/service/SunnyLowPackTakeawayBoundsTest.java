@@ -15,26 +15,31 @@ import org.junit.jupiter.api.Test;
  *
  * 用户报告 sunny + 0.15 实际 >30%。根因:TakeawayDecisionPolicy.finalProbability 在高
  * 队列/高座位压力下会叠加 queuePressureBonus + seatPressureBonus,加上 dynamic flip 后
- * 观测值显著高于理论的 0.15。
+ * 观测值显著高于初始意图。
+ *
+ * Bug-03 修复后理论公式:theoretical = clamp(p_intent + (1 - p_intent) × twc/wc, 0, 0.95),
+ * 这里 twc=1, wc=6 → routed=1/6。p_intent=0.15 → theoretical=0.15+0.85/6≈0.2917。
  *
  * 本测试不调整公式,只把当前行为作为契约固定下来:
- * - theoretical_takeaway_rate 严格 == 0.15(StudentProfileFactory.intentProbability 期望值)
- * - 中等压力下 observed_rate 应落在 [0.10, 0.35],极端拥堵不在本测试覆盖范围
- * - 三段分解非负,且 initial_intent 在 sunny 下应明显小于 dynamic_flip 的最大值,
- *   因为 dynamic flip 由压力驱动,这是 P2 报告"实际 > 理论"的合法解释路径
+ * - theoretical_takeaway_rate ≈ 0.2917(round3 后 0.292)
+ * - 中等压力下 observed_rate 应落在 [0.05, 0.55],极端拥堵不在本测试覆盖范围
+ * - 三段分解非负
  *
  * 当公式调整(如降低压力上限)导致 observed_rate 超出阈值时,测试失败 → 强制开发者
  * 重新评估"调参 vs 放宽阈值"。
  */
 class SunnyLowPackTakeawayBoundsTest {
 
+    /** 修复后的理论值:0.15 + 0.85 × 1/6 = 0.291666...,round3 后 0.292。 */
+    private static final double EXPECTED_THEORETICAL = 0.15 + 0.85 / 6.0;
+
     private final SimulationRunService runService = new SimulationRunService();
 
     @Test
     void sunnyLowPackShouldExposeTheoreticalRateExactly() {
         SimulationSummary summary = runService.run(moderateSunnyConfig(20260901L)).getSummary();
-        assertEquals(0.15, summary.getTheoreticalTakeawayRate(), 1e-6,
-                "sunny × 1.0 × 0.15 → theoretical 必须严格等于 packProbability");
+        assertEquals(EXPECTED_THEORETICAL, summary.getTheoreticalTakeawayRate(), 1e-3,
+                "sunny × 1.0 × 0.15 + routed (1/6 takeaway window) → theoretical ≈ 0.292");
     }
 
     @Test
@@ -59,7 +64,7 @@ class SunnyLowPackTakeawayBoundsTest {
                 "dynamic_flip_rate 不能为负, got " + breakdown.getDynamicFlipRate());
         assertTrue(breakdown.getNoSeatForcedRate() >= 0.0,
                 "no_seat_forced_rate 不能为负, got " + breakdown.getNoSeatForcedRate());
-        assertEquals(0.15, breakdown.getTheoreticalRate(), 1e-6,
+        assertEquals(EXPECTED_THEORETICAL, breakdown.getTheoreticalRate(), 1e-3,
                 "breakdown.theoreticalRate 应等于 summary.theoreticalTakeawayRate");
         assertEquals(summary.getTakeawayRate(), breakdown.getObservedRate(), 1e-6,
                 "breakdown.observedRate 应等于 summary.takeawayRate");
