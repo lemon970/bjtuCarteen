@@ -8,6 +8,7 @@ com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest$FileEntry.class
 com\bjtu\simulation\service\TheoreticalTakeawayRateTest.class
 com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest$1.class
 com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.class
+com\bjtu\simulation\tools\CuratedSamplesGenerator$SamplePlan.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$MapRepo.class
 com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.class
 com\bjtu\simulation\service\ScenarioPresetNumberFieldStepConformanceTest.class
@@ -35,6 +36,7 @@ com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest.class
 com\bjtu\simulation\service\SimulationReportRepositoryTest.class
 com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class
+com\bjtu\simulation\tools\CuratedSamplesGenerator.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicyTest.class
 com\bjtu\simulation\service\HistoricalQualityScorerTest.class
 com\bjtu\simulation\service\SeatUtilizationMetricsTest.class
