@@ -24,6 +24,7 @@ com\bjtu\simulation\engine\SeatReservationTest.class
 com\bjtu\simulation\service\RainEmergencyEndToEndTest.class
 com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.class
 com\bjtu\simulation\service\SimulationConfigNormalizerTest.class
+com\bjtu\simulation\service\ReportSummaryStoreTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$RecordingRunner.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$StubRepo.class
 com\bjtu\simulation\service\SimulationReportRepositoryTest.class

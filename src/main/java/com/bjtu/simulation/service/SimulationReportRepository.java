@@ -21,9 +21,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class SimulationReportRepository {
+    private static final Logger log = LoggerFactory.getLogger(SimulationReportRepository.class);
+
     private static final Path REPORTS_DIR = Path.of("reports");
     private static final String LATEST_REPORT_FILE = "simulation-report-latest.json";
     private static final String HISTORY_FILE_PREFIX = "simulation-history-";
@@ -31,15 +35,25 @@ public class SimulationReportRepository {
 
     private final ObjectMapper reportMapper;
     private final ReportListItemMapper listItemMapper;
+    private final ReportSummaryStore summaryStore;
 
     @Autowired
+    public SimulationReportRepository(ReportSummaryStore summaryStore) {
+        this(AppBeansConfig.createReportObjectMapper(), summaryStore);
+    }
+
     public SimulationReportRepository() {
-        this(AppBeansConfig.createReportObjectMapper());
+        this(AppBeansConfig.createReportObjectMapper(), null);
     }
 
     public SimulationReportRepository(ObjectMapper reportMapper) {
+        this(reportMapper, null);
+    }
+
+    public SimulationReportRepository(ObjectMapper reportMapper, ReportSummaryStore summaryStore) {
         this.reportMapper = reportMapper;
         this.listItemMapper = new ReportListItemMapper(reportMapper);
+        this.summaryStore = summaryStore;
     }
 
     public void write(SimulationReport report) {
@@ -53,8 +67,19 @@ public class SimulationReportRepository {
             writeJsonWithRetry(reportPath, compactReport);
             Path latestPath = REPORTS_DIR.resolve(LATEST_REPORT_FILE);
             writeJsonWithRetry(latestPath, compactReport);
+            // 摘要写入是非阻塞 hook,失败仅 log,不抛 — 不允许影响 report 写入主路径。
+            tryUpsertSummary(report.getReportId(), compactReport, reportPath);
         } catch (IOException e) {
             throw new IllegalStateException("failed to write simulation report", e);
+        }
+    }
+
+    private void tryUpsertSummary(String reportId, JsonNode compactReport, Path reportPath) {
+        if (summaryStore == null) return;
+        try {
+            summaryStore.upsert(reportId, compactReport, reportPath);
+        } catch (Throwable t) {
+            log.warn("summary upsert failed for {} (non-fatal): {}", reportId, t.getMessage());
         }
     }
 

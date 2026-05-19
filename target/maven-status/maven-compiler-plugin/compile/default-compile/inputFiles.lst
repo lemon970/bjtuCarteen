@@ -54,6 +54,8 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\I
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\QueueTheoryMetricsCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ReportListItemMapper.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ReportSummaryExtractor.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ReportSummaryStore.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ScenarioPresetCatalog.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ScenarioRunService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationArrivalScheduler.java
