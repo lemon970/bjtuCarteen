@@ -1,4 +1,5 @@
 com\bjtu\simulation\controller\SimulationOptimizationController.class
+com\bjtu\simulation\service\HistoricalDiagnosticsService.class
 com\bjtu\simulation\engine\StudentProfileFactory$1.class
 com\bjtu\simulation\service\SimulationMath.class
 com\bjtu\simulation\service\SimulationArrivalScheduler$PartyArrival.class

@@ -6,6 +6,7 @@ com\bjtu\simulation\controller\SimulationControllerTest.class
 com\bjtu\simulation\engine\SeatWaitQueueTest.class
 com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest$FileEntry.class
 com\bjtu\simulation\service\TheoreticalTakeawayRateTest.class
+com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest$1.class
 com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$MapRepo.class
 com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.class
@@ -27,6 +28,7 @@ com\bjtu\simulation\service\SimulationConfigNormalizerTest.class
 com\bjtu\simulation\service\ReportSummaryStoreTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$RecordingRunner.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$StubRepo.class
+com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest.class
 com\bjtu\simulation\service\SimulationReportRepositoryTest.class
 com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class

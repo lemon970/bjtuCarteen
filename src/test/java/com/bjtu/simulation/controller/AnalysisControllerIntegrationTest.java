@@ -63,4 +63,76 @@ class AnalysisControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
     }
+
+    // ==================== 阶段 2 RFC-002:Historical Diagnostics 集成 ====================
+
+    /** C1:默认请求不带 include 标志,响应不应包含 historical_diagnostics 字段。 */
+    @Test
+    void runEndpointDefaultShouldNotIncludeHistoricalDiagnostics() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(503))
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+    }
+
+    /** C2:include_historical_diagnostics=false 时,响应不应包含 historical_diagnostics 字段。 */
+    @Test
+    void runEndpointIncludeFalseShouldNotIncludeHistoricalDiagnostics() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_diagnostics\":false}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+    }
+
+    /**
+     * C3 + C5:include_historical_diagnostics=true 时,即便走 503 路径也应把 historical_diagnostics 子树合入响应,
+     * 主分析结构保持(available=false 仍在),诊断字段集严格(无 quality_score/level/tier/score)。
+     */
+    @Test
+    void runEndpointIncludeTrueShouldMergeHistoricalDiagnosticsEvenOn503() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_diagnostics\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true))
+                .andExpect(jsonPath("$.data.historical_diagnostics.schema_version").value("1.0"))
+                .andExpect(jsonPath("$.data.historical_diagnostics.computed_by").value("java-summary-store"))
+                .andExpect(jsonPath("$.data.historical_diagnostics.basis.current_summary_present").value(false))
+                .andExpect(jsonPath("$.data.historical_diagnostics.basis.matching_strategy").exists())
+                .andExpect(jsonPath("$.data.historical_diagnostics.quality_score").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_diagnostics.level").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_diagnostics.tier").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_diagnostics.score").doesNotExist());
+    }
+
+    /** C4:同 snake_case 别名,以 includeHistoricalDiagnostics(camelCase)发起也应启用。 */
+    @Test
+    void runEndpointCamelCaseIncludeFlagShouldAlsoEnableDiagnostics() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reportId\":\"missing-id\",\"includeHistoricalDiagnostics\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true));
+    }
+
+    /** C6:cross-scenario 接口即便客户端误传 include 标志,响应也不应包含 historical_diagnostics。 */
+    @Test
+    void crossScenarioEndpointShouldNotIncludeHistoricalDiagnostics() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/cross-scenario")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scenarioIds\":[\"only-one\"],\"include_historical_diagnostics\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.historical_diagnostics").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+    }
 }

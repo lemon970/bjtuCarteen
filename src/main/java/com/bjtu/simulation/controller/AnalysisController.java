@@ -7,6 +7,7 @@ import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.ScenarioBatchRunRequest;
 import com.bjtu.simulation.service.ExternalAnalysisService;
 import com.bjtu.simulation.service.ExternalAnalysisService.AnalysisResult;
+import com.bjtu.simulation.service.HistoricalDiagnosticsService;
 import com.bjtu.simulation.service.ScenarioRunService;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,13 +32,16 @@ public class AnalysisController {
 
     private final ExternalAnalysisService externalAnalysisService;
     private final ScenarioRunService scenarioRunService;
+    private final HistoricalDiagnosticsService historicalDiagnosticsService;
     private final ObjectMapper mapper;
 
     @Autowired
     public AnalysisController(ExternalAnalysisService externalAnalysisService,
-                              ScenarioRunService scenarioRunService) {
+                              ScenarioRunService scenarioRunService,
+                              HistoricalDiagnosticsService historicalDiagnosticsService) {
         this.externalAnalysisService = externalAnalysisService;
         this.scenarioRunService = scenarioRunService;
+        this.historicalDiagnosticsService = historicalDiagnosticsService;
         this.mapper = SimulationApiSupport.createReportMapper();
     }
 
@@ -49,7 +53,8 @@ public class AnalysisController {
                     .body(ApiResponse.error(400, "report_id is required"));
         }
         AnalysisResult result = externalAnalysisService.runForReport(reportId);
-        return wrap(result);
+        boolean includeDiagnostics = request != null && Boolean.TRUE.equals(request.getIncludeHistoricalDiagnostics());
+        return wrap(result, includeDiagnostics ? reportId : null);
     }
 
     @PostMapping("/cross-scenario")
@@ -71,15 +76,27 @@ public class AnalysisController {
         return ResponseEntity.ok(ApiResponse.success(envelope));
     }
 
-    private ResponseEntity<ApiResponse<JsonNode>> wrap(AnalysisResult result) {
+    private ResponseEntity<ApiResponse<JsonNode>> wrap(AnalysisResult result, String diagnosticsReportId) {
         if (result.isAvailable()) {
-            return ResponseEntity.ok(ApiResponse.success(result.getPayload()));
+            JsonNode payload = result.getPayload();
+            JsonNode merged = maybeMergeDiagnostics(payload, diagnosticsReportId);
+            return ResponseEntity.ok(ApiResponse.success(merged));
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("available", false);
         body.put("reason", result.getReason() == null ? "unknown" : result.getReason());
+        JsonNode merged = maybeMergeDiagnostics(body, diagnosticsReportId);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new ApiResponse<>(503, "analysis unavailable", body));
+                .body(new ApiResponse<>(503, "analysis unavailable", merged));
+    }
+
+    private JsonNode maybeMergeDiagnostics(JsonNode payload, String diagnosticsReportId) {
+        if (diagnosticsReportId == null) return payload;
+        if (!(payload instanceof ObjectNode)) return payload;
+        ObjectNode obj = (ObjectNode) payload;
+        ObjectNode diagnostics = historicalDiagnosticsService.diagnose(diagnosticsReportId);
+        obj.set("historical_diagnostics", diagnostics);
+        return obj;
     }
 
     private JsonNode buildAnalysisNode(AnalysisResult result) {
@@ -108,7 +125,15 @@ public class AnalysisController {
         @JsonAlias("report_id")
         private String reportId;
 
+        @JsonAlias("include_historical_diagnostics")
+        private Boolean includeHistoricalDiagnostics;
+
         public String getReportId() { return reportId; }
         public void setReportId(String reportId) { this.reportId = reportId; }
+
+        public Boolean getIncludeHistoricalDiagnostics() { return includeHistoricalDiagnostics; }
+        public void setIncludeHistoricalDiagnostics(Boolean includeHistoricalDiagnostics) {
+            this.includeHistoricalDiagnostics = includeHistoricalDiagnostics;
+        }
     }
 }

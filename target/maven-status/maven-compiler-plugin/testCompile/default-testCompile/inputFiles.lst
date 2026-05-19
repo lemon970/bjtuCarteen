@@ -13,6 +13,7 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\release\S
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ExternalAnalysisServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\FixedIntervalGroupDistributionTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\GroupArrivalDistributionTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\LunchPeakWindowBalanceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\RainEmergencyEndToEndTest.java
