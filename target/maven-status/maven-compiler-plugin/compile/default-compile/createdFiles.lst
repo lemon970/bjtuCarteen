@@ -18,7 +18,9 @@ com\bjtu\simulation\engine\SeatWaitEvent.class
 com\bjtu\simulation\dto\WaitTimeInsight.class
 com\bjtu\simulation\model\DiningArea$SplitPair.class
 com\bjtu\simulation\model\ArrivalSample.class
+com\bjtu\simulation\service\HistoricalDiagnosticsService$WnnResult.class
 com\bjtu\simulation\service\QueueTheoryMetricsCalculator.class
+com\bjtu\simulation\service\HistoricalQualityScorer$DimensionResult.class
 com\bjtu\simulation\engine\WindowSelectionPolicy.class
 com\bjtu\simulation\engine\ServiceFinishEvent.class
 com\bjtu\simulation\model\DiningArea$SeatAllocation.class
@@ -87,6 +89,7 @@ com\bjtu\simulation\model\DiningArea$DiningTable.class
 com\bjtu\simulation\SimulationApplication.class
 com\bjtu\simulation\controller\AnalysisController$RunRequest.class
 com\bjtu\simulation\dto\SimConfig$WeatherConfig.class
+com\bjtu\simulation\service\HistoricalQualityScorer.class
 com\bjtu\simulation\service\SimulationTimelineBuilder$WaitWindowStats.class
 com\bjtu\simulation\model\ArrivalGroup.class
 com\bjtu\simulation\controller\ReportResponseBuilder.class

@@ -11,6 +11,8 @@ com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$MapRepo.class
 com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.class
 com\bjtu\simulation\service\ScenarioPresetNumberFieldStepConformanceTest.class
+com\bjtu\simulation\service\HistoricalQualityScorerBaselineTest.class
+com\bjtu\simulation\service\HistoricalQualityScorerTest$1.class
 com\bjtu\simulation\service\SimulationRunServiceBoundaryTest.class
 com\bjtu\simulation\service\WaitTimeMetricsCalculatorTest.class
 com\bjtu\simulation\service\ScenarioRunServiceContractTest.class
@@ -25,6 +27,7 @@ com\bjtu\simulation\engine\SeatReservationTest.class
 com\bjtu\simulation\service\RainEmergencyEndToEndTest.class
 com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.class
 com\bjtu\simulation\service\SimulationConfigNormalizerTest.class
+com\bjtu\simulation\service\HistoricalDiagnosticsServiceBaselineTest.class
 com\bjtu\simulation\service\ReportSummaryStoreTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$RecordingRunner.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$StubRepo.class
@@ -33,6 +36,7 @@ com\bjtu\simulation\service\SimulationReportRepositoryTest.class
 com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicyTest.class
+com\bjtu\simulation\service\HistoricalQualityScorerTest.class
 com\bjtu\simulation\service\SeatUtilizationMetricsTest.class
 com\bjtu\simulation\service\RainEmergencyWeatherFactorStepTest.class
 com\bjtu\simulation\service\SunnyLowPackTakeawayBoundsTest.class

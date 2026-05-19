@@ -8,6 +8,7 @@ import com.bjtu.simulation.dto.ScenarioBatchRunRequest;
 import com.bjtu.simulation.service.ExternalAnalysisService;
 import com.bjtu.simulation.service.ExternalAnalysisService.AnalysisResult;
 import com.bjtu.simulation.service.HistoricalDiagnosticsService;
+import com.bjtu.simulation.service.HistoricalQualityScorer;
 import com.bjtu.simulation.service.ScenarioRunService;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,15 +34,18 @@ public class AnalysisController {
     private final ExternalAnalysisService externalAnalysisService;
     private final ScenarioRunService scenarioRunService;
     private final HistoricalDiagnosticsService historicalDiagnosticsService;
+    private final HistoricalQualityScorer historicalQualityScorer;
     private final ObjectMapper mapper;
 
     @Autowired
     public AnalysisController(ExternalAnalysisService externalAnalysisService,
                               ScenarioRunService scenarioRunService,
-                              HistoricalDiagnosticsService historicalDiagnosticsService) {
+                              HistoricalDiagnosticsService historicalDiagnosticsService,
+                              HistoricalQualityScorer historicalQualityScorer) {
         this.externalAnalysisService = externalAnalysisService;
         this.scenarioRunService = scenarioRunService;
         this.historicalDiagnosticsService = historicalDiagnosticsService;
+        this.historicalQualityScorer = historicalQualityScorer;
         this.mapper = SimulationApiSupport.createReportMapper();
     }
 
@@ -54,7 +58,8 @@ public class AnalysisController {
         }
         AnalysisResult result = externalAnalysisService.runForReport(reportId);
         boolean includeDiagnostics = request != null && Boolean.TRUE.equals(request.getIncludeHistoricalDiagnostics());
-        return wrap(result, includeDiagnostics ? reportId : null);
+        boolean includeQuality = request != null && Boolean.TRUE.equals(request.getIncludeHistoricalQuality());
+        return wrap(result, reportId, includeDiagnostics, includeQuality);
     }
 
     @PostMapping("/cross-scenario")
@@ -76,26 +81,44 @@ public class AnalysisController {
         return ResponseEntity.ok(ApiResponse.success(envelope));
     }
 
-    private ResponseEntity<ApiResponse<JsonNode>> wrap(AnalysisResult result, String diagnosticsReportId) {
+    private ResponseEntity<ApiResponse<JsonNode>> wrap(AnalysisResult result,
+                                                        String reportId,
+                                                        boolean includeDiagnostics,
+                                                        boolean includeQuality) {
         if (result.isAvailable()) {
             JsonNode payload = result.getPayload();
-            JsonNode merged = maybeMergeDiagnostics(payload, diagnosticsReportId);
+            JsonNode merged = mergeHistoricalSubtrees(payload, reportId, includeDiagnostics, includeQuality);
             return ResponseEntity.ok(ApiResponse.success(merged));
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("available", false);
         body.put("reason", result.getReason() == null ? "unknown" : result.getReason());
-        JsonNode merged = maybeMergeDiagnostics(body, diagnosticsReportId);
+        JsonNode merged = mergeHistoricalSubtrees(body, reportId, includeDiagnostics, includeQuality);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ApiResponse<>(503, "analysis unavailable", merged));
     }
 
-    private JsonNode maybeMergeDiagnostics(JsonNode payload, String diagnosticsReportId) {
-        if (diagnosticsReportId == null) return payload;
+    /**
+     * 关键拓扑:两个 flag 都 true 时,只调一次 diagnose,把同一个 ObjectNode
+     * 既合到响应又喂给 scorer。这是 RFC-003 §1.4 推荐方案 (A) 的实现:diagnostics
+     * 子树和 quality.basis 字段同源,杜绝两边数字不一致。
+     *
+     * 默认全关:都不出 historical_diagnostics 也不出 historical_quality。
+     * 仅 diagnostics:出 historical_diagnostics,不出 historical_quality。
+     * 仅 quality:不出 historical_diagnostics,出 historical_quality(scorer 内部使用 diagnostics)。
+     * 都开:同时出两者(同一份 diagnostics)。
+     */
+    private JsonNode mergeHistoricalSubtrees(JsonNode payload, String reportId,
+                                             boolean includeDiagnostics, boolean includeQuality) {
+        if (!includeDiagnostics && !includeQuality) return payload;
         if (!(payload instanceof ObjectNode)) return payload;
         ObjectNode obj = (ObjectNode) payload;
-        ObjectNode diagnostics = historicalDiagnosticsService.diagnose(diagnosticsReportId);
-        obj.set("historical_diagnostics", diagnostics);
+        ObjectNode diagnostics = historicalDiagnosticsService.diagnose(reportId);
+        if (includeDiagnostics) obj.set("historical_diagnostics", diagnostics);
+        if (includeQuality) {
+            ObjectNode quality = historicalQualityScorer.score(diagnostics, reportId);
+            obj.set("historical_quality", quality);
+        }
         return obj;
     }
 
@@ -128,12 +151,20 @@ public class AnalysisController {
         @JsonAlias("include_historical_diagnostics")
         private Boolean includeHistoricalDiagnostics;
 
+        @JsonAlias("include_historical_quality")
+        private Boolean includeHistoricalQuality;
+
         public String getReportId() { return reportId; }
         public void setReportId(String reportId) { this.reportId = reportId; }
 
         public Boolean getIncludeHistoricalDiagnostics() { return includeHistoricalDiagnostics; }
         public void setIncludeHistoricalDiagnostics(Boolean includeHistoricalDiagnostics) {
             this.includeHistoricalDiagnostics = includeHistoricalDiagnostics;
+        }
+
+        public Boolean getIncludeHistoricalQuality() { return includeHistoricalQuality; }
+        public void setIncludeHistoricalQuality(Boolean includeHistoricalQuality) {
+            this.includeHistoricalQuality = includeHistoricalQuality;
         }
     }
 }

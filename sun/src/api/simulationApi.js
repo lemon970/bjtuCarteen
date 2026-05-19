@@ -56,10 +56,17 @@ export function csvExportUrl(reportId) {
   return `${API_BASE}/report/${reportId}/csv`
 }
 
-export function runAnalysis(reportId) {
+export function runAnalysis(reportId, options = {}) {
+  const body = { reportId }
+  if (options.includeHistoricalQuality === true) {
+    body.include_historical_quality = true
+  }
+  if (options.includeHistoricalDiagnostics === true) {
+    body.include_historical_diagnostics = true
+  }
   return requestJson('/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId })
+    body: JSON.stringify(body)
   }, ANALYSIS_BASE)
 }

@@ -183,7 +183,7 @@ class HistoricalDiagnosticsServiceTest {
         assertFalse(result.has("level"), "level must NEVER appear");
         assertFalse(result.has("tier"), "tier must NEVER appear");
         assertFalse(result.has("score"), "score must NEVER appear");
-        assertEquals("1.0", result.path("schema_version").asText());
+        assertEquals("1.1", result.path("schema_version").asText());
         assertEquals("java-summary-store", result.path("computed_by").asText());
         assertTrue(result.path("enabled").asBoolean());
     }
@@ -303,11 +303,12 @@ class HistoricalDiagnosticsServiceTest {
 
     // ==================== H6 ====================
     @Test
-    void h6_nothingMatchesYieldsNoneStrategy(@TempDir Path tmp) throws IOException {
+    void h6_nothingMatchesFallsBackToGlobalReference(@TempDir Path tmp) throws IOException {
+        // RFC-004:严格阶梯全空 + WNN 距离过大被拒时,落到 global_reference_baseline。
         Path analysisStore = tmp.resolve("analysis-store");
         Path summaryDir = analysisStore.resolve("report-summaries");
         writeSummary(summaryDir, standard("cur", "lunch", "sha1:fpcur", "present", 4.0));
-        // 邻居:scenario_id / fingerprint / config 全都不匹配
+        // 邻居:scenario_id / fingerprint / config 全都不匹配,且配置差异极大让 WNN 也拒绝
         for (int i = 0; i < 4; i++) {
             ObjectNode nb = standard("dif" + i, "dinner", "sha1:other" + i, "present", 9.9);
             ((ObjectNode) nb.path("config")).put("window_count", 16);
@@ -317,8 +318,11 @@ class HistoricalDiagnosticsServiceTest {
 
         ObjectNode result = newService(newStore(analysisStore, tmp.resolve("reports"))).diagnose("cur");
 
-        assertEquals("none", result.path("basis").path("matching_strategy").asText());
+        assertEquals("global_reference_baseline", result.path("basis").path("matching_strategy").asText());
         assertEquals(0, result.path("basis").path("matched_reports").asInt());
+        assertEquals("very_low", result.path("basis").path("baseline").path("confidence").asText());
+        assertTrue(hasWarning(result, "GLOBAL_REFERENCE_ONLY"));
+        assertTrue(hasWarning(result, "NOT_AN_OUTLIER_TEST"));
         assertTrue(hasCheck(result, "INSUFFICIENT_BASELINE"));
     }
 

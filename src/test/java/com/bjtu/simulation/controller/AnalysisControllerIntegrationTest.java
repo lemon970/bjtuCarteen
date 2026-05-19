@@ -103,7 +103,7 @@ class AnalysisControllerIntegrationTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.data.available").value(false))
                 .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true))
-                .andExpect(jsonPath("$.data.historical_diagnostics.schema_version").value("1.0"))
+                .andExpect(jsonPath("$.data.historical_diagnostics.schema_version").value("1.1"))
                 .andExpect(jsonPath("$.data.historical_diagnostics.computed_by").value("java-summary-store"))
                 .andExpect(jsonPath("$.data.historical_diagnostics.basis.current_summary_present").value(false))
                 .andExpect(jsonPath("$.data.historical_diagnostics.basis.matching_strategy").exists())
@@ -134,5 +134,133 @@ class AnalysisControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.historical_diagnostics").doesNotExist())
                 .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+    }
+
+    // ==================== 阶段 3 RFC-003:Historical Quality 集成 ====================
+
+    /** C7:无任何 include flag 时,响应不含 historical_quality 也不含 historical_diagnostics。 */
+    @Test
+    void runEndpointDefaultShouldNotIncludeHistoricalQuality() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_quality").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+    }
+
+    /** C8:include_historical_quality=false 时,响应不含 historical_quality。 */
+    @Test
+    void runEndpointIncludeQualityFalseShouldNotIncludeIt() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_quality\":false}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_quality").doesNotExist());
+    }
+
+    /**
+     * C9:仅 include_historical_quality=true(diagnostics 关闭)时,
+     * 顶层只输出 historical_quality,不输出 historical_diagnostics;basis.diagnostics_used=true。
+     */
+    @Test
+    void runEndpointIncludeQualityOnlyShouldNotEmitDiagnostics() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_quality\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.enabled").value(true))
+                .andExpect(jsonPath("$.data.historical_quality.schema_version").value("1.1"))
+                .andExpect(jsonPath("$.data.historical_quality.computed_by").value("java-quality-scorer"))
+                .andExpect(jsonPath("$.data.historical_quality.basis.diagnostics_used").value(true))
+                // missing-id → MISSING_SUMMARY → score_available=false
+                .andExpect(jsonPath("$.data.historical_quality.score_available").value(false))
+                .andExpect(jsonPath("$.data.historical_quality.level").value("unavailable"))
+                .andExpect(jsonPath("$.data.historical_quality.unavailable_reason").value("MISSING_SUMMARY"))
+                .andExpect(jsonPath("$.data.historical_quality.quality_score").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.quality_score_percent").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.dimensions").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.penalties").doesNotExist())
+                // 免责声明守约束
+                .andExpect(jsonPath("$.data.historical_quality.warnings",
+                        org.hamcrest.Matchers.hasItem("QUALITY_SCORE_IS_DIAGNOSTIC_ONLY")))
+                .andExpect(jsonPath("$.data.historical_quality.warnings",
+                        org.hamcrest.Matchers.hasItem("NOT_A_BUSINESS_PERFORMANCE_SCORE")));
+    }
+
+    /**
+     * C10:同时启用 quality + diagnostics 时,两者并存,且 basis 字段同源(matched_reports 等数字逐字一致)。
+     */
+    @Test
+    void runEndpointBothFlagsTrueShouldEmitBothWithSameBasis() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\","
+                                + "\"include_historical_diagnostics\":true,"
+                                + "\"include_historical_quality\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true))
+                .andExpect(jsonPath("$.data.historical_quality.enabled").value(true))
+                // 同 reportId,basis 中 corpus_size 应同源
+                .andExpect(jsonPath("$.data.historical_diagnostics.basis.corpus_size").exists())
+                .andExpect(jsonPath("$.data.historical_quality.basis.corpus_size").exists());
+    }
+
+    /** C11:include_historical_quality=true 走 503 路径,quality.score_available=false + level=unavailable。 */
+    @Test
+    void runEndpointIncludeQualityOn503ShouldEmitUnavailable() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_quality\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.historical_quality.score_available").value(false))
+                .andExpect(jsonPath("$.data.historical_quality.level").value("unavailable"));
+    }
+
+    /**
+     * C12:递归扫描 historical_quality 子树,**只**禁出现业务含义评分键(business_score 等);
+     * 允许 quality_score / level / dimensions.*.score(这些是 phase 3 的合法字段)。
+     */
+    @Test
+    void runEndpointHistoricalQualityShouldNotExposeBusinessScoreKeys() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report_id\":\"missing-id\",\"include_historical_quality\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_quality.business_score").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.performance_score").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.ranking_score").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality.optimization_score").doesNotExist());
+    }
+
+    /** C13:camelCase 别名 includeHistoricalQuality 同样能启用。 */
+    @Test
+    void runEndpointCamelCaseQualityFlagShouldWork() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reportId\":\"missing-id\",\"includeHistoricalQuality\":true}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.historical_quality.enabled").value(true));
+    }
+
+    /** C14:cross-scenario 误传 include_historical_quality=true 不应输出 historical_quality。 */
+    @Test
+    void crossScenarioEndpointShouldNotIncludeHistoricalQuality() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc.perform(post("/api/analysis/cross-scenario")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scenarioIds\":[\"only-one\"],\"include_historical_quality\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.historical_quality").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality").doesNotExist());
     }
 }

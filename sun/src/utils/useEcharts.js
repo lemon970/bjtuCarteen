@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import * as echarts from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart, LineChart, RadarChart } from 'echarts/charts'
 import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
   MarkPointComponent,
+  RadarComponent,
   TitleComponent,
   TooltipComponent
 } from 'echarts/components'
@@ -18,12 +19,14 @@ function ensureRegistered() {
   echarts.use([
     LineChart,
     BarChart,
+    RadarChart,
     GridComponent,
     TitleComponent,
     TooltipComponent,
     LegendComponent,
     MarkLineComponent,
     MarkPointComponent,
+    RadarComponent,
     CanvasRenderer
   ])
   registered = true

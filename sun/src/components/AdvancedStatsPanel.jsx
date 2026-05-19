@@ -2,15 +2,21 @@ import { useState } from 'react'
 
 import { runAnalysis } from '../api/simulationApi'
 import { formatNumber, read } from '../utils/simulation'
+import HistoricalQualityCard from './HistoricalQualityCard'
 
 function AdvancedStatsPanel({ reportId }) {
   const [state, setState] = useState({ status: 'idle', data: null, error: '' })
+  const [includeQuality, setIncludeQuality] = useState(false)
+  const [includeDiagnostics, setIncludeDiagnostics] = useState(false)
 
   const onRun = async () => {
     if (!reportId) return
     setState({ status: 'loading', data: null, error: '' })
     try {
-      const data = await runAnalysis(reportId)
+      const data = await runAnalysis(reportId, {
+        includeHistoricalQuality: includeQuality,
+        includeHistoricalDiagnostics: includeDiagnostics
+      })
       setState({ status: 'ok', data, error: '' })
     } catch (error) {
       const reason = error?.payload?.data?.reason || error?.payload?.data?.available === false
@@ -34,9 +40,33 @@ function AdvancedStatsPanel({ reportId }) {
             未编译 C++ 时会优雅降级。
           </p>
         </div>
-        <button type="button" className="btn-primary" disabled={!reportId || state.status === 'loading'} onClick={onRun}>
-          {state.status === 'loading' ? '正在分析…' : '运行高级分析'}
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <button type="button" className="btn-primary" disabled={!reportId || state.status === 'loading'} onClick={onRun}>
+            {state.status === 'loading' ? '正在分析…' : '运行高级分析'}
+          </button>
+          <div className="flex flex-col gap-1 text-xs text-slate-600">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                data-testid="toggle-historical-quality"
+                checked={includeQuality}
+                onChange={(e) => setIncludeQuality(e.target.checked)}
+                disabled={state.status === 'loading'}
+              />
+              <span>启用历史质量分析</span>
+            </label>
+            <label className="flex items-center gap-2 text-slate-500">
+              <input
+                type="checkbox"
+                data-testid="toggle-historical-diagnostics"
+                checked={includeDiagnostics}
+                onChange={(e) => setIncludeDiagnostics(e.target.checked)}
+                disabled={state.status === 'loading'}
+              />
+              <span>包含诊断细节(调试用)</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {state.status === 'idle' && (
@@ -65,6 +95,7 @@ function AdvancedStatsPanel({ reportId }) {
           <ConfidencePanel data={state.data?.confidence_intervals} />
           <BottleneckPanel data={state.data?.bottleneck} />
           <HeadlinePanel data={state.data?.headline_metrics} />
+          <HistoricalQualityCard quality={state.data?.historical_quality} />
         </div>
       )}
     </section>

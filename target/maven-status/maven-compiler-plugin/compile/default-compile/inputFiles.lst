@@ -51,6 +51,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\Tak
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\WaitTimeSample.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ExternalAnalysisService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalDiagnosticsService.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalQualityScorer.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\InternalStatisticsAnalyzer.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\QueueTheoryMetricsCalculator.java
