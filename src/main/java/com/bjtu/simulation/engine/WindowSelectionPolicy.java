@@ -29,13 +29,19 @@ class WindowSelectionPolicy {
         int partySize = Math.max(1, student.getPartySize());
 
         // 意图打包学生优先选打包窗口(StudentArriveEvent 已跳过座位预定),
-        // 走 chooseBestWindow(takeawayOnly=true) 复用现有评分,
-        // 所有打包窗口超耐心时 fallthrough 到统一评分。
+        // 走 chooseBestWindow(takeawayOnly=true) 复用现有评分。
+        // 当打包窗口当前队列显著长于全局最优时(典型为单一打包窗口被峰值压垮),
+        // 让出到全局评分,避免单一打包窗口成为瓶颈打破窗口间排队均衡(Bug-01)。
         if (willTakeaway && takeawayWindowCount > 0) {
             int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true,
                     queues, windowAvailableAtSeconds, windowTypes, currentTime);
             if (takeawayWindow >= 0) {
-                return takeawayWindow;
+                int unifiedWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, null,
+                        queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                if (unifiedWindow < 0 || queues.get(takeawayWindow) - queues.get(unifiedWindow) <= 2) {
+                    return takeawayWindow;
+                }
+                return unifiedWindow;
             }
         }
 

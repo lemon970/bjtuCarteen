@@ -1,15 +1,19 @@
 com\bjtu\simulation\engine\DynamicTakeawayDecisionTest.class
 com\bjtu\simulation\service\SimulationTaskServiceLifecycleTest.class
 com\bjtu\simulation\engine\TakeawayRateBoundTest.class
+com\bjtu\simulation\service\TheoreticalTakeawayBaselineAccuracyTest.class
 com\bjtu\simulation\controller\SimulationControllerTest.class
 com\bjtu\simulation\engine\SeatWaitQueueTest.class
+com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest$FileEntry.class
 com\bjtu\simulation\service\TheoreticalTakeawayRateTest.class
 com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$MapRepo.class
 com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.class
+com\bjtu\simulation\service\ScenarioPresetNumberFieldStepConformanceTest.class
 com\bjtu\simulation\service\SimulationRunServiceBoundaryTest.class
 com\bjtu\simulation\service\WaitTimeMetricsCalculatorTest.class
 com\bjtu\simulation\service\ScenarioRunServiceContractTest.class
+com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest.class
 com\bjtu\simulation\engine\WindowSelectionPolicyTakeawayIntentTest.class
 com\bjtu\simulation\service\TimelineFrameLayoutTest.class
 com\bjtu\simulation\engine\WindowBalancingTest.class
@@ -27,5 +31,7 @@ com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicyTest.class
 com\bjtu\simulation\service\SeatUtilizationMetricsTest.class
+com\bjtu\simulation\service\RainEmergencyWeatherFactorStepTest.class
 com\bjtu\simulation\service\SunnyLowPackTakeawayBoundsTest.class
 com\bjtu\simulation\service\WeatherFactorPolicyTest.class
+com\bjtu\simulation\service\LunchPeakWindowBalanceTest.class

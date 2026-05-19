@@ -28,13 +28,16 @@ import org.junit.jupiter.api.Test;
  */
 class SunnyLowPackTakeawayBoundsTest {
 
+    /** Bug-03 修复后理论值:0.15 + 0.85 × 1/6 = 0.291666...,round3 后 0.292。 */
+    private static final double EXPECTED_THEORETICAL = 0.15 + 0.85 / 6.0;
+
     private final SimulationRunService runService = new SimulationRunService();
 
     @Test
     void sunnyLowPackShouldExposeTheoreticalRateExactly() {
         SimulationSummary summary = runService.run(moderateSunnyConfig(20260901L)).getSummary();
-        assertEquals(0.15, summary.getTheoreticalTakeawayRate(), 1e-6,
-                "sunny × 1.0 × 0.15 → theoretical 必须严格等于 packProbability");
+        assertEquals(EXPECTED_THEORETICAL, summary.getTheoreticalTakeawayRate(), 1e-3,
+                "sunny × 1.0 × 0.15 + routed (1/6 takeaway window) → theoretical ≈ 0.292");
     }
 
     @Test
@@ -59,7 +62,7 @@ class SunnyLowPackTakeawayBoundsTest {
                 "dynamic_flip_rate 不能为负, got " + breakdown.getDynamicFlipRate());
         assertTrue(breakdown.getNoSeatForcedRate() >= 0.0,
                 "no_seat_forced_rate 不能为负, got " + breakdown.getNoSeatForcedRate());
-        assertEquals(0.15, breakdown.getTheoreticalRate(), 1e-6,
+        assertEquals(EXPECTED_THEORETICAL, breakdown.getTheoreticalRate(), 1e-3,
                 "breakdown.theoreticalRate 应等于 summary.theoreticalTakeawayRate");
         assertEquals(summary.getTakeawayRate(), breakdown.getObservedRate(), 1e-6,
                 "breakdown.observedRate 应等于 summary.takeawayRate");
