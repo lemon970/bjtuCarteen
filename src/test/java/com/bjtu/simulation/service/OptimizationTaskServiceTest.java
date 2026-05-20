@@ -121,8 +121,7 @@ class OptimizationTaskServiceTest {
         assertEquals(3, result.path("results").size());
         assertTrue(result.path("results").get(0).path("error_message").isNull());
         assertEquals("IllegalStateException: forced-failure-1",
-                result.path("results").get(1).path("error_message").asText());
-        assertTrue(result.path("results").get(2).path("error_message").isNull());
+                result.path("results").get(1).path("error_message").asText());        assertTrue(result.path("results").get(2).path("error_message").isNull());
         assertEquals("config[1]: IllegalStateException: forced-failure-1",
                 result.path("first_failure_message").asText());
     }
@@ -161,6 +160,81 @@ class OptimizationTaskServiceTest {
 
         assertEquals("config[0]: RuntimeException: first", record.getFirstFailureMessage());
         assertEquals(1, record.getFirstFailureIndex());
+    }
+
+    @Test
+    void percentCompleteCountsBothCompletedAndFailedWhenPartialFailure() throws Exception {
+        // partial failure 终态:percent_complete 应为 (completed + failed) / total = 1.0,
+        // 而不是 completed / total = 0.667。否则前端进度条永远停在 67%。
+        fakeRunService.failAtIndex(1, new RuntimeException("middle-fail"));
+        OptimizationRequest req = makeRequest(3);
+        OptimizationTaskRecord record = service.submit(req);
+        awaitTerminal(record, 5_000L);
+
+        assertEquals(2, record.getCompletedCount());
+        assertEquals(1, record.getFailedCount());
+        assertEquals(1.0, service.toStatusSnapshot(record).path("percent_complete").asDouble(), 1e-9);
+    }
+
+    @Test
+    void percentCompleteReachesOneEvenWhenAllItemsFail() throws Exception {
+        // all-failure 终态:percent_complete 应为 1.0,而不是 completed / total = 0。
+        fakeRunService.failAtIndex(0, new RuntimeException("zero"));
+        fakeRunService.failAtIndex(1, new RuntimeException("one"));
+        fakeRunService.failAtIndex(2, new RuntimeException("two"));
+        OptimizationRequest req = makeRequest(3);
+        OptimizationTaskRecord record = service.submit(req);
+        awaitTerminal(record, 5_000L);
+
+        assertEquals(0, record.getCompletedCount());
+        assertEquals(3, record.getFailedCount());
+        assertEquals(1.0, service.toStatusSnapshot(record).path("percent_complete").asDouble(), 1e-9);
+    }
+
+    @Test
+    void percentCompleteReflectsCompletedPlusFailedDuringRunningMixed() {
+        // running 中途场景:total=4, completed=1, failed=1 → 应该是 0.5。
+        // 这里直接构造 record + register,不实际 submit,精准控制中间态。
+        OptimizationTaskRecord record = new OptimizationTaskRecord(
+                "running-mixed", "minimize avg_wait_time_minutes",
+                List.of(new SimConfig(), new SimConfig(), new SimConfig(), new SimConfig()),
+                System.currentTimeMillis());
+        record.markRunning(System.currentTimeMillis());
+        record.incrementCompleted();
+        record.incrementFailed();
+        service.registerForTest(record);
+
+        ObjectNode snapshot = service.toStatusSnapshot(record);
+        assertEquals(0.5, snapshot.path("percent_complete").asDouble(), 1e-9);
+        assertEquals(1, snapshot.path("completed").asInt());
+        assertEquals(1, snapshot.path("failed").asInt());
+        assertEquals(4, snapshot.path("total").asInt());
+    }
+
+    @Test
+    void percentCompleteIsZeroBeforeAnyItemFinishes() {
+        OptimizationTaskRecord record = new OptimizationTaskRecord(
+                "queued", "minimize avg_wait_time_minutes",
+                List.of(new SimConfig(), new SimConfig()),
+                System.currentTimeMillis());
+        service.registerForTest(record);
+
+        ObjectNode snapshot = service.toStatusSnapshot(record);
+        assertEquals(0.0, snapshot.path("percent_complete").asDouble(), 1e-9);
+    }
+
+    @Test
+    void percentCompleteIsZeroWhenTotalIsZero() {
+        // total=0 是病理输入 (submit 已经 reject 它),但 toStatusSnapshot 不能除零。
+        // 直接构造带 0 condigs 的 record(绕过 submit 校验),确保 snapshot 不抛。
+        OptimizationTaskRecord record = new OptimizationTaskRecord(
+                "empty", "minimize avg_wait_time_minutes",
+                List.of(),
+                System.currentTimeMillis());
+        service.registerForTest(record);
+
+        ObjectNode snapshot = service.toStatusSnapshot(record);
+        assertEquals(0.0, snapshot.path("percent_complete").asDouble(), 1e-9);
     }
 
     @Test

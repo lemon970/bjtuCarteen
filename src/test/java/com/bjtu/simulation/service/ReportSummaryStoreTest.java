@@ -361,7 +361,7 @@ class ReportSummaryStoreTest {
 
     // ==================== T16 ====================
     @Test
-    void t16_verifyMarksMissingSourceAsMissingOrDeleted(@TempDir Path tmp) throws IOException {
+    void t16_verifyMarksMissingSourceAsMissing(@TempDir Path tmp) throws IOException {
         Path store = tmp.resolve("analysis-store");
         Path reports = tmp.resolve("reports");
         ReportSummaryStore svc = newStore(store, reports);
@@ -370,11 +370,30 @@ class ReportSummaryStoreTest {
         Files.delete(source);
 
         VerifyOutcome out = svc.verifySummaryStore();
-        // 第一次 verify:从 present → missing,实际写为 deleted(主动观测到转移)
+        // 当前语义:源文件不存在 → 标 missing;deleted 留给未来明确删除事件流程触达。
+        // verify 不再自作主张把 present → missing 升级成 deleted,因为这无法区分
+        // "用户备份移走" 与 "清理脚本删除"。
         String status = svc.read("verify1").orElseThrow().path("source").path("source_status").asText();
-        assertTrue("missing".equals(status) || "deleted".equals(status),
-                () -> "expected missing/deleted, got " + status);
-        assertTrue(out.missing + out.deleted >= 1);
+        assertEquals("missing", status, "verify must NOT auto-promote present→missing to deleted");
+        assertEquals(1, out.missing);
+        assertEquals(0, out.deleted);
+    }
+
+    @Test
+    void verifyKeepsMissingMissingAcrossRepeatedRuns(@TempDir Path tmp) throws IOException {
+        // 多次 verify 不会让一个 missing 在第二次跑时变成 deleted。
+        Path store = tmp.resolve("analysis-store");
+        Path reports = tmp.resolve("reports");
+        ReportSummaryStore svc = newStore(store, reports);
+        Path source = writeMinimalSourceReport(reports, "stable_missing");
+        svc.upsert("stable_missing", minimalReport("stable_missing"), source);
+        Files.delete(source);
+
+        svc.verifySummaryStore();
+        VerifyOutcome second = svc.verifySummaryStore();
+        String status = svc.read("stable_missing").orElseThrow().path("source").path("source_status").asText();
+        assertEquals("missing", status);
+        assertEquals(0, second.deleted);
     }
 
     // ==================== T17 ====================
@@ -486,8 +505,8 @@ class ReportSummaryStoreTest {
         for (int i = 0; i < 5; i++) {
             JsonNode tree = svc.read("all_clear_" + i).orElseThrow();
             String status = tree.path("source").path("source_status").asText();
-            assertTrue("missing".equals(status) || "deleted".equals(status),
-                    () -> "expected missing/deleted, got " + status);
+            assertEquals("missing", status,
+                    "verify must mark cleared sources as missing; deleted reserved for explicit removal flow");
         }
     }
 

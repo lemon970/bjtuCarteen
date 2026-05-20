@@ -181,9 +181,18 @@ public class OptimizationTaskService {
             data.putNull("first_failure_message");
         }
         data.put("current_index", record.getCurrentIndex());
-        double percent = record.getTotal() == 0
-                ? 0.0
-                : (double) record.getCompletedCount() / (double) record.getTotal();
+        // percent_complete = (completed + failed) / total,clamp 到 [0, 1]。
+        // 失败 item 也消耗"已处理"配额,否则 partial failure 时进度会停滞,
+        // 而 all-failure 时永远显示 0%。
+        double percent;
+        if (record.getTotal() <= 0) {
+            percent = 0.0;
+        } else {
+            int processed = record.getCompletedCount() + record.getFailedCount();
+            percent = (double) processed / (double) record.getTotal();
+            if (percent < 0.0) percent = 0.0;
+            if (percent > 1.0) percent = 1.0;
+        }
         data.put("percent_complete", percent);
         data.put("submitted_at_epoch_millis", record.getSubmittedAtEpochMillis());
         data.put("started_at_epoch_millis", record.getStartedAtEpochMillis());
