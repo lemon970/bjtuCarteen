@@ -32,6 +32,22 @@ export function runSimulation(payload) {
   })
 }
 
+export function runSimulationAsync(payload) {
+  return requestJson('/run/async', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+}
+
+export function getTaskStatus(taskId) {
+  return requestJson(`/task/${encodeURIComponent(taskId)}/status`)
+}
+
+export function getReportById(reportId) {
+  return requestJson(`/report/${encodeURIComponent(reportId)}`)
+}
+
 export function loadScenarioCatalog() {
   return requestJson('/scenarios')
 }

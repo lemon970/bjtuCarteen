@@ -28,7 +28,9 @@ function InputPage({
   onReset,
   onRun,
   onLoadLatest,
-  onFileUpload
+  onFileUpload,
+  runMode = 'auto',
+  onRunModeChange
 }) {
   const duration = Math.max(0, toNumber(form.duration, 0))
   const arrivalRate = Math.max(0, toNumber(form.arrivalRate, 0))
@@ -55,6 +57,19 @@ function InputPage({
           <p className="mt-1 text-sm text-slate-500">先选择成套模型,再按需要微调参数。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1 text-xs text-slate-500">
+            <span>运行模式</span>
+            <select
+              data-testid="run-mode-select"
+              className="input-control h-9 py-0 text-xs"
+              value={runMode}
+              onChange={(event) => onRunModeChange?.(event.target.value)}
+            >
+              <option value="auto">自动</option>
+              <option value="sync">同步</option>
+              <option value="async">异步</option>
+            </select>
+          </label>
           <button type="button" className="btn-secondary" onClick={onReset}>重置</button>
           <button type="button" className="btn-secondary" onClick={onLoadLatest} disabled={loading}>读取最新报告</button>
           <button type="submit" form="single-run-form" className="btn-primary" disabled={loading}>

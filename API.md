@@ -35,6 +35,46 @@
 - `base_config.total_seats`：座位总数。
 - `base_config.total_students`：人数上限。
 
+### `POST /api/simulation/run/async`
+
+异步提交单次仿真任务，立即返回 `202 Accepted`。客户端拿到 `task_id` 后通过状态轮询或 SSE 订阅进度，避免长仿真在 HTTP 上超时。
+
+请求体与同步 `/run` 共用 `SimConfig`（可空，空体走默认配置）。
+
+成功响应 `code: 0`，HTTP `202`，`data` 由 `SimulationTaskService.toSnapshot` 序列化（与下方 `/task/{id}/status` 完全一致）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `task_id` | string | 任务 ID，作为 `/task/{id}/status` 与 `/task/{id}/stream` 的路径参数 |
+| `report_id` | string | 任务完成后落库的报告 ID；提交时即预分配，与最终 `reports/` 中文件名一致 |
+| `status` | string | `PENDING` / `RUNNING` / `COMPLETED` / `FAILED` / `CANCELLED`（`CANCELLED` 仅作为 enum 占位，本期无路径触发） |
+| `submitted_at_epoch_millis` | long | 提交时刻 |
+| `started_at_epoch_millis` | long | 开始执行时刻；未开始为 `0` |
+| `completed_at_epoch_millis` | long | 终结时刻；未终结为 `0` |
+| `error_message` | string | 失败原因；成功或运行中为空字符串 |
+| `report_available` | boolean | 报告是否已生成可读 |
+| `summary` | object | 仅 `report_available=true` 时出现，已剥除 `history` / `timeline` / `table_snapshots` 三个大字段以控制响应大小 |
+
+任务表与同步任务分离，TTL 30 分钟、上限 200 任务，超出按"最旧已终结优先"清理。
+
+### `GET /api/simulation/task/{id}/status`
+
+按 `task_id` 查询单次仿真异步任务状态。
+
+响应：
+- `200`，`data` 字段全集同 `/run/async`（全部经 `SimulationTaskService.toSnapshot`）。
+- `404`，`code: 404`，`message: "task not found"`。
+
+### `GET /api/simulation/task/{id}/stream`
+
+Server-Sent Events 流，推送任务状态。**响应 `Content-Type: text/event-stream`，不是普通 JSON 响应**。
+
+事件：
+- `event: status`，`data` 是 `toSnapshot(record)` 的 JSON。每 500ms 推一次，直到任务进入终态（`COMPLETED` / `FAILED` / `CANCELLED`），随后服务端 `complete()` 关闭连接。
+- `event: error`，`data: "task not found"`，在 `taskId` 无效时立即推送并关闭。
+
+SSE 连接超时 10 分钟。当浏览器、反向代理或企业网关阻塞 SSE，或前端建连失败时，可回退到对 `/task/{id}/status` 轮询（snapshot 字段一致，无信息差）。本期不实现 cancel / 主动 timeout。
+
 ## 2. 场景模型
 
 ### `GET /api/simulation/scenarios`
@@ -127,6 +167,8 @@
 
 ### `POST /api/simulation/optimize`
 
+> **Deprecated since RFC-005。** 同步兼容接口：在所有 configs 跑完前 HTTP 连接持续阻塞，长批量极易触发客户端 / 反向代理超时。新前端请使用 `/api/simulation/optimize/async`，旧客户端可继续调用此端点；响应体里带 `deprecated_optimization=true` 标记。
+
 当前是轻量批量对比接口，不是完整优化算法。旧目标 `avg_wait_time_minutes` 仍可用，推荐目标为：
 
 ```json
@@ -135,6 +177,81 @@
   "configs": []
 }
 ```
+
+### `POST /api/simulation/optimize/async`
+
+异步提交批量 optimize 任务，立即返回 `202 Accepted`。RFC-005 PR-1 第一版：批与批之间、单批内 configs 之间均**串行执行**（线程池 `core=1, max=1, queue=8`），最多同时排队 1 + 8 = 9 个未终结 batch。
+
+请求体复用同步 `/optimize` 的 `OptimizationRequest`，但**只接受 `configs` 列表**（异步路径不沿用同步接口"包装单 `config`"的兼容模式）：
+
+```json
+{
+  "objective": "minimize typical_wait_time_minutes",
+  "configs": [ { /* SimConfig */ }, { /* SimConfig */ } ],
+  "max_candidates": 100
+}
+```
+
+约束：
+- `configs` 不能为空。`OptimizationTaskService.submit` 检测到空列表会抛 `IllegalArgumentException("configs must not be empty for async optimize")`；`SimulationOptimizationAsyncController` 当前**未**对该异常做显式映射，会落到 Spring 默认错误处理（HTTP 500）。前端应在客户端先校验 `configs.length >= 1`，不要依赖服务端返回 400。
+- `configs.size()` 上限由 `max_candidates`（默认 100，范围 1–500）截断。
+- 队列已满（同时排队 ≥ 9）时返回 `code: 503`，`message: "too many running optimize batches, retry later"`。
+
+成功响应 `data` 由 `OptimizationTaskService.toStatusSnapshot` 序列化（字段定义见 `/optimize/task/{id}`）。任务表与单次仿真任务表分离，TTL 30 分钟、上限 200。
+
+本期 **不** 实现：SSE stream / DELETE cancel / 强制 timeout（留 PR-3）。
+
+### `GET /api/simulation/optimize/task/{id}`
+
+按 `batch_task_id` 查询批量 optimize 状态。轻量心跳视图，**不**包含 `results` 详情。
+
+响应：
+- `200`，`data` 字段全集来自 `OptimizationTaskService.toStatusSnapshot`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `batch_task_id` | string | 批任务 ID |
+| `status` | string | `QUEUED` / `RUNNING` / `COMPLETED` / `FAILED` / `CANCELLED`。`FAILED` 表示**全部 configs 都失败**；partial failure 仍是 `COMPLETED` + `has_failures=true` |
+| `objective` | string | 规范化后的目标，形如 `minimize typical_wait_time_minutes` |
+| `total` | int | configs 总数 |
+| `completed` | int | 已成功 item 数 |
+| `failed` | int | 已失败 item 数 |
+| `has_failures` | boolean | `failed > 0` |
+| `first_failure_message` | string \| null | 形如 `config[<0-based-index>]: <ExceptionClass>: <msg>`；首个失败被记一次 |
+| `current_index` | int | 当前正在处理的 1-based 索引；未开始为 0 |
+| `percent_complete` | number | `(completed + failed) / total`，clamp 到 `[0, 1]`；失败 item 也消耗"已处理"配额，避免 partial failure 时进度卡住 |
+| `submitted_at_epoch_millis` | long | 提交时刻 |
+| `started_at_epoch_millis` | long | 开始执行时刻；未开始为 0 |
+| `last_updated_at_epoch_millis` | long | 最近一次心跳时刻 |
+| `completed_at_epoch_millis` | long | 终结时刻；未终结为 0 |
+| `running_duration_millis` | long | 运行耗时；终结后冻结为 `completed_at - started_at` |
+| `result_available` | boolean | `status ∈ {COMPLETED, FAILED}`；为 `true` 后才能成功调 `/result` |
+| `warnings` | string[] | 长任务（默认运行 ≥ 5 分钟）追加 `TASK_RUNNING_LONGER_THAN_EXPECTED` |
+
+- `404`，`code: 404`，`message: "batch task not found"`。
+
+### `GET /api/simulation/optimize/task/{id}/result`
+
+获取完整 batch 结果。
+
+响应：
+- `200`，`data` 由 `OptimizationTaskService.toResultSnapshot` 序列化：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `mode` | string | 固定 `"batch_compare"` |
+| `deprecated_optimization` | boolean | 异步路径固定 `false`，与同步 `/optimize` 响应里的 `true` 区分 |
+| `batch_task_id` | string | 批任务 ID |
+| `objective` | string | 规范化目标 |
+| `evaluated_configs` | int | configs 总数（= status 视图里的 `total`） |
+| `completed_count` | int | 成功 item 数 |
+| `failed_count` | int | 失败 item 数 |
+| `has_failures` | boolean | partial failure 标志 |
+| `first_failure_message` | string \| null | 同 status 视图 |
+| `results` | object[] | 每条 item：成功项 schema 与同步 `/optimize` 对齐，并追加 `error_message=null`；失败项 `summary / objective_value / report_id` 为 `null`，`error_message` 为 `<ExceptionClass>: <msg>` |
+
+- `404`，`code: 404`，`message: "batch task not found"`。
+- `409`，`code: 409`，`message: "task result not ready"`：任务尚未到 `result_available=true`（即 status 不是 `COMPLETED` 或 `FAILED`）。客户端应继续轮询 `/optimize/task/{id}` 直到 `result_available=true` 再请求本接口。
 
 ## 5. Summary 关键字段
 
