@@ -5,6 +5,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controlle
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\ReportResponseBuilder.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationApiSupport.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationController.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationOptimizationAsyncController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationOptimizationController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationReportController.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\controller\SimulationScenarioController.java
@@ -53,7 +54,10 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\E
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalDiagnosticsService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalQualityScorer.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\InternalStatisticsAnalyzer.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationResultBuilder.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationService.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationTaskRecord.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\OptimizationTaskService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\QueueTheoryMetricsCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ReportListItemMapper.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ReportSummaryExtractor.java

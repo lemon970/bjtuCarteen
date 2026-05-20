@@ -1,4 +1,5 @@
 com\bjtu\simulation\controller\SimulationOptimizationController.class
+com\bjtu\simulation\service\OptimizationResultBuilder$Objective.class
 com\bjtu\simulation\service\HistoricalDiagnosticsService.class
 com\bjtu\simulation\engine\StudentProfileFactory$1.class
 com\bjtu\simulation\service\SimulationMath.class
@@ -22,6 +23,7 @@ com\bjtu\simulation\service\HistoricalDiagnosticsService$WnnResult.class
 com\bjtu\simulation\service\QueueTheoryMetricsCalculator.class
 com\bjtu\simulation\service\HistoricalQualityScorer$DimensionResult.class
 com\bjtu\simulation\engine\WindowSelectionPolicy.class
+com\bjtu\simulation\service\OptimizationTaskRecord.class
 com\bjtu\simulation\engine\ServiceFinishEvent.class
 com\bjtu\simulation\model\DiningArea$SeatAllocation.class
 com\bjtu\simulation\engine\CanteenState.class
@@ -36,6 +38,7 @@ com\bjtu\simulation\service\SimulationArrivalScheduler.class
 com\bjtu\simulation\dto\WaitTimeMetrics.class
 com\bjtu\simulation\model\Student$SeatToleranceLevel.class
 com\bjtu\simulation\service\ReportSummaryStore$SourceCheck.class
+com\bjtu\simulation\service\OptimizationTaskService.class
 com\bjtu\simulation\dto\FrameSeatLayout.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicy$DecisionProbability.class
 com\bjtu\simulation\service\WaitTimeMetricsCalculator.class
@@ -74,9 +77,9 @@ com\bjtu\simulation\service\ExternalAnalysisService$DefaultProcessRunner.class
 com\bjtu\simulation\engine\WindowSelectionPolicy$1.class
 com\bjtu\simulation\service\ReportListItemMapper.class
 com\bjtu\simulation\dto\SimulationTimePoint.class
-com\bjtu\simulation\service\OptimizationService$Objective.class
 com\bjtu\simulation\dto\SimConfig$RandomBounds.class
 com\bjtu\simulation\service\ReportSummaryStore$VerifyOutcome.class
+com\bjtu\simulation\controller\SimulationOptimizationAsyncController.class
 com\bjtu\simulation\dto\SimConfig$PeakConfig$PeakWindow.class
 com\bjtu\simulation\controller\SimulationController.class
 com\bjtu\simulation\engine\SimulationSnapshotRecorder.class
@@ -86,6 +89,7 @@ com\bjtu\simulation\service\ReportSummaryExtractor.class
 com\bjtu\simulation\service\ExternalAnalysisService$ProcessRunner.class
 com\bjtu\simulation\dto\SimConfig$GroupConfig.class
 com\bjtu\simulation\model\DiningArea$DiningTable.class
+com\bjtu\simulation\service\OptimizationTaskService$OptimizationTaskThreadFactory.class
 com\bjtu\simulation\SimulationApplication.class
 com\bjtu\simulation\controller\AnalysisController$RunRequest.class
 com\bjtu\simulation\dto\SimConfig$WeatherConfig.class
@@ -101,6 +105,7 @@ com\bjtu\simulation\model\Student$PatienceLevel.class
 com\bjtu\simulation\model\Student$PackPreferenceLevel.class
 com\bjtu\simulation\dto\SimConfig$BaseConfig.class
 com\bjtu\simulation\service\ScenarioPresetCatalog.class
+com\bjtu\simulation\service\OptimizationResultBuilder.class
 com\bjtu\simulation\dto\ScenarioPreset.class
 com\bjtu\simulation\service\ScenarioRunService.class
 com\bjtu\simulation\service\SimulationTaskRecord.class
