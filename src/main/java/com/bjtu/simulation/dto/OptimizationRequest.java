@@ -19,20 +19,12 @@ public class OptimizationRequest {
     private List<SimConfig> configs = new ArrayList<>();
 
     @JsonAlias("objective")
-    private String objective = "minimize avg_wait_time_minutes";
-
-    @JsonAlias("constraints")
-    private List<String> constraints = new ArrayList<>();
+    private String objective = "minimize typical_wait_time_minutes";
 
     @JsonAlias("max_candidates")
     @Min(value = 1, message = "maxCandidates must be >= 1")
     @Max(value = 500, message = "maxCandidates must be <= 500")
     private int maxCandidates = 100;
-
-    @JsonAlias("top_n")
-    @Min(value = 1, message = "topN must be >= 1")
-    @Max(value = 10, message = "topN must be <= 10")
-    private int topN = 3;
 
     public SimConfig getConfig() {
         return config;
@@ -58,27 +50,11 @@ public class OptimizationRequest {
         this.objective = objective;
     }
 
-    public List<String> getConstraints() {
-        return constraints;
-    }
-
-    public void setConstraints(List<String> constraints) {
-        this.constraints = constraints;
-    }
-
     public int getMaxCandidates() {
         return maxCandidates;
     }
 
     public void setMaxCandidates(int maxCandidates) {
         this.maxCandidates = maxCandidates;
-    }
-
-    public int getTopN() {
-        return topN;
-    }
-
-    public void setTopN(int topN) {
-        this.topN = topN;
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 
 import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.SimConfig;
-import com.bjtu.simulation.engine.SeatSearchEvent;
 import com.bjtu.simulation.engine.ServiceFinishEvent;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.engine.StudentLeaveEvent;
@@ -21,10 +20,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 class SimulationControllerTest {
 
     private SimulationController controller;
+    private SimulationReportController reportController;
 
     @BeforeEach
     void setUp() {
         controller = new SimulationController();
+        reportController = new SimulationReportController();
     }
 
     @Test
@@ -112,7 +113,7 @@ class SimulationControllerTest {
     void latestReportEndpointShouldReturnSuccessAfterRun() {
         runAndGetSummary(baseConfig());
 
-        ResponseEntity<ApiResponse<JsonNode>> latest = controller.getLatestReport();
+        ResponseEntity<ApiResponse<JsonNode>> latest = reportController.getLatestReport();
         assertEquals(HttpStatus.OK, latest.getStatusCode());
         assertNotNull(latest.getBody());
         assertEquals(0, latest.getBody().getCode());
@@ -124,14 +125,14 @@ class SimulationControllerTest {
         JsonNode report = runAndGetReport(baseConfig());
         String reportId = report.path("report_id").asText();
 
-        ResponseEntity<ApiResponse<JsonNode>> list = controller.getReportList();
+        ResponseEntity<ApiResponse<JsonNode>> list = reportController.getReportList();
         assertEquals(HttpStatus.OK, list.getStatusCode());
         assertNotNull(list.getBody());
         assertEquals(0, list.getBody().getCode());
         assertTrue(list.getBody().getData().path("count").asInt() >= 1);
         assertTrue(list.getBody().getData().path("reports").isArray());
 
-        ResponseEntity<ApiResponse<JsonNode>> found = controller.getReportById(reportId);
+        ResponseEntity<ApiResponse<JsonNode>> found = reportController.getReportByIdWithOptions(reportId, false);
         assertEquals(HttpStatus.OK, found.getStatusCode());
         assertNotNull(found.getBody());
         assertEquals(0, found.getBody().getCode());
@@ -203,7 +204,9 @@ class SimulationControllerTest {
 
     @Test
     void probabilityModelShouldExposePoissonExponentialSamplesAndSeatGrid() {
-        JsonNode summary = runAndGetSummary(highLoadConfig());
+        // arrival_samples 默认从 /run 响应剥除,需要时通过 include_history=true 取
+        JsonNode report = runAndGetReportFull(highLoadConfig());
+        JsonNode summary = report.path("summary");
 
         JsonNode model = summary.path("probability_model");
         assertEquals("POISSON", model.path("arrival_count_distribution").asText());
@@ -296,10 +299,12 @@ class SimulationControllerTest {
         JsonNode summary = runAndGetSummary(config);
 
         assertEquals(600, summary.path("arrived_count").asInt());
-        assertTrue(summary.path("takeaway_rate").asDouble() >= 0.12);
-        assertTrue(summary.path("takeaway_rate").asDouble() <= 0.20);
-        assertTrue(summary.path("seat_utilization_rate").asDouble() >= 0.40);
-        assertTrue(summary.path("seat_utilization_rate").asDouble() <= 0.70);
+        double takeawayRate = summary.path("takeaway_rate").asDouble();
+        double seatUtil = summary.path("seat_utilization_rate").asDouble();
+        assertTrue(takeawayRate >= 0.10, "takeaway_rate=" + takeawayRate);
+        assertTrue(takeawayRate <= 0.32, "takeaway_rate=" + takeawayRate);
+        assertTrue(seatUtil >= 0.35, "seat_utilization_rate=" + seatUtil);
+        assertTrue(seatUtil <= 0.70, "seat_utilization_rate=" + seatUtil);
         assertTrue(summary.path("takeaway_decision_records").get(0).has("base_probability"));
         assertTrue(summary.path("takeaway_decision_records").get(0).has("decision_reason"));
     }
@@ -309,7 +314,7 @@ class SimulationControllerTest {
         JsonNode report = runAndGetReport(highLoadConfig());
         String reportId = report.path("report_id").asText();
 
-        ResponseEntity<String> csv = controller.exportReportCsv(reportId);
+        ResponseEntity<String> csv = reportController.exportReportCsv(reportId);
 
         assertEquals(HttpStatus.OK, csv.getStatusCode());
         assertNotNull(csv.getBody());
@@ -329,13 +334,13 @@ class SimulationControllerTest {
         config.getBaseConfig().setTotalSeats(20);
 
         SimulationEngine engine = new SimulationEngine(config);
-        engine.recordArrival(ArrivalGroup.NORMAL);
+        engine.recordArrival(ArrivalGroup.NORMAL, 1);
         engine.getCanteenState().joinQueue(0);
         engine.getCanteenState().joinQueue(1);
         engine.getCanteenState().joinQueue(1);
         engine.getCanteenState().joinQueue(0);
         engine.getCanteenState().joinQueue(1);
-        engine.scheduleEvent(new ServiceFinishEvent(0L, "student-feedback", 0, 0L));
+        engine.scheduleEvent(new ServiceFinishEvent(0L, "student-feedback", 0, 0L, 0L, 0));
 
         engine.runAll();
 
@@ -401,7 +406,7 @@ class SimulationControllerTest {
         config.getBaseConfig().setTakeawayWindowCount(3);
 
         try {
-            controller.start(config);
+            controller.startWithOptions(config, false);
         } catch (IllegalArgumentException ex) {
             assertEquals("takeawayWindowCount must be <= windowCount", ex.getMessage());
             return;
@@ -415,7 +420,7 @@ class SimulationControllerTest {
         config.getBaseConfig().setTakeawayServiceTimeMultiplier(0.8);
 
         try {
-            controller.start(config);
+            controller.startWithOptions(config, false);
         } catch (IllegalArgumentException ex) {
             assertEquals("takeawayServiceTimeMultiplier must be >= 1", ex.getMessage());
             return;
@@ -424,41 +429,40 @@ class SimulationControllerTest {
     }
 
     @Test
-    void seatSearchShouldResolvePendingDecisionToTakeawayWhenNoSeatAvailable() {
-        SimConfig config = baseConfig();
-        config.getBaseConfig().setTotalSeats(0);
-        SimulationEngine engine = new SimulationEngine(config);
-
-        engine.recordArrival(ArrivalGroup.NORMAL);
-        engine.recordWaitTime(0L);
-        engine.recordWindowServed(0);
-        engine.recordSeatDecisionPending();
-        engine.scheduleEvent(new SeatSearchEvent(30L, "student-seat-search", 1));
-
-        engine.runAll();
-
-        assertEquals(1, engine.getServedCount());
-        assertEquals(0, engine.getPendingSeatDecisionCount());
-        assertEquals(1, engine.getTakeawayCount());
-        assertEquals(1, engine.getNoSeatSwitchToTakeawayCount());
-        assertEquals(1, engine.getLeaveCount());
-    }
-
-    @Test
     void studentLeaveShouldReleaseOccupiedSeat() {
         SimulationEngine engine = new SimulationEngine(baseConfig());
 
-        assertTrue(engine.getCanteenState().tryOccupySeat());
-        engine.recordArrival(ArrivalGroup.NORMAL);
-        engine.recordWaitTime(0L);
-        engine.recordWindowServed(0);
-        engine.recordDineIn();
+        assertNotNull(engine.registerStudent("student-dine-in", ArrivalGroup.NORMAL, 1));
+        assertNotNull(engine.trySeatStudent(engine.getStudent("student-dine-in")));
+        engine.recordArrival(ArrivalGroup.NORMAL, 1);
+        engine.recordWaitTime(0L, 0L, 1);
+        engine.recordWindowServed(0, 1);
+        engine.recordDineIn(1);
         engine.scheduleEvent(new StudentLeaveEvent(10L, "student-dine-in"));
 
         engine.runAll();
 
         assertEquals(0, engine.getCanteenState().getOccupiedSeats());
         assertEquals(1, engine.getLeaveCount());
+    }
+
+    @Test
+    void unknownStudentLeaveShouldNotReleaseOtherSeat() {
+        SimulationEngine engine = new SimulationEngine(baseConfig());
+
+        assertNotNull(engine.registerStudent("known-student", ArrivalGroup.NORMAL, 1));
+        assertNotNull(engine.trySeatStudent(engine.getStudent("known-student")));
+        engine.scheduleEvent(new StudentLeaveEvent(10L, "unknown-student"));
+
+        engine.runAll();
+
+        // phantom leave (unknown id) 不释放任何座位也不计入 leaveCount。
+        // runAll() 末尾的 finalizeLingeringDiners() 会把 known-student 强制离座,
+        // 所以 occupiedSeats=0、leaveCount=1、forcedLeaveCount=1,
+        // invariant leaveCount <= servedCount 仍然成立(servedCount 由测试外部计入,这里仅校验未被 phantom 释放)。
+        assertEquals(0, engine.getCanteenState().getOccupiedSeats());
+        assertEquals(1, engine.getLeaveCount());
+        assertEquals(1, engine.getForcedLeaveCount());
     }
 
     @Test
@@ -512,7 +516,17 @@ class SimulationControllerTest {
     }
 
     private JsonNode runAndGetReport(SimConfig config) {
-        ResponseEntity<ApiResponse<JsonNode>> response = controller.start(config);
+        ResponseEntity<ApiResponse<JsonNode>> response = controller.startWithOptions(config, false);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(0, response.getBody().getCode());
+        assertNotNull(response.getBody().getData());
+        return response.getBody().getData();
+    }
+
+    private JsonNode runAndGetReportFull(SimConfig config) {
+        // include_history=true 才返回完整 summary(含 arrival_samples)
+        ResponseEntity<ApiResponse<JsonNode>> response = controller.startWithOptions(config, true);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(0, response.getBody().getCode());

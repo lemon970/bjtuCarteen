@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { loadLatestReport, loadReportHistory, runSimulation } from './api/simulationApi'
+import { loadLatestReport, loadReportHistory, loadScenarioCatalog, runScenarioBatch, runSimulation } from './api/simulationApi'
 import AppLayout from './components/AppLayout'
 import { DEFAULT_FORM } from './constants'
 import AnalysisPage from './pages/AnalysisPage'
@@ -13,11 +13,13 @@ function currentHashPage() {
   return ['input', 'display', 'analysis'].includes(key) ? key : 'input'
 }
 
-// [重构] App 只保留全局状态和页面路由，原因是原文件同时承担页面、组件、API 和适配逻辑，维护成本过高。
 function App() {
   const [activePage, setActivePage] = useState(currentHashPage)
   const [form, setForm] = useState(DEFAULT_FORM)
   const [report, setReport] = useState(null)
+  const [scenarioCatalog, setScenarioCatalog] = useState(null)
+  const [selectedScenarioIds, setSelectedScenarioIds] = useState(['lunch_peak_pressure'])
+  const [scenarioResults, setScenarioResults] = useState([])
   const [historyPage, setHistoryPage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -25,6 +27,23 @@ function App() {
 
   const payload = useMemo(() => buildPayload(form), [form])
   const reportId = read(report, 'report_id', 'reportId') || ''
+  const snapshotCount = Array.isArray(report?.summary?.timeline) ? report.summary.timeline.length : 0
+
+  useEffect(() => {
+    loadScenarioCatalog()
+      .then((data) => {
+        const scenarios = data?.scenarios || []
+        setScenarioCatalog(scenarios)
+        const peak = scenarios.find((item) => item.id === 'lunch_peak_pressure')
+        if (peak?.config) {
+          setForm(applyPayloadToForm(peak.config))
+        }
+      })
+      .catch((error) => {
+        setScenarioCatalog([])
+        setMessage(`场景模型读取失败：${error.message}`)
+      })
+  }, [])
 
   const navigate = (page) => {
     window.location.hash = `/${page}`
@@ -32,12 +51,27 @@ function App() {
   }
 
   const setField = (field, value) => {
-    setForm((prev) => {
-      if (field === 'arrivalRate') {
-        return { ...prev, arrivalRate: value, arrivalLambda: value }
-      }
-      return { ...prev, [field]: value }
-    })
+    setForm((prev) => field === 'arrivalRate'
+      ? { ...prev, arrivalRate: value, arrivalLambda: value }
+      : { ...prev, [field]: value })
+  }
+
+  const handleLoadScenario = (scenarioId) => {
+    const scenario = (scenarioCatalog || []).find((item) => item.id === scenarioId)
+    if (!scenario?.config) {
+      return
+    }
+    setSelectedScenarioIds([scenarioId])
+    setForm(applyPayloadToForm(scenario.config))
+    setMessage(`已加载模型：${scenario.name}`)
+  }
+
+  const handleToggleScenario = (scenarioId) => {
+    setSelectedScenarioIds((prev) => (
+      prev.includes(scenarioId)
+        ? prev.filter((id) => id !== scenarioId)
+        : [...prev, scenarioId]
+    ))
   }
 
   const handleRun = async (event) => {
@@ -45,6 +79,7 @@ function App() {
     setLoading(true)
     setMessage('')
     setHistoryPage(null)
+    setScenarioResults([])
     try {
       const data = await runSimulation(payload)
       setReport(data)
@@ -58,6 +93,31 @@ function App() {
     }
   }
 
+  const handleRunScenarioBatch = async () => {
+    const ids = selectedScenarioIds.length ? selectedScenarioIds : (scenarioCatalog || []).map((item) => item.id)
+    setLoading(true)
+    setMessage('')
+    setHistoryPage(null)
+    try {
+      const data = await runScenarioBatch(ids)
+      const results = data?.results || []
+      setScenarioResults(results)
+      if (results[0]) {
+        setReport({
+          report_id: results[0].report_id,
+          config: results[0].config,
+          summary: results[0].summary
+        })
+      }
+      setMessage(`已完成 ${results.length} 个模型批量运行`)
+      navigate('display')
+    } catch (error) {
+      setMessage(`批量运行失败：${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleLoadLatest = async () => {
     setLoading(true)
     setMessage('')
@@ -65,6 +125,7 @@ function App() {
     try {
       const data = await loadLatestReport()
       setReport(data)
+      setScenarioResults([])
       if (data.config) {
         setForm(applyPayloadToForm(data.config))
       }
@@ -111,13 +172,18 @@ function App() {
   }
 
   return (
-    <AppLayout activePage={activePage} onNavigate={navigate} reportId={reportId}>
+    <AppLayout activePage={activePage} onNavigate={navigate} reportId={reportId} snapshotCount={snapshotCount}>
       {activePage === 'input' && (
         <InputPage
           form={form}
           loading={loading}
           message={message}
+          scenarios={scenarioCatalog}
+          selectedScenarioIds={selectedScenarioIds}
           onFieldChange={setField}
+          onLoadScenario={handleLoadScenario}
+          onToggleScenario={handleToggleScenario}
+          onRunScenarioBatch={handleRunScenarioBatch}
           onReset={() => setForm(DEFAULT_FORM)}
           onRun={handleRun}
           onLoadLatest={handleLoadLatest}
@@ -128,6 +194,7 @@ function App() {
       {activePage === 'display' && (
         <DisplayPage
           report={report}
+          scenarioResults={scenarioResults}
           historyPage={historyPage}
           historyLoading={historyLoading}
           onLoadHistory={handleLoadHistory}
@@ -136,7 +203,7 @@ function App() {
       )}
 
       {activePage === 'analysis' && (
-        <AnalysisPage report={report} payload={payload} onLoadLatest={handleLoadLatest} />
+        <AnalysisPage report={report} scenarioResults={scenarioResults} payload={payload} onLoadLatest={handleLoadLatest} />
       )}
     </AppLayout>
   )

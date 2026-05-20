@@ -1,0 +1,12 @@
+{
+  "scenario_ids": [
+    "baseline_offpeak",
+    "lunch_peak_pressure",
+    "seat_shortage",
+    "takeaway_intervention",
+    "rain_emergency"
+  ],
+  "overrides": {
+    "seed": 20260610
+  }
+}

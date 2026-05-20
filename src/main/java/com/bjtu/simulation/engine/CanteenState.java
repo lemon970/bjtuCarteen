@@ -87,6 +87,30 @@ public class CanteenState {
         return diningArea.tryOccupySeats(seats, currentTime);
     }
 
+    public DiningArea.SeatAllocation tryOccupySeats(int seats, long currentTime, String groupId) {
+        return diningArea.tryOccupySeats(seats, currentTime, groupId);
+    }
+
+    public DiningArea.SeatAllocation tryReserveSeats(int seats, long currentTime, String groupId, boolean allowSplit) {
+        return diningArea.tryReserveSeats(seats, currentTime, groupId, allowSplit);
+    }
+
+    public void confirmReservation(DiningArea.SeatAllocation allocation, long currentTime) {
+        diningArea.confirmReservation(allocation, currentTime);
+    }
+
+    public void cancelReservation(DiningArea.SeatAllocation allocation) {
+        diningArea.cancelReservation(allocation);
+    }
+
+    public boolean canReserve(int seats, long currentTime) {
+        return diningArea.canReserve(seats, currentTime);
+    }
+
+    public int getReservedSeats() {
+        return diningArea.getReservedSeats();
+    }
+
     public void releaseSeat() {
         diningArea.releaseSeat();
     }

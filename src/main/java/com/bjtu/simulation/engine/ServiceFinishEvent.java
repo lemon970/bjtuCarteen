@@ -3,134 +3,172 @@ package com.bjtu.simulation.engine;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.model.Student;
 import com.bjtu.simulation.model.StudentState;
+import com.bjtu.simulation.service.WeatherFactorPolicy;
 
 public class ServiceFinishEvent extends BaseEvent {
-    private static final double MAX_MODEL_PACK_PROBABILITY = 0.75;
-    private static final double TAKEAWAY_RATE_SOFT_CAP = 0.45;
-
+    private final TakeawayDecisionPolicy decisionPolicy = new TakeawayDecisionPolicy();
     private final String studentId;
     private final int windowId;
     private final long arriveTime;
     private final long serviceStartTime;
+    private final int queueLengthAtJoin;
 
-    public ServiceFinishEvent(long time, String studentId, int windowId, long arriveTime) {
-        this(time, studentId, windowId, arriveTime, arriveTime);
-    }
-
-    public ServiceFinishEvent(long time, String studentId, int windowId, long arriveTime, long serviceStartTime) {
+    public ServiceFinishEvent(long time,
+                              String studentId,
+                              int windowId,
+                              long arriveTime,
+                              long serviceStartTime,
+                              int queueLengthAtJoin) {
         super(time);
         this.studentId = studentId;
         this.windowId = windowId;
         this.arriveTime = arriveTime;
         this.serviceStartTime = Math.max(arriveTime, serviceStartTime);
+        this.queueLengthAtJoin = Math.max(0, queueLengthAtJoin);
     }
 
     @Override
     public void process(SimulationEngine engine) {
         Student student = engine.getStudent(studentId);
         int partySize = student == null ? 1 : student.getPartySize();
+        String windowType = engine.isTakeawayWindow(windowId) ? "TAKEAWAY" : "NORMAL";
+
         engine.setStudentState(studentId, StudentState.SERVING);
+        engine.recordWaitTime(arriveTime, serviceStartTime, partySize, windowId, windowType, queueLengthAtJoin);
+        engine.recordWindowServed(windowId, partySize);
+        engine.getCanteenState().leaveQueue(windowId, partySize);
 
-        engine.recordWaitTime(this.arriveTime, this.serviceStartTime, partySize);
-        engine.recordWindowServed(this.windowId, partySize);
-        engine.getCanteenState().leaveQueue(this.windowId, partySize);
+        if (engine.isTakeawayWindow(windowId)) {
+            recordForcedTakeaway(engine, student, partySize);
+            return;
+        }
 
+        TakeawayDecisionPolicy.DecisionProbability probability = resolveProbability(engine, student);
+        double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
+        double preference = student == null ? probability.finalProbability() : student.getPackPreference();
+        boolean initialTakeawayIntent = student != null && student.wantsTakeaway();
+        double roll = initialTakeawayIntent ? 0.0 : engine.nextDouble();
+
+        engine.setStudentState(studentId, StudentState.DECIDE_DINE_IN_OR_PACK);
+        if (initialTakeawayIntent || roll < probability.finalProbability()) {
+            recordModelTakeaway(engine, partySize, waitMinutes, preference, roll, probability, initialTakeawayIntent);
+            return;
+        }
+
+        recordDineInDecision(engine, partySize, waitMinutes, preference, roll, probability);
+    }
+
+    private TakeawayDecisionPolicy.DecisionProbability resolveProbability(SimulationEngine engine, Student student) {
         SimConfig config = engine.getConfig();
         double basePackProbability = config == null ? 0.2 : config.getPackProbability();
         double studentPackPreference = student == null ? basePackProbability : student.getPackPreference();
         double weatherFactor = 1.0;
         if (config != null && config.getWeatherConfig() != null) {
-            weatherFactor = clamp(config.getWeatherConfig().getWeatherImpactFactor(), 0.0, 5.0);
+            SimConfig.WeatherConfig wc = config.getWeatherConfig();
+            weatherFactor = WeatherFactorPolicy.resolveEffectiveFactor(wc.getCurrentWeather(), wc.getWeatherImpactFactor());
         }
-
-        double queuePressure = engine.currentQueuePressure();
-        double seatUtilization = engine.currentSeatUtilizationRate();
         double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
-        DecisionProbability decisionProbability = resolveDecisionPackProbability(
+        return decisionPolicy.resolve(
                 basePackProbability,
                 studentPackPreference,
-                queuePressure,
-                seatUtilization,
+                engine.currentQueuePressure(),
+                engine.currentSeatUtilizationRate(),
                 waitMinutes,
                 weatherFactor,
                 engine.getTakeawayCount(),
                 engine.getServedCount());
+    }
 
-        engine.setStudentState(studentId, StudentState.DECIDE_DINE_IN_OR_PACK);
+    private void recordForcedTakeaway(SimulationEngine engine, Student student, int partySize) {
+        cancelReservationIfAny(engine, student);
+        double preference = student == null ? 1.0 : student.getPackPreference();
+        double waitMinutes = Math.max(0.0, (serviceStartTime - arriveTime) / 60.0);
+        engine.recordTakeawayDecision(
+                studentId,
+                "TAKEAWAY_WINDOW",
+                1.0,
+                0.0,
+                waitMinutes,
+                preference,
+                true,
+                partySize,
+                engine.getConfig() == null ? 0.2 : engine.getConfig().getPackProbability(),
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                "dedicated takeaway window",
+                "window type forces takeaway");
+        engine.recordTakeaway(partySize);
+        engine.recordLeave(partySize);
+        engine.setStudentState(studentId, StudentState.PACK_LEAVE);
+        engine.setStudentState(studentId, StudentState.LEAVE);
+        engine.recordState(studentId + " took takeaway via dedicated takeaway window " + windowId + " with partySize=" + partySize);
+    }
 
-        if (engine.isTakeawayWindow(this.windowId)) {
-            engine.recordTakeawayDecision(
-                    studentId,
-                    "TAKEAWAY_WINDOW",
-                    1.0,
-                    0.0,
-                    waitMinutes,
-                    studentPackPreference,
-                    true,
-                    partySize,
-                    basePackProbability,
-                    decisionProbability.preferenceFactor(),
-                    decisionProbability.seatPressureFactor(),
-                    decisionProbability.waitPressureFactor(),
-                    decisionProbability.queuePressureFactor(),
-                    decisionProbability.weatherFactor(),
-                    "已选择打包窗口",
-                    "窗口类型决定打包离开");
-            engine.recordTakeaway(partySize);
-            engine.recordLeave(partySize);
-            engine.setStudentState(studentId, StudentState.PACK_LEAVE);
-            engine.setStudentState(studentId, StudentState.LEAVE);
-            engine.recordState(studentId + " took takeaway via dedicated takeaway window " + windowId + " with partySize=" + partySize);
-            return;
+    private void recordModelTakeaway(SimulationEngine engine,
+                                     int partySize,
+                                     double waitMinutes,
+                                     double preference,
+                                     double roll,
+                                     TakeawayDecisionPolicy.DecisionProbability probability,
+                                     boolean initialTakeawayIntent) {
+        Student student = engine.getStudent(studentId);
+        cancelReservationIfAny(engine, student);
+        String decisionReason = initialTakeawayIntent
+                ? "arrival takeaway intent retained; normal window serves takeaway"
+                : "dynamic probability roll selected takeaway";
+        engine.recordTakeawayDecision(
+                studentId,
+                "MODEL_TRIGGER",
+                probability.finalProbability(),
+                roll,
+                waitMinutes,
+                preference,
+                true,
+                partySize,
+                engine.getConfig() == null ? 0.2 : engine.getConfig().getPackProbability(),
+                probability.preferenceFactor(),
+                probability.seatPressureFactor(),
+                probability.waitPressureFactor(),
+                probability.queuePressureFactor(),
+                probability.weatherFactor(),
+                "normal window service completed",
+                decisionReason);
+        engine.recordTakeaway(partySize);
+        if (probability.weatherFactor() > 0.001) {
+            engine.recordWeatherDrivenTakeaway(partySize);
         }
+        engine.recordLeave(partySize);
+        engine.setStudentState(studentId, StudentState.PACK_LEAVE);
+        engine.setStudentState(studentId, StudentState.LEAVE);
+        engine.recordState(studentId + " took takeaway with partySize=" + partySize);
+    }
 
-        double roll = engine.nextDouble();
-        if (roll < decisionProbability.finalProbability()) {
-            engine.recordTakeawayDecision(
-                    studentId,
-                    "MODEL_TRIGGER",
-                    decisionProbability.finalProbability(),
-                    roll,
-                    waitMinutes,
-                    studentPackPreference,
-                    true,
-                    partySize,
-                    basePackProbability,
-                    decisionProbability.preferenceFactor(),
-                    decisionProbability.seatPressureFactor(),
-                    decisionProbability.waitPressureFactor(),
-                    decisionProbability.queuePressureFactor(),
-                    decisionProbability.weatherFactor(),
-                    "普通窗口完成服务",
-                    decisionProbability.decisionReason());
-            engine.recordTakeaway(partySize);
-            if (decisionProbability.weatherFactor() > 0.001) {
-                engine.recordWeatherDrivenTakeaway(partySize);
-            }
-            engine.recordLeave(partySize);
-            engine.setStudentState(studentId, StudentState.PACK_LEAVE);
-            engine.setStudentState(studentId, StudentState.LEAVE);
-            engine.recordState(studentId + " took takeaway with partySize=" + partySize);
-            return;
-        }
-
+    private void recordDineInDecision(SimulationEngine engine,
+                                      int partySize,
+                                      double waitMinutes,
+                                      double preference,
+                                      double roll,
+                                      TakeawayDecisionPolicy.DecisionProbability probability) {
         engine.recordTakeawayDecision(
                 studentId,
                 "DINE_IN_MODEL",
-                decisionProbability.finalProbability(),
+                probability.finalProbability(),
                 roll,
                 waitMinutes,
-                studentPackPreference,
+                preference,
                 false,
                 partySize,
-                basePackProbability,
-                decisionProbability.preferenceFactor(),
-                decisionProbability.seatPressureFactor(),
-                decisionProbability.waitPressureFactor(),
-                decisionProbability.queuePressureFactor(),
-                decisionProbability.weatherFactor(),
-                "普通窗口完成服务",
-                "随机数高于最终打包概率，继续堂食");
+                engine.getConfig() == null ? 0.2 : engine.getConfig().getPackProbability(),
+                probability.preferenceFactor(),
+                probability.seatPressureFactor(),
+                probability.waitPressureFactor(),
+                probability.queuePressureFactor(),
+                probability.weatherFactor(),
+                "normal window service completed",
+                "dynamic probability roll kept dine-in");
         engine.setStudentState(studentId, StudentState.WALKING_TO_SEAT);
         engine.recordSeatDecisionPending(partySize);
         long movementTime = engine.resolveMovementTimeSeconds();
@@ -142,96 +180,11 @@ public class ServiceFinishEvent extends BaseEvent {
         engine.recordState(studentId + " finished service and started walking to dining area with partySize=" + partySize);
     }
 
-    private DecisionProbability resolveDecisionPackProbability(double basePackProbability,
-                                                               double studentPackPreference,
-                                                               double queuePressure,
-                                                               double seatUtilization,
-                                                               double waitMinutes,
-                                                               double weatherFactor,
-                                                               int currentTakeawayCount,
-                                                               int currentServedCount) {
-        double base = clamp(basePackProbability, 0.0, 1.0);
-        double preference = clamp(studentPackPreference, 0.0, 1.0);
-        double queue = clamp(queuePressure, 0.0, 1.0);
-        double seat = clamp(seatUtilization, 0.0, 1.0);
-        double preferenceFactor = clamp((preference - base) * 0.35, -0.06, 0.08);
-        double seatPressureFactor = seat <= 0.85 ? 0.0 : clamp((seat - 0.85) / 0.15 * 0.12, 0.0, 0.12);
-        double waitPressureFactor = waitMinutes <= 10.0 ? 0.0 : clamp((waitMinutes - 10.0) / 10.0 * 0.05, 0.0, 0.05);
-        double queuePressureFactor = queue <= 0.75 ? 0.0 : clamp((queue - 0.75) / 0.25 * 0.04, 0.0, 0.04);
-        double weatherDelta = clamp((weatherFactor - 1.0) * 0.08, -0.04, 0.08);
-
-        double localCap = base + 0.05;
-        if (seat >= 0.98 || (seat >= 0.92 && waitMinutes >= 12.0)) {
-            localCap = 0.65;
-        } else if (seat >= 0.90) {
-            localCap = 0.45;
-        } else if (waitMinutes >= 18.0 && queue >= 0.90) {
-            localCap = 0.35;
+    private void cancelReservationIfAny(SimulationEngine engine, Student student) {
+        if (student == null || student.getSeatAllocation() == null) {
+            return;
         }
-        localCap = clamp(localCap, 0.02, MAX_MODEL_PACK_PROBABILITY);
-
-        // [重构] 打包概率使用有界增量模型，原因是基础概率 0.15 的晴天低压场景不能被多个因素叠加到 30% 以上。
-        double modelProbability = clamp(
-                base
-                        + preferenceFactor
-                        + seatPressureFactor
-                        + waitPressureFactor
-                        + queuePressureFactor
-                        + weatherDelta,
-                0.02,
-                localCap);
-
-        if (currentServedCount >= 20) {
-            double runningRate = currentServedCount == 0 ? 0.0 : (double) currentTakeawayCount / currentServedCount;
-            if (runningRate > TAKEAWAY_RATE_SOFT_CAP) {
-                double overflow = clamp((runningRate - TAKEAWAY_RATE_SOFT_CAP) / 0.20, 0.0, 1.0);
-                modelProbability *= (1.0 - 0.45 * overflow);
-            }
-        }
-
-        String reason = decisionReason(seat, waitMinutes, queue);
-        return new DecisionProbability(
-                clamp(modelProbability, 0.0, MAX_MODEL_PACK_PROBABILITY),
-                preferenceFactor,
-                seatPressureFactor,
-                waitPressureFactor,
-                queuePressureFactor,
-                weatherDelta,
-                reason);
-    }
-
-    private String decisionReason(double seatUtilization, double waitMinutes, double queuePressure) {
-        if (seatUtilization >= 0.98) {
-            return "座位接近满载，打包概率进入高压上限";
-        }
-        if (seatUtilization >= 0.90) {
-            return "座位占用率较高，增加打包倾向";
-        }
-        if (waitMinutes >= 12.0) {
-            return "等待时间超过阈值，增加打包倾向";
-        }
-        if (queuePressure >= 0.85) {
-            return "窗口排队压力较高，增加打包倾向";
-        }
-        return "低压常规场景，打包概率围绕基础概率小幅波动";
-    }
-
-    private double clamp(double value, double min, double max) {
-        if (value < min) {
-            return min;
-        }
-        if (value > max) {
-            return max;
-        }
-        return value;
-    }
-
-    private record DecisionProbability(double finalProbability,
-                                       double preferenceFactor,
-                                       double seatPressureFactor,
-                                       double waitPressureFactor,
-                                       double queuePressureFactor,
-                                       double weatherFactor,
-                                       String decisionReason) {
+        engine.getCanteenState().cancelReservation(student.getSeatAllocation());
+        student.setSeatAllocation(null);
     }
 }

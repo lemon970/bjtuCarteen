@@ -2,6 +2,8 @@ package com.bjtu.simulation.model;
 
 public enum StudentState {
     ARRIVED,
+    SEAT_RESERVED,
+    WAITING_FOR_SEAT,
     WALKING_TO_WINDOW,
     CHOOSE_WINDOW,
     QUEUING,

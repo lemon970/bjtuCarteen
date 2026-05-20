@@ -91,8 +91,14 @@ class SimulationApiIntegrationTest {
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_version").value("1.8.0"))
+                .andExpect(jsonPath("$.data.report_version").value("1.9.0"))
                 .andExpect(jsonPath("$.data.summary.arrived_count").exists())
+                .andExpect(jsonPath("$.data.summary.raw_avg_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.typical_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.p75_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.p90_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.summary.wait_time_distribution").isArray())
+                .andExpect(jsonPath("$.data.summary.wait_time_insight.status").exists())
                 .andExpect(jsonPath("$.data.summary.pending_seat_decision_count").exists())
                 .andExpect(jsonPath("$.data.summary.window_types").isArray())
                 .andExpect(jsonPath("$.data.summary.takeaway_window_count").exists())
@@ -104,13 +110,59 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.history").doesNotExist())
                 .andExpect(jsonPath("$.data.summary.timeline[0].time_seconds").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].window_queue_sizes").isArray())
-                .andExpect(jsonPath("$.data.summary.timeline[0].window_types").isArray())
+                // 常量字段从每帧移除,改读 summary 顶层
+                .andExpect(jsonPath("$.data.summary.timeline[0].window_types").doesNotExist())
+                .andExpect(jsonPath("$.data.summary.timeline[0].window_count").doesNotExist())
                 .andExpect(jsonPath("$.data.summary.timeline[0].dining_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].queueing_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].table_snapshots").doesNotExist())
                 .andExpect(jsonPath("$.data.summary.avg_movement_time_minutes").exists())
                 .andExpect(jsonPath("$.data.summary.queue_theory_metrics.model_type").exists());
+    }
+
+    // F1: 跨层契约 — 后端响应必须包含前端 normalizePoint (sun/src/utils/simulation.js:595-608)
+    // 实际读取的所有 snake_case 字段。前端 fallback 链 `?? 0` 会把任何后端字段重命名静默
+    // 吞成 0,这条测试是这个回归唯一的守门员。
+    @Test
+    void validRunResponseShouldExposeAllFrontendReadFields() throws Exception {
+        String json = """
+                {
+                  "duration": 0.2,
+                  "arrivalRate": 30,
+                  "queueLimit": 10,
+                  "packProbability": 0.2,
+                  "seed": 124,
+                  "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
+                  "weatherConfig": {"weatherImpactFactor": 1.0},
+                  "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                // normalizePoint 读取的 timeline 帧字段(后端实际承诺):
+                // cleaning_seats / seat_cells / event_message 是前端 fallback 字段,后端
+                // 因 NON_EMPTY 序列化策略可能在空帧上省略,故不入硬契约。
+                .andExpect(jsonPath("$.data.summary.timeline[0].time_seconds").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].total_queue_size").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].occupied_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].reserved_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].total_seats").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_unavailable_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_reserved_share").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].seat_free_rate").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].cumulative_arrived_count").exists())
+                .andExpect(jsonPath("$.data.summary.timeline[0].cumulative_served_count").exists())
+                // takeaway_rate_breakdown 五分量(前端 TakeawayRatePanel 读取)
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.initial_intent_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.dynamic_flip_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.no_seat_forced_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.observed_rate").exists())
+                .andExpect(jsonPath("$.data.summary.takeaway_rate_breakdown.theoretical_rate").exists());
     }
 
     @Test
@@ -223,8 +275,75 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.results[0].index").value(1))
                 .andExpect(jsonPath("$.data.results[0].config.base_config.window_count").value(2))
                 .andExpect(jsonPath("$.data.results[0].summary.arrived_count").exists())
+                .andExpect(jsonPath("$.data.results[0].summary.typical_wait_time_minutes").exists())
                 .andExpect(jsonPath("$.data.results[1].config.base_config.window_count").value(3))
                 .andExpect(jsonPath("$.data.top_configs").doesNotExist());
+    }
+
+    @Test
+    void optimizeEndpointShouldAcceptTypicalWaitObjective() throws Exception {
+        String json = """
+                {
+                  "objective": "minimize typical_wait_time_minutes",
+                  "configs": [
+                    {
+                      "duration": 0.1,
+                      "arrivalRate": 30,
+                      "queueLimit": 10,
+                      "packProbability": 0.2,
+                      "seed": 904,
+                      "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
+                      "weatherConfig": {"weatherImpactFactor": 1.0},
+                      "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/optimize")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.objective").value("minimize typical_wait_time_minutes"))
+                .andExpect(jsonPath("$.data.results[0].objective_value").exists());
+    }
+
+    @Test
+    void scenarioCatalogShouldExposeRunnablePresets() throws Exception {
+        mockMvc.perform(get("/api/simulation/scenarios"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.count").value(6))
+                .andExpect(jsonPath("$.data.scenarios[0].id").value("baseline_offpeak"))
+                .andExpect(jsonPath("$.data.scenarios[1].id").value("lunch_peak_pressure"))
+                .andExpect(jsonPath("$.data.scenarios[1].config.arrival_rate").value(300))
+                .andExpect(jsonPath("$.data.scenarios[1].expected_metrics.expected_arrivals").value(600))
+                .andExpect(jsonPath("$.data.scenarios[5].id").value("group_high_concentration"))
+                .andExpect(jsonPath("$.data.scenarios[5].config.group_config.enabled").value(true));
+    }
+
+    @Test
+    void scenarioBatchRunShouldReturnComparableResults() throws Exception {
+        String json = """
+                {
+                  "scenario_ids": [
+                    "baseline_offpeak",
+                    "lunch_peak_pressure",
+                    "takeaway_intervention"
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/simulation/scenarios/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.scenario_count").value(3))
+                .andExpect(jsonPath("$.data.results[1].scenario_id").value("lunch_peak_pressure"))
+                .andExpect(jsonPath("$.data.results[1].summary.arrived_count").value(600))
+                .andExpect(jsonPath("$.data.results[1].summary.typical_wait_time_minutes").exists())
+                .andExpect(jsonPath("$.data.comparison_summary.best_typical_wait_scenario_id").exists());
     }
 
     @Test

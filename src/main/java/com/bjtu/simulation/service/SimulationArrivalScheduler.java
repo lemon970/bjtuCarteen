@@ -2,17 +2,24 @@ package com.bjtu.simulation.service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.engine.SimulationEngine;
 import com.bjtu.simulation.engine.StudentArriveEvent;
 import com.bjtu.simulation.model.ArrivalGroup;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class SimulationArrivalScheduler {
     private static final int MAX_SCHEDULED_STUDENTS = 1000;
+    private int generatedGroupSequence = 1;
 
     public void schedule(SimulationEngine engine, SimConfig config, long durationSeconds) {
+        generatedGroupSequence = 1;
         if (config.getRandomBounds().getArrivalInterval() > 0) {
             scheduleFixedIntervalArrivalEvents(engine, config, durationSeconds);
             return;
@@ -24,6 +31,8 @@ public class SimulationArrivalScheduler {
         long durationMinutes = Math.max(1L, (long) Math.ceil(durationSeconds / 60.0));
         List<Double> minuteWeights = normalizedMinuteWeights(durationMinutes, config);
         List<Integer> minutePersonCounts = sampleMinutePersonCounts(engine, minuteWeights, targetStudents);
+        // 把 groupCount 个组按到达权重分散到各分钟,避免顺序消耗导致组只在仿真开头出现。
+        Map<Long, Integer> minuteGroupBudget = allocateGroupsToMinutes(engine, config, minuteWeights);
         int studentIndex = 1;
         long lastArrivalTime = 0L;
 
@@ -33,11 +42,12 @@ public class SimulationArrivalScheduler {
                 continue;
             }
             double effectiveRatePerHour = minuteWeights.get((int) minute) * targetStudents * 60.0;
-            List<Integer> partySizes = buildPartySizes(engine, personsThisMinute);
-            List<Long> offsets = exponentialOffsetsWithinMinute(engine, partySizes.size(), effectiveRatePerHour);
+            List<PartyArrival> parties = buildPartyArrivals(engine, config, personsThisMinute, minute, minuteGroupBudget);
+            List<Long> offsets = exponentialOffsetsWithinMinute(engine, parties.size(), effectiveRatePerHour);
 
-            for (int j = 0; j < partySizes.size(); j++) {
-                int partySize = partySizes.get(j);
+            for (int j = 0; j < parties.size(); j++) {
+                PartyArrival party = parties.get(j);
+                int partySize = party.partySize();
                 if (studentIndex > targetStudents) {
                     return;
                 }
@@ -57,7 +67,14 @@ public class SimulationArrivalScheduler {
                 ArrivalGroup arrivalGroup = resolveArrivalGroupByTime(arriveTime, durationSeconds, config);
                 long intervalSeconds = lastArrivalTime <= 0 ? arriveTime : Math.max(1L, arriveTime - lastArrivalTime);
                 engine.recordArrivalSample(arriveTime, intervalSeconds, effectiveRatePerHour, arrivalGroup, partySize);
-                engine.scheduleEvent(new StudentArriveEvent(arriveTime, "student-" + studentIndex, arrivalGroup, partySize));
+                engine.scheduleEvent(new StudentArriveEvent(
+                        arriveTime,
+                        "student-" + studentIndex,
+                        arrivalGroup,
+                        partySize,
+                        party.groupId(),
+                        party.groupSize(),
+                        0));
                 lastArrivalTime = arriveTime;
                 studentIndex += partySize;
             }
@@ -158,41 +175,135 @@ public class SimulationArrivalScheduler {
         return 0;
     }
 
-    private List<Integer> buildPartySizes(SimulationEngine engine, int personsThisMinute) {
-        List<Integer> partySizes = new ArrayList<>();
+    private List<PartyArrival> buildPartyArrivals(SimulationEngine engine,
+                                                  SimConfig config,
+                                                  int personsThisMinute,
+                                                  long minute,
+                                                  Map<Long, Integer> minuteGroupBudget) {
+        List<PartyArrival> parties = new ArrayList<>();
         int remaining = Math.max(0, personsThisMinute);
+        int groupBudgetThisMinute = minuteGroupBudget.getOrDefault(minute, 0);
+        SimConfig.GroupConfig groupConfig = config.getGroupConfig();
+        boolean groupsEnabled = groupConfig != null && groupConfig.isEnabled();
         while (remaining > 0) {
-            int partySize = Math.min(remaining, Math.max(1, engine.samplePartySize()));
-            partySizes.add(partySize);
+            int partySize;
+            if (groupsEnabled) {
+                if (groupBudgetThisMinute > 0
+                        && groupConfig.getSizeMin() > 1
+                        && remaining >= groupConfig.getSizeMin()) {
+                    int upper = Math.min(groupConfig.getSizeMax(), remaining);
+                    partySize = upper >= groupConfig.getSizeMin()
+                            ? engine.nextInt(groupConfig.getSizeMin(), upper)
+                            : groupConfig.getSizeMin();
+                    groupBudgetThisMinute--;
+                } else {
+                    // groups 启用但本分钟预算已用完 → 单人到达
+                    partySize = 1;
+                }
+            } else {
+                partySize = Math.min(remaining, engine.samplePartySize());
+            }
+            partySize = Math.max(1, Math.min(partySize, remaining));
+            String groupId = partySize > 1 ? nextGroupId(config) : null;
+            parties.add(new PartyArrival(partySize, groupId, partySize));
             remaining -= partySize;
         }
-        return partySizes;
+        return parties;
+    }
+
+    private Map<Long, Integer> allocateGroupsToMinutes(SimulationEngine engine,
+                                                       SimConfig config,
+                                                       List<Double> minuteWeights) {
+        SimConfig.GroupConfig groupConfig = config.getGroupConfig();
+        if (groupConfig == null
+                || !groupConfig.isEnabled()
+                || groupConfig.getGroupCount() <= 0
+                || minuteWeights.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Integer> budget = new HashMap<>();
+        for (int g = 0; g < groupConfig.getGroupCount(); g++) {
+            int minuteIndex = pickWeightedMinute(engine, minuteWeights);
+            budget.merge((long) minuteIndex, 1, Integer::sum);
+        }
+        return budget;
     }
 
     private void scheduleFixedIntervalArrivalEvents(SimulationEngine engine, SimConfig config, long durationSeconds) {
         int intervalSeconds = Math.max(1, config.getRandomBounds().getArrivalInterval());
         int maxStudents = effectiveStudentLimit(config);
+        long durationMinutes = Math.max(1L, (long) Math.ceil(durationSeconds / 60.0));
+        List<Double> minuteWeights = normalizedMinuteWeights(durationMinutes, config);
+        // 与主路径一致:把 groupCount 个组按到达权重分散到各分钟,避免成组学生集中在仿真开头。
+        Map<Long, Integer> minuteGroupBudget = new HashMap<>(allocateGroupsToMinutes(engine, config, minuteWeights));
+        SimConfig.GroupConfig groupConfig = config.getGroupConfig();
+        boolean groupsEnabled = groupConfig != null && groupConfig.isEnabled();
         int studentIndex = 1;
         long lastArrivalTime = 0L;
 
         for (long arriveTime = intervalSeconds; arriveTime <= durationSeconds; arriveTime += intervalSeconds) {
-            int partySize = engine.samplePartySize();
             if (studentIndex > maxStudents) {
                 return;
             }
-            if (studentIndex + partySize - 1 > maxStudents) {
-                partySize = maxStudents - studentIndex + 1;
-            }
+            int remainingCapacity = maxStudents - studentIndex + 1;
+            int partySize = pickFixedIntervalPartySize(engine, config, groupConfig, groupsEnabled,
+                    arriveTime / 60, remainingCapacity, minuteGroupBudget);
             if (partySize <= 0) {
                 return;
             }
             ArrivalGroup arrivalGroup = resolveArrivalGroupByTime(arriveTime, durationSeconds, config);
             long interval = lastArrivalTime <= 0 ? arriveTime : Math.max(1L, arriveTime - lastArrivalTime);
             engine.recordArrivalSample(arriveTime, interval, config.getArrivalRate(), arrivalGroup, partySize);
-            engine.scheduleEvent(new StudentArriveEvent(arriveTime, "student-" + studentIndex, arrivalGroup, partySize));
+            String groupId = partySize > 1 ? nextGroupId(config) : null;
+            engine.scheduleEvent(new StudentArriveEvent(
+                    arriveTime,
+                    "student-" + studentIndex,
+                    arrivalGroup,
+                    partySize,
+                    groupId,
+                    partySize,
+                    0));
             lastArrivalTime = arriveTime;
             studentIndex += partySize;
         }
+    }
+
+    private int pickFixedIntervalPartySize(SimulationEngine engine,
+                                           SimConfig config,
+                                           SimConfig.GroupConfig groupConfig,
+                                           boolean groupsEnabled,
+                                           long minute,
+                                           int remainingCapacity,
+                                           Map<Long, Integer> minuteGroupBudget) {
+        if (remainingCapacity <= 0) {
+            return 0;
+        }
+        if (groupsEnabled) {
+            int budget = minuteGroupBudget.getOrDefault(minute, 0);
+            if (budget > 0
+                    && groupConfig.getSizeMin() > 1
+                    && remainingCapacity >= groupConfig.getSizeMin()) {
+                int upper = Math.min(groupConfig.getSizeMax(), remainingCapacity);
+                int partySize = upper >= groupConfig.getSizeMin()
+                        ? engine.nextInt(groupConfig.getSizeMin(), upper)
+                        : groupConfig.getSizeMin();
+                minuteGroupBudget.merge(minute, -1, Integer::sum);
+                return Math.min(partySize, remainingCapacity);
+            }
+            return 1;
+        }
+        return Math.min(remainingCapacity, engine.samplePartySize());
+    }
+
+    private String nextGroupId(SimConfig config) {
+        SimConfig.GroupConfig groupConfig = config.getGroupConfig();
+        if (groupConfig != null && groupConfig.isEnabled()) {
+            return "group-" + generatedGroupSequence++;
+        }
+        return "legacy-group-" + generatedGroupSequence++;
+    }
+
+    private record PartyArrival(int partySize, String groupId, int groupSize) {
     }
 
     private int effectiveStudentLimit(SimConfig config) {

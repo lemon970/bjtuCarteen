@@ -1,0 +1,2499 @@
+{
+  "schema_version" : "1.0",
+  "synthetic" : true,
+  "curated" : true,
+  "warning" : "These samples are synthetic and DO NOT represent real cafeteria business distribution. For diagnostic / WNN tuning / UI verification only.",
+  "generated_at" : "2026-05-19T22:43:27.6513029",
+  "generated_at_epoch_millis" : 1779201807651,
+  "generator" : "CuratedSamplesGenerator",
+  "generator_version" : "1.0",
+  "elapsed_millis" : 14465,
+  "sample_count" : 80,
+  "groups" : {
+    "high_confidence_baseline" : 10,
+    "medium_confidence_baseline" : 10,
+    "low_confidence_baseline" : 14,
+    "very_low_confidence_baseline" : 7,
+    "no_comparable_history_target" : 2,
+    "anomaly_cases" : 7,
+    "breakfast_diverse" : 3,
+    "dinner_diverse" : 3,
+    "late_night_diverse" : 2,
+    "weather_diverse" : 5,
+    "weekend_diverse" : 3,
+    "exam_diverse" : 3,
+    "festival_diverse" : 3,
+    "layout_diverse" : 3,
+    "takeaway_diverse" : 3,
+    "edge_diverse" : 2
+  },
+  "intended_use_1" : "baseline_confidence calibration (high/medium/low/very_low/none)",
+  "intended_use_2" : "WNN top-k / ESS tuning",
+  "intended_use_3" : "frontend HistoricalQualityCard rendering verification",
+  "samples" : [ {
+    "sample_id" : "curated-A01",
+    "report_id" : "curated-A01",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4242,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A01.json",
+      "summary" : "summaries/curated-A01.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4242,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A02",
+    "report_id" : "curated-A02",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4243,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A02.json",
+      "summary" : "summaries/curated-A02.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4243,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A03",
+    "report_id" : "curated-A03",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4244,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A03.json",
+      "summary" : "summaries/curated-A03.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4244,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A04",
+    "report_id" : "curated-A04",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4245,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A04.json",
+      "summary" : "summaries/curated-A04.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4245,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A05",
+    "report_id" : "curated-A05",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4246,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A05.json",
+      "summary" : "summaries/curated-A05.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4246,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A06",
+    "report_id" : "curated-A06",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4247,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A06.json",
+      "summary" : "summaries/curated-A06.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4247,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A07",
+    "report_id" : "curated-A07",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4248,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A07.json",
+      "summary" : "summaries/curated-A07.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4248,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A08",
+    "report_id" : "curated-A08",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4249,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A08.json",
+      "summary" : "summaries/curated-A08.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4249,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A09",
+    "report_id" : "curated-A09",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4250,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A09.json",
+      "summary" : "summaries/curated-A09.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4250,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-A10",
+    "report_id" : "curated-A10",
+    "scenario_group" : "high_confidence_baseline",
+    "scenario_id" : "lunch_peak_curated",
+    "seed" : 4251,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "high",
+      "target_strategy" : "scenario_id_exact"
+    },
+    "files" : {
+      "report" : "reports/curated-A10.json",
+      "summary" : "summaries/curated-A10.summary.json"
+    },
+    "notes" : "Identical config to all A series, seed-only variation; targets scenario_id_exact match.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 4251,
+      "config_fingerprint" : "sha1:5dcc06967dce"
+    }
+  }, {
+    "sample_id" : "curated-B01",
+    "report_id" : "curated-B01",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5000,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B01.json",
+      "summary" : "summaries/curated-B01.summary.json"
+    },
+    "notes" : "ar +5%",
+    "config" : {
+      "arrival_rate" : 315.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5000,
+      "config_fingerprint" : "sha1:2573996933fb"
+    }
+  }, {
+    "sample_id" : "curated-B02",
+    "report_id" : "curated-B02",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5001,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B02.json",
+      "summary" : "summaries/curated-B02.summary.json"
+    },
+    "notes" : "ar -5%",
+    "config" : {
+      "arrival_rate" : 285.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5001,
+      "config_fingerprint" : "sha1:0af9eef609f2"
+    }
+  }, {
+    "sample_id" : "curated-B03",
+    "report_id" : "curated-B03",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5002,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B03.json",
+      "summary" : "summaries/curated-B03.summary.json"
+    },
+    "notes" : "ar +6.7%",
+    "config" : {
+      "arrival_rate" : 320.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5002,
+      "config_fingerprint" : "sha1:73575deb4be0"
+    }
+  }, {
+    "sample_id" : "curated-B04",
+    "report_id" : "curated-B04",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5003,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B04.json",
+      "summary" : "summaries/curated-B04.summary.json"
+    },
+    "notes" : "duration +5%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.1,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5003,
+      "config_fingerprint" : "sha1:5c827de56afb"
+    }
+  }, {
+    "sample_id" : "curated-B05",
+    "report_id" : "curated-B05",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5004,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B05.json",
+      "summary" : "summaries/curated-B05.summary.json"
+    },
+    "notes" : "duration -7.5%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 1.85,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5004,
+      "config_fingerprint" : "sha1:5a209c034f95"
+    }
+  }, {
+    "sample_id" : "curated-B06",
+    "report_id" : "curated-B06",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5005,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B06.json",
+      "summary" : "summaries/curated-B06.summary.json"
+    },
+    "notes" : "pack +0.03",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.16,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5005,
+      "config_fingerprint" : "sha1:c750d7c349a9"
+    }
+  }, {
+    "sample_id" : "curated-B07",
+    "report_id" : "curated-B07",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5006,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B07.json",
+      "summary" : "summaries/curated-B07.summary.json"
+    },
+    "notes" : "pack -0.03",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.1,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5006,
+      "config_fingerprint" : "sha1:aeada4794c8a"
+    }
+  }, {
+    "sample_id" : "curated-B08",
+    "report_id" : "curated-B08",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5007,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B08.json",
+      "summary" : "summaries/curated-B08.summary.json"
+    },
+    "notes" : "ar -3.3% + dur +2.5%",
+    "config" : {
+      "arrival_rate" : 290.0,
+      "duration" : 2.05,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5007,
+      "config_fingerprint" : "sha1:826d4d58a237"
+    }
+  }, {
+    "sample_id" : "curated-B09",
+    "report_id" : "curated-B09",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5008,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B09.json",
+      "summary" : "summaries/curated-B09.summary.json"
+    },
+    "notes" : "ar +3.3% + pack +0.02",
+    "config" : {
+      "arrival_rate" : 310.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.15,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5008,
+      "config_fingerprint" : "sha1:02ab2fe2ba23"
+    }
+  }, {
+    "sample_id" : "curated-B10",
+    "report_id" : "curated-B10",
+    "scenario_group" : "medium_confidence_baseline",
+    "scenario_id" : "dinner_peak_curated",
+    "seed" : 5009,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "medium",
+      "target_strategy" : "strict_similar_config"
+    },
+    "files" : {
+      "report" : "reports/curated-B10.json",
+      "summary" : "summaries/curated-B10.summary.json"
+    },
+    "notes" : "ar +1.7% + pack +0.04",
+    "config" : {
+      "arrival_rate" : 305.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.17,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 5009,
+      "config_fingerprint" : "sha1:171b1cde1a90"
+    }
+  }, {
+    "sample_id" : "curated-C01",
+    "report_id" : "curated-C01",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6000,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C01.json",
+      "summary" : "summaries/curated-C01.summary.json"
+    },
+    "notes" : "wc -1 (relaxed)",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6000,
+      "config_fingerprint" : "sha1:5008b428791a"
+    }
+  }, {
+    "sample_id" : "curated-C02",
+    "report_id" : "curated-C02",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6001,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C02.json",
+      "summary" : "summaries/curated-C02.summary.json"
+    },
+    "notes" : "wc +1 (relaxed)",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 9,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6001,
+      "config_fingerprint" : "sha1:d3020df80cff"
+    }
+  }, {
+    "sample_id" : "curated-C03",
+    "report_id" : "curated-C03",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6002,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C03.json",
+      "summary" : "summaries/curated-C03.summary.json"
+    },
+    "notes" : "ts -20%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6002,
+      "config_fingerprint" : "sha1:d338d57afde4"
+    }
+  }, {
+    "sample_id" : "curated-C04",
+    "report_id" : "curated-C04",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6003,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C04.json",
+      "summary" : "summaries/curated-C04.summary.json"
+    },
+    "notes" : "ts +20%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 300,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6003,
+      "config_fingerprint" : "sha1:58980996bca9"
+    }
+  }, {
+    "sample_id" : "curated-C05",
+    "report_id" : "curated-C05",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6004,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C05.json",
+      "summary" : "summaries/curated-C05.summary.json"
+    },
+    "notes" : "takeaway_window +1",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 2,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6004,
+      "config_fingerprint" : "sha1:74f2e2ab1440"
+    }
+  }, {
+    "sample_id" : "curated-C06",
+    "report_id" : "curated-C06",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6005,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C06.json",
+      "summary" : "summaries/curated-C06.summary.json"
+    },
+    "notes" : "takeaway_window -1 (still relaxed)",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 0,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6005,
+      "config_fingerprint" : "sha1:043616a00d2a"
+    }
+  }, {
+    "sample_id" : "curated-C07",
+    "report_id" : "curated-C07",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6006,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C07.json",
+      "summary" : "summaries/curated-C07.summary.json"
+    },
+    "notes" : "duration +20%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.4,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6006,
+      "config_fingerprint" : "sha1:79b67f712d6f"
+    }
+  }, {
+    "sample_id" : "curated-C08",
+    "report_id" : "curated-C08",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6007,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C08.json",
+      "summary" : "summaries/curated-C08.summary.json"
+    },
+    "notes" : "duration -20%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 1.6,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6007,
+      "config_fingerprint" : "sha1:e319ea098881"
+    }
+  }, {
+    "sample_id" : "curated-C09",
+    "report_id" : "curated-C09",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6008,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C09.json",
+      "summary" : "summaries/curated-C09.summary.json"
+    },
+    "notes" : "pack +0.07",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.2,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6008,
+      "config_fingerprint" : "sha1:57f85b001134"
+    }
+  }, {
+    "sample_id" : "curated-C10",
+    "report_id" : "curated-C10",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6009,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C10.json",
+      "summary" : "summaries/curated-C10.summary.json"
+    },
+    "notes" : "pack -0.08",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.05,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6009,
+      "config_fingerprint" : "sha1:706b73b4e164"
+    }
+  }, {
+    "sample_id" : "curated-C11",
+    "report_id" : "curated-C11",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6010,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C11.json",
+      "summary" : "summaries/curated-C11.summary.json"
+    },
+    "notes" : "multi: wc-1, ts-16%, ar-10%",
+    "config" : {
+      "arrival_rate" : 270.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 210,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6010,
+      "config_fingerprint" : "sha1:667476566704"
+    }
+  }, {
+    "sample_id" : "curated-C12",
+    "report_id" : "curated-C12",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6011,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C12.json",
+      "summary" : "summaries/curated-C12.summary.json"
+    },
+    "notes" : "multi: wc+1, ts+16%, dur+15%",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.3,
+      "window_count" : 9,
+      "total_seats" : 290,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6011,
+      "config_fingerprint" : "sha1:1221d692d94f"
+    }
+  }, {
+    "sample_id" : "curated-C13",
+    "report_id" : "curated-C13",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6012,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C13.json",
+      "summary" : "summaries/curated-C13.summary.json"
+    },
+    "notes" : "ar +15% + pack +0.05 (multi)",
+    "config" : {
+      "arrival_rate" : 345.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.18,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6012,
+      "config_fingerprint" : "sha1:da6842e50cc0"
+    }
+  }, {
+    "sample_id" : "curated-C14",
+    "report_id" : "curated-C14",
+    "scenario_group" : "low_confidence_baseline",
+    "scenario_id" : "mixed_curated",
+    "seed" : 6013,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "relaxed_similar_config_or_wnn"
+    },
+    "files" : {
+      "report" : "reports/curated-C14.json",
+      "summary" : "summaries/curated-C14.summary.json"
+    },
+    "notes" : "ar -20%, ts +10%, dur -7.5%",
+    "config" : {
+      "arrival_rate" : 240.0,
+      "duration" : 1.85,
+      "window_count" : 8,
+      "total_seats" : 275,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 6013,
+      "config_fingerprint" : "sha1:a4cbe0833592"
+    }
+  }, {
+    "sample_id" : "curated-D01",
+    "report_id" : "curated-D01",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "offpeak_quiet",
+    "seed" : 7000,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D01.json",
+      "summary" : "summaries/curated-D01.summary.json"
+    },
+    "notes" : "Off-peak quiet: very different from baseline.",
+    "config" : {
+      "arrival_rate" : 80.0,
+      "duration" : 1.0,
+      "window_count" : 4,
+      "total_seats" : 300,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 7000,
+      "config_fingerprint" : "sha1:c5110937a9d5"
+    }
+  }, {
+    "sample_id" : "curated-D02",
+    "report_id" : "curated-D02",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "mega_peak",
+    "seed" : 7001,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D02.json",
+      "summary" : "summaries/curated-D02.summary.json"
+    },
+    "notes" : "Mega peak: scale up window/seat/queue.",
+    "config" : {
+      "arrival_rate" : 600.0,
+      "duration" : 2.0,
+      "window_count" : 12,
+      "total_seats" : 400,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 80,
+      "seed" : 7001,
+      "config_fingerprint" : "sha1:53af6a93253c"
+    }
+  }, {
+    "sample_id" : "curated-D03",
+    "report_id" : "curated-D03",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "rainy_emergency",
+    "seed" : 7002,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D03.json",
+      "summary" : "summaries/curated-D03.summary.json"
+    },
+    "notes" : "Rainy emergency: weather + pack + wc shift.",
+    "config" : {
+      "arrival_rate" : 350.0,
+      "duration" : 2.0,
+      "window_count" : 9,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.3,
+      "weather_impact_factor" : 1.3,
+      "weather_type" : "rainy",
+      "queue_limit" : 40,
+      "seed" : 7002,
+      "config_fingerprint" : "sha1:a051e6f91a8a"
+    }
+  }, {
+    "sample_id" : "curated-D04",
+    "report_id" : "curated-D04",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "seat_crisis_baseline",
+    "seed" : 7003,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D04.json",
+      "summary" : "summaries/curated-D04.summary.json"
+    },
+    "notes" : "Seat crisis: severe seat shortage.",
+    "config" : {
+      "arrival_rate" : 200.0,
+      "duration" : 2.0,
+      "window_count" : 5,
+      "total_seats" : 80,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 7003,
+      "config_fingerprint" : "sha1:4290ce086709"
+    }
+  }, {
+    "sample_id" : "curated-D05",
+    "report_id" : "curated-D05",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "takeaway_heavy",
+    "seed" : 7004,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D05.json",
+      "summary" : "summaries/curated-D05.summary.json"
+    },
+    "notes" : "Takeaway heavy: high pack + multi-takeaway windows.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 10,
+      "total_seats" : 200,
+      "takeaway_window_count" : 3,
+      "pack_probability" : 0.45,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 7004,
+      "config_fingerprint" : "sha1:342dee7fffbc"
+    }
+  }, {
+    "sample_id" : "curated-D06",
+    "report_id" : "curated-D06",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "tiny_setup",
+    "seed" : 7005,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D06.json",
+      "summary" : "summaries/curated-D06.summary.json"
+    },
+    "notes" : "Tiny setup: minimal facilities.",
+    "config" : {
+      "arrival_rate" : 60.0,
+      "duration" : 1.0,
+      "window_count" : 2,
+      "total_seats" : 40,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 7005,
+      "config_fingerprint" : "sha1:00f772ecc83e"
+    }
+  }, {
+    "sample_id" : "curated-D07",
+    "report_id" : "curated-D07",
+    "scenario_group" : "very_low_confidence_baseline",
+    "scenario_id" : "weekend_low",
+    "seed" : 7006,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : "reports/curated-D07.json",
+      "summary" : "summaries/curated-D07.summary.json"
+    },
+    "notes" : "Weekend low: long duration, low rate.",
+    "config" : {
+      "arrival_rate" : 120.0,
+      "duration" : 3.0,
+      "window_count" : 5,
+      "total_seats" : 180,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 7006,
+      "config_fingerprint" : "sha1:cd283c79a01e"
+    }
+  }, {
+    "sample_id" : "curated-E01",
+    "report_id" : "curated-E01",
+    "scenario_group" : "no_comparable_history_target",
+    "scenario_id" : "extreme_isolated_low",
+    "seed" : 8000,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "none",
+      "target_strategy" : "none"
+    },
+    "files" : {
+      "report" : "reports/curated-E01.json",
+      "summary" : "summaries/curated-E01.summary.json"
+    },
+    "notes" : "Extreme low-volume isolated: foggy edge case.",
+    "config" : {
+      "arrival_rate" : 22.0,
+      "duration" : 4.0,
+      "window_count" : 2,
+      "total_seats" : 15,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.85,
+      "weather_impact_factor" : 1.5,
+      "weather_type" : "rainy",
+      "queue_limit" : 10,
+      "seed" : 8000,
+      "config_fingerprint" : "sha1:8761b43d83b5"
+    }
+  }, {
+    "sample_id" : "curated-E02",
+    "report_id" : "curated-E02",
+    "scenario_group" : "no_comparable_history_target",
+    "scenario_id" : "extreme_isolated_high",
+    "seed" : 8001,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "none",
+      "target_strategy" : "none"
+    },
+    "files" : {
+      "report" : "reports/curated-E02.json",
+      "summary" : "summaries/curated-E02.summary.json"
+    },
+    "notes" : "Extreme high-volume isolated: short duration mass arrival.",
+    "config" : {
+      "arrival_rate" : 900.0,
+      "duration" : 0.5,
+      "window_count" : 20,
+      "total_seats" : 600,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.02,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 200,
+      "seed" : 8001,
+      "config_fingerprint" : "sha1:a40bbe3eddfe"
+    }
+  }, {
+    "sample_id" : "curated-F01",
+    "report_id" : "curated-F01",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "overload_high_wait",
+    "seed" : 9000,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F01.json",
+      "summary" : "summaries/curated-F01.summary.json"
+    },
+    "notes" : "High wait time anomaly: ar=500 + wc=4.",
+    "config" : {
+      "arrival_rate" : 500.0,
+      "duration" : 2.0,
+      "window_count" : 4,
+      "total_seats" : 300,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 80,
+      "seed" : 9000,
+      "config_fingerprint" : "sha1:b59bc398ecb9"
+    }
+  }, {
+    "sample_id" : "curated-F02",
+    "report_id" : "curated-F02",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "high_abandonment",
+    "seed" : 9001,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F02.json",
+      "summary" : "summaries/curated-F02.summary.json"
+    },
+    "notes" : "High abandonment anomaly: queue_limit=10 with ar=600.",
+    "config" : {
+      "arrival_rate" : 600.0,
+      "duration" : 2.0,
+      "window_count" : 5,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 10,
+      "seed" : 9001,
+      "config_fingerprint" : "sha1:d7d552b06388"
+    }
+  }, {
+    "sample_id" : "curated-F03",
+    "report_id" : "curated-F03",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "queue_peak_spike",
+    "seed" : 9002,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F03.json",
+      "summary" : "summaries/curated-F03.summary.json"
+    },
+    "notes" : "Queue peak anomaly: high arrival + amplified peak.",
+    "config" : {
+      "arrival_rate" : 550.0,
+      "duration" : 2.0,
+      "window_count" : 5,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 200,
+      "seed" : 9002,
+      "config_fingerprint" : "sha1:51031ceec511"
+    }
+  }, {
+    "sample_id" : "curated-F04",
+    "report_id" : "curated-F04",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "seat_crisis_anomaly",
+    "seed" : 9003,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F04.json",
+      "summary" : "summaries/curated-F04.summary.json"
+    },
+    "notes" : "Seat crisis anomaly: ts=80 vs ar=380.",
+    "config" : {
+      "arrival_rate" : 380.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 80,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 9003,
+      "config_fingerprint" : "sha1:a5d28fc87102"
+    }
+  }, {
+    "sample_id" : "curated-F05",
+    "report_id" : "curated-F05",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "takeaway_storm",
+    "seed" : 9004,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F05.json",
+      "summary" : "summaries/curated-F05.summary.json"
+    },
+    "notes" : "Takeaway storm anomaly: heavy pack + rainy.",
+    "config" : {
+      "arrival_rate" : 350.0,
+      "duration" : 2.0,
+      "window_count" : 9,
+      "total_seats" : 250,
+      "takeaway_window_count" : 3,
+      "pack_probability" : 0.85,
+      "weather_impact_factor" : 1.5,
+      "weather_type" : "rainy",
+      "queue_limit" : 40,
+      "seed" : 9004,
+      "config_fingerprint" : "sha1:9ca62ce346ee"
+    }
+  }, {
+    "sample_id" : "curated-F06",
+    "report_id" : "curated-F06",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "peak_pressure",
+    "seed" : 9005,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F06.json",
+      "summary" : "summaries/curated-F06.summary.json"
+    },
+    "notes" : "Peak pressure anomaly: amplified class peak.",
+    "config" : {
+      "arrival_rate" : 450.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 9005,
+      "config_fingerprint" : "sha1:272acf6723ee"
+    }
+  }, {
+    "sample_id" : "curated-F07",
+    "report_id" : "curated-F07",
+    "scenario_group" : "anomaly_cases",
+    "scenario_id" : "window_shortage",
+    "seed" : 9006,
+    "synthetic" : true,
+    "curated" : true,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "low",
+      "target_strategy" : "weighted_nearest_neighbors"
+    },
+    "files" : {
+      "report" : "reports/curated-F07.json",
+      "summary" : "summaries/curated-F07.summary.json"
+    },
+    "notes" : "Window shortage anomaly: only 3 windows.",
+    "config" : {
+      "arrival_rate" : 320.0,
+      "duration" : 2.0,
+      "window_count" : 3,
+      "total_seats" : 250,
+      "takeaway_window_count" : 0,
+      "pack_probability" : 0.6,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 9006,
+      "config_fingerprint" : "sha1:05bff4ad4447"
+    }
+  }, {
+    "sample_id" : "curated-G01",
+    "report_id" : "curated-G01",
+    "scenario_group" : "breakfast_diverse",
+    "scenario_id" : "breakfast_quiet",
+    "seed" : 10000,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-G01.summary.json"
+    },
+    "notes" : "Breakfast quiet: low rate + early hour.",
+    "config" : {
+      "arrival_rate" : 80.0,
+      "duration" : 1.5,
+      "window_count" : 4,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.1,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10000,
+      "config_fingerprint" : "sha1:53d9aaae3001"
+    }
+  }, {
+    "sample_id" : "curated-G02",
+    "report_id" : "curated-G02",
+    "scenario_group" : "breakfast_diverse",
+    "scenario_id" : "breakfast_rush",
+    "seed" : 10001,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-G02.summary.json"
+    },
+    "notes" : "Breakfast rush: short surge before classes.",
+    "config" : {
+      "arrival_rate" : 180.0,
+      "duration" : 1.0,
+      "window_count" : 5,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.15,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10001,
+      "config_fingerprint" : "sha1:3802c70d08f6"
+    }
+  }, {
+    "sample_id" : "curated-G03",
+    "report_id" : "curated-G03",
+    "scenario_group" : "breakfast_diverse",
+    "scenario_id" : "breakfast_normal",
+    "seed" : 10002,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-G03.summary.json"
+    },
+    "notes" : "Breakfast normal: typical weekday morning.",
+    "config" : {
+      "arrival_rate" : 120.0,
+      "duration" : 1.5,
+      "window_count" : 4,
+      "total_seats" : 180,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.12,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10002,
+      "config_fingerprint" : "sha1:437c299a1188"
+    }
+  }, {
+    "sample_id" : "curated-H01",
+    "report_id" : "curated-H01",
+    "scenario_group" : "dinner_diverse",
+    "scenario_id" : "dinner_peak",
+    "seed" : 10100,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-H01.summary.json"
+    },
+    "notes" : "Dinner peak: 5-7pm rush.",
+    "config" : {
+      "arrival_rate" : 400.0,
+      "duration" : 2.0,
+      "window_count" : 10,
+      "total_seats" : 280,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.18,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10100,
+      "config_fingerprint" : "sha1:a44660dc09e1"
+    }
+  }, {
+    "sample_id" : "curated-H02",
+    "report_id" : "curated-H02",
+    "scenario_group" : "dinner_diverse",
+    "scenario_id" : "dinner_relaxed",
+    "seed" : 10101,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-H02.summary.json"
+    },
+    "notes" : "Dinner relaxed: longer window, moderate flow.",
+    "config" : {
+      "arrival_rate" : 200.0,
+      "duration" : 2.5,
+      "window_count" : 8,
+      "total_seats" : 280,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.2,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10101,
+      "config_fingerprint" : "sha1:4df7f4f10346"
+    }
+  }, {
+    "sample_id" : "curated-H03",
+    "report_id" : "curated-H03",
+    "scenario_group" : "dinner_diverse",
+    "scenario_id" : "dinner_late",
+    "seed" : 10102,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-H03.summary.json"
+    },
+    "notes" : "Dinner late: pre-close hour, fewer windows, more takeaway.",
+    "config" : {
+      "arrival_rate" : 80.0,
+      "duration" : 2.0,
+      "window_count" : 3,
+      "total_seats" : 280,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.35,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10102,
+      "config_fingerprint" : "sha1:7cb5b36f7b2b"
+    }
+  }, {
+    "sample_id" : "curated-I01",
+    "report_id" : "curated-I01",
+    "scenario_group" : "late_night_diverse",
+    "scenario_id" : "late_night_low",
+    "seed" : 10200,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-I01.summary.json"
+    },
+    "notes" : "Late night low traffic, takeaway-heavy.",
+    "config" : {
+      "arrival_rate" : 40.0,
+      "duration" : 2.0,
+      "window_count" : 2,
+      "total_seats" : 100,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.5,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10200,
+      "config_fingerprint" : "sha1:63e07a4fcb3b"
+    }
+  }, {
+    "sample_id" : "curated-I02",
+    "report_id" : "curated-I02",
+    "scenario_group" : "late_night_diverse",
+    "scenario_id" : "late_night_takeaway",
+    "seed" : 10201,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-I02.summary.json"
+    },
+    "notes" : "Late night takeaway dominant.",
+    "config" : {
+      "arrival_rate" : 60.0,
+      "duration" : 2.0,
+      "window_count" : 2,
+      "total_seats" : 80,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.7,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10201,
+      "config_fingerprint" : "sha1:570717843865"
+    }
+  }, {
+    "sample_id" : "curated-J01",
+    "report_id" : "curated-J01",
+    "scenario_group" : "weather_diverse",
+    "scenario_id" : "rainy_heavy",
+    "seed" : 10300,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-J01.summary.json"
+    },
+    "notes" : "Heavy rain: pack/factor surge.",
+    "config" : {
+      "arrival_rate" : 280.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.35,
+      "weather_impact_factor" : 1.4,
+      "weather_type" : "rainy",
+      "queue_limit" : 40,
+      "seed" : 10300,
+      "config_fingerprint" : "sha1:bc0dcfee76fd"
+    }
+  }, {
+    "sample_id" : "curated-J02",
+    "report_id" : "curated-J02",
+    "scenario_group" : "weather_diverse",
+    "scenario_id" : "snowy",
+    "seed" : 10301,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-J02.summary.json"
+    },
+    "notes" : "Snowy day: high stay-in tendency.",
+    "config" : {
+      "arrival_rate" : 200.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.45,
+      "weather_impact_factor" : 1.5,
+      "weather_type" : "snowy",
+      "queue_limit" : 40,
+      "seed" : 10301,
+      "config_fingerprint" : "sha1:7e9ee2de0d2e"
+    }
+  }, {
+    "sample_id" : "curated-J03",
+    "report_id" : "curated-J03",
+    "scenario_group" : "weather_diverse",
+    "scenario_id" : "foggy",
+    "seed" : 10302,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-J03.summary.json"
+    },
+    "notes" : "Foggy: mild weather effect.",
+    "config" : {
+      "arrival_rate" : 240.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.2,
+      "weather_impact_factor" : 1.2,
+      "weather_type" : "foggy",
+      "queue_limit" : 40,
+      "seed" : 10302,
+      "config_fingerprint" : "sha1:0f064763fe0e"
+    }
+  }, {
+    "sample_id" : "curated-J04",
+    "report_id" : "curated-J04",
+    "scenario_group" : "weather_diverse",
+    "scenario_id" : "hot",
+    "seed" : 10303,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-J04.summary.json"
+    },
+    "notes" : "Hot day: takeaway preferred.",
+    "config" : {
+      "arrival_rate" : 260.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.4,
+      "weather_impact_factor" : 1.3,
+      "weather_type" : "hot",
+      "queue_limit" : 40,
+      "seed" : 10303,
+      "config_fingerprint" : "sha1:a6cd6ca13f40"
+    }
+  }, {
+    "sample_id" : "curated-J05",
+    "report_id" : "curated-J05",
+    "scenario_group" : "weather_diverse",
+    "scenario_id" : "cold",
+    "seed" : 10304,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-J05.summary.json"
+    },
+    "notes" : "Cold day: dine-in preferred.",
+    "config" : {
+      "arrival_rate" : 200.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.1,
+      "weather_impact_factor" : 0.9,
+      "weather_type" : "cold",
+      "queue_limit" : 40,
+      "seed" : 10304,
+      "config_fingerprint" : "sha1:a7a292356dc6"
+    }
+  }, {
+    "sample_id" : "curated-K01",
+    "report_id" : "curated-K01",
+    "scenario_group" : "weekend_diverse",
+    "scenario_id" : "weekend_brunch",
+    "seed" : 10400,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-K01.summary.json"
+    },
+    "notes" : "Weekend brunch: long relaxed period.",
+    "config" : {
+      "arrival_rate" : 180.0,
+      "duration" : 3.0,
+      "window_count" : 6,
+      "total_seats" : 300,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.18,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10400,
+      "config_fingerprint" : "sha1:b8b0f56edd96"
+    }
+  }, {
+    "sample_id" : "curated-K02",
+    "report_id" : "curated-K02",
+    "scenario_group" : "weekend_diverse",
+    "scenario_id" : "weekend_mid",
+    "seed" : 10401,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-K02.summary.json"
+    },
+    "notes" : "Weekend midday: evenly distributed.",
+    "config" : {
+      "arrival_rate" : 120.0,
+      "duration" : 3.0,
+      "window_count" : 5,
+      "total_seats" : 300,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.15,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10401,
+      "config_fingerprint" : "sha1:e9f1530e710b"
+    }
+  }, {
+    "sample_id" : "curated-K03",
+    "report_id" : "curated-K03",
+    "scenario_group" : "weekend_diverse",
+    "scenario_id" : "weekend_low",
+    "seed" : 10402,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-K03.summary.json"
+    },
+    "notes" : "Weekend low: minimal demand.",
+    "config" : {
+      "arrival_rate" : 80.0,
+      "duration" : 2.5,
+      "window_count" : 4,
+      "total_seats" : 250,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.12,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10402,
+      "config_fingerprint" : "sha1:ce91a04d0eec"
+    }
+  }, {
+    "sample_id" : "curated-L01",
+    "report_id" : "curated-L01",
+    "scenario_group" : "exam_diverse",
+    "scenario_id" : "exam_morning_rush",
+    "seed" : 10500,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-L01.summary.json"
+    },
+    "notes" : "Exam morning: heavy takeaway for studying.",
+    "config" : {
+      "arrival_rate" : 350.0,
+      "duration" : 1.5,
+      "window_count" : 8,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.5,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10500,
+      "config_fingerprint" : "sha1:1bf754335fd3"
+    }
+  }, {
+    "sample_id" : "curated-L02",
+    "report_id" : "curated-L02",
+    "scenario_group" : "exam_diverse",
+    "scenario_id" : "exam_afternoon",
+    "seed" : 10501,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-L02.summary.json"
+    },
+    "notes" : "Exam afternoon: sustained takeaway.",
+    "config" : {
+      "arrival_rate" : 280.0,
+      "duration" : 2.0,
+      "window_count" : 7,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.4,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10501,
+      "config_fingerprint" : "sha1:c55915b66f04"
+    }
+  }, {
+    "sample_id" : "curated-L03",
+    "report_id" : "curated-L03",
+    "scenario_group" : "exam_diverse",
+    "scenario_id" : "exam_late",
+    "seed" : 10502,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-L03.summary.json"
+    },
+    "notes" : "Exam late: late-hour study takeaway.",
+    "config" : {
+      "arrival_rate" : 120.0,
+      "duration" : 2.0,
+      "window_count" : 4,
+      "total_seats" : 180,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.55,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10502,
+      "config_fingerprint" : "sha1:9e92376bffe6"
+    }
+  }, {
+    "sample_id" : "curated-M01",
+    "report_id" : "curated-M01",
+    "scenario_group" : "festival_diverse",
+    "scenario_id" : "alumni_day_surge",
+    "seed" : 10600,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-M01.summary.json"
+    },
+    "notes" : "Alumni day: visitor surge.",
+    "config" : {
+      "arrival_rate" : 700.0,
+      "duration" : 2.5,
+      "window_count" : 14,
+      "total_seats" : 400,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 100,
+      "seed" : 10600,
+      "config_fingerprint" : "sha1:5ba1189c0cd8"
+    }
+  }, {
+    "sample_id" : "curated-M02",
+    "report_id" : "curated-M02",
+    "scenario_group" : "festival_diverse",
+    "scenario_id" : "holiday_low",
+    "seed" : 10601,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-M02.summary.json"
+    },
+    "notes" : "Holiday low: most students gone.",
+    "config" : {
+      "arrival_rate" : 60.0,
+      "duration" : 2.0,
+      "window_count" : 3,
+      "total_seats" : 200,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10601,
+      "config_fingerprint" : "sha1:5ea2e49d14b3"
+    }
+  }, {
+    "sample_id" : "curated-M03",
+    "report_id" : "curated-M03",
+    "scenario_group" : "festival_diverse",
+    "scenario_id" : "orientation_week",
+    "seed" : 10602,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-M03.summary.json"
+    },
+    "notes" : "Orientation: extended sustained crowd.",
+    "config" : {
+      "arrival_rate" : 500.0,
+      "duration" : 3.0,
+      "window_count" : 12,
+      "total_seats" : 350,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 80,
+      "seed" : 10602,
+      "config_fingerprint" : "sha1:a4a9ccfa1bd4"
+    }
+  }, {
+    "sample_id" : "curated-N01",
+    "report_id" : "curated-N01",
+    "scenario_group" : "layout_diverse",
+    "scenario_id" : "mega_hall",
+    "seed" : 10700,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-N01.summary.json"
+    },
+    "notes" : "Mega hall: many seats + many windows.",
+    "config" : {
+      "arrival_rate" : 400.0,
+      "duration" : 2.0,
+      "window_count" : 15,
+      "total_seats" : 800,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10700,
+      "config_fingerprint" : "sha1:051f459287ec"
+    }
+  }, {
+    "sample_id" : "curated-N02",
+    "report_id" : "curated-N02",
+    "scenario_group" : "layout_diverse",
+    "scenario_id" : "cramped",
+    "seed" : 10701,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-N02.summary.json"
+    },
+    "notes" : "Cramped layout: tight space.",
+    "config" : {
+      "arrival_rate" : 180.0,
+      "duration" : 2.0,
+      "window_count" : 3,
+      "total_seats" : 60,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10701,
+      "config_fingerprint" : "sha1:d0a89266af2e"
+    }
+  }, {
+    "sample_id" : "curated-N03",
+    "report_id" : "curated-N03",
+    "scenario_group" : "layout_diverse",
+    "scenario_id" : "wide_takeaway",
+    "seed" : 10702,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-N03.summary.json"
+    },
+    "notes" : "Wide takeaway: 4 takeaway windows out of 12.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 12,
+      "total_seats" : 150,
+      "takeaway_window_count" : 4,
+      "pack_probability" : 0.4,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10702,
+      "config_fingerprint" : "sha1:2843d89c5e84"
+    }
+  }, {
+    "sample_id" : "curated-O01",
+    "report_id" : "curated-O01",
+    "scenario_group" : "takeaway_diverse",
+    "scenario_id" : "takeaway_low",
+    "seed" : 10800,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-O01.summary.json"
+    },
+    "notes" : "Takeaway low: dine-in dominant.",
+    "config" : {
+      "arrival_rate" : 280.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 300,
+      "takeaway_window_count" : 0,
+      "pack_probability" : 0.05,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10800,
+      "config_fingerprint" : "sha1:cd1a222cc42d"
+    }
+  }, {
+    "sample_id" : "curated-O02",
+    "report_id" : "curated-O02",
+    "scenario_group" : "takeaway_diverse",
+    "scenario_id" : "takeaway_mid",
+    "seed" : 10801,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-O02.summary.json"
+    },
+    "notes" : "Takeaway mid: balanced split.",
+    "config" : {
+      "arrival_rate" : 300.0,
+      "duration" : 2.0,
+      "window_count" : 8,
+      "total_seats" : 250,
+      "takeaway_window_count" : 2,
+      "pack_probability" : 0.3,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10801,
+      "config_fingerprint" : "sha1:e6a97fc6ba82"
+    }
+  }, {
+    "sample_id" : "curated-O03",
+    "report_id" : "curated-O03",
+    "scenario_group" : "takeaway_diverse",
+    "scenario_id" : "takeaway_dominant",
+    "seed" : 10802,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-O03.summary.json"
+    },
+    "notes" : "Takeaway dominant: most go takeaway.",
+    "config" : {
+      "arrival_rate" : 320.0,
+      "duration" : 2.0,
+      "window_count" : 10,
+      "total_seats" : 180,
+      "takeaway_window_count" : 4,
+      "pack_probability" : 0.65,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10802,
+      "config_fingerprint" : "sha1:0fb0d72806d5"
+    }
+  }, {
+    "sample_id" : "curated-P01",
+    "report_id" : "curated-P01",
+    "scenario_group" : "edge_diverse",
+    "scenario_id" : "micro_setup",
+    "seed" : 10900,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-P01.summary.json"
+    },
+    "notes" : "Micro setup: minimal legal configuration.",
+    "config" : {
+      "arrival_rate" : 15.0,
+      "duration" : 1.0,
+      "window_count" : 1,
+      "total_seats" : 10,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.1,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 40,
+      "seed" : 10900,
+      "config_fingerprint" : "sha1:47f980ee9129"
+    }
+  }, {
+    "sample_id" : "curated-P02",
+    "report_id" : "curated-P02",
+    "scenario_group" : "edge_diverse",
+    "scenario_id" : "huge_setup",
+    "seed" : 10901,
+    "synthetic" : true,
+    "curated" : true,
+    "report_inline_only" : true,
+    "round" : 2,
+    "expected_baseline_behavior" : {
+      "target_confidence" : "very_low",
+      "target_strategy" : "global_reference_baseline"
+    },
+    "files" : {
+      "report" : null,
+      "summary" : "summaries/curated-P02.summary.json"
+    },
+    "notes" : "Huge setup: max-scale configuration.",
+    "config" : {
+      "arrival_rate" : 1000.0,
+      "duration" : 2.0,
+      "window_count" : 24,
+      "total_seats" : 800,
+      "takeaway_window_count" : 1,
+      "pack_probability" : 0.13,
+      "weather_impact_factor" : 1.0,
+      "weather_type" : "sunny",
+      "queue_limit" : 200,
+      "seed" : 10901,
+      "config_fingerprint" : "sha1:3acf79312da5"
+    }
+  } ],
+  "failed_samples" : [ ],
+  "round2_generated_at" : "2026-05-19T22:58:32.3273029",
+  "round2_elapsed_millis" : 8948,
+  "round2_added" : 30,
+  "round2_failed_samples" : [ ]
+}

@@ -5,6 +5,9 @@ import java.util.List;
 import com.bjtu.simulation.dto.QueueTheoryMetrics;
 import com.bjtu.simulation.dto.SimConfig;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class QueueTheoryMetricsCalculator {
 
     public QueueTheoryMetrics build(SimConfig config, int windowCount) {
