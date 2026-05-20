@@ -13,10 +13,13 @@
 
 前端：
 
-- `App.jsx`：保留全局状态、路由（hash）和 API 调用。
-- `InputPage.jsx`：模型选择、参数输入和运行预估（Tailwind 卡片 + 渐变进度条）。
+- `App.jsx`：保留全局状态、路由（hash）和 API 调用。`handleRun` 按 `decideRunMode` 在同步 `/run` 与异步 `/run/async` 之间分叉；异步路径通过 `useTaskPolling` 拿到终态后调 `/report/{id}` 取完整报告，再走 `setReport / navigate('display')` 与同步路径汇合。
+- `InputPage.jsx`：模型选择、参数输入和运行预估（Tailwind 卡片 + 渐变进度条）。header 提供"运行模式"下拉（auto / sync / async），auto 时由 `decideRunMode` 按估算到达人数与时长决定路径。
 - `DisplayPage.jsx`：KPI、等待体验、ECharts 趋势图、座位图、场景对比 Tab、历史分页。
 - `AnalysisPage.jsx`：结论摘要、等待模型、`<AdvancedStatsPanel>`（C++ 高级统计）、打包决策、参数复盘。
+- `utils/asyncRunDecision.js`：纯函数 `decideRunMode(form, userToggle)`，把 `auto` 翻译成 `sync` 或 `async`。
+- `utils/taskPoller.js`：纯 JS 状态机，承担分级 interval（1s → 2s → 5s）、连续错误熔断（默认 3 次）、硬超时（10 分钟）和 `stop()` 幂等。
+- `utils/useTaskPolling.js`：React hook 薄包装，按 `taskId` 起停 poller，暴露 `{ snapshot, error, isPolling }`。
 - 视觉系统：`index.css` 用 Tailwind v3 三段 + 30+ 个 `@layer components`；BJTU 蓝主色 + 卡片圆角。
 - 图表：`components/charts/{TrendChart,QueueBarChart,SeatUtilizationLine,WaitDistributionBar}.jsx` 全部基于 `useEcharts` hook（按需注册 8 个 ECharts 模块）。
 
@@ -46,17 +49,29 @@ flowchart LR
 
 仿真：
 
-- `POST /api/simulation/run`：运行单个配置。
-- `POST /api/simulation/run/async`：异步运行。
+- `POST /api/simulation/run`：运行单个配置（同步，HTTP 阻塞至完成）。
+- `POST /api/simulation/run/async`：异步提交，返回 `task_id` + 初始 snapshot。
+- `GET /api/simulation/task/{id}/status`：异步任务状态轮询。
+- `GET /api/simulation/task/{id}/stream`：异步任务 SSE 流（`text/event-stream`，前端可回退 polling）。
 - `GET /api/simulation/report/latest`：读取最新报告。
+- `GET /api/simulation/report/{id}`：按 ID 读取报告（默认含 `summary.timeline`，剥 `history` / `arrival_samples` / `table_snapshots`）。
 - `GET /api/simulation/report/{id}/history`：分页读取 history。
 - `GET /api/simulation/scenarios`：读取预设模型目录。
 - `POST /api/simulation/scenarios/run`：批量运行模型。
 
-分析（新增，由 C++ 后处理）：
+优化（Deprecated 同步 + RFC-005 异步）：
+
+- `POST /api/simulation/optimize`：同步 batch_compare（阻塞，标记 `deprecated_optimization=true`）。
+- `POST /api/simulation/optimize/async`：异步 batch_compare（PR-1 串行 worker），返回 `batch_task_id`。
+- `GET /api/simulation/optimize/task/{id}`：batch 状态心跳（不含 `results` 详情）。
+- `GET /api/simulation/optimize/task/{id}/result`：batch 完整结果（未完成时 409）。
+
+分析（由 C++ 后处理）：
 
 - `POST /api/analysis/run`：单报告高级统计。
 - `POST /api/analysis/cross-scenario`：批量场景跑完后跨场景分析。
+
+完整字段定义见 `API.md`。
 
 ## 设计约束
 
