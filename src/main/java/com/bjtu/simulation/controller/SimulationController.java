@@ -65,7 +65,7 @@ public class SimulationController {
         this.responseBuilder = new ReportResponseBuilder(mapper, reportRepository);
     }
 
-    @PostMapping({"/run", "/start"})
+    @PostMapping("/run")
     public ResponseEntity<ApiResponse<JsonNode>> startWithOptions(
             @Valid @RequestBody(required = false) SimConfig inputConfig,
             @RequestParam(name = "include_history", defaultValue = "false") boolean includeHistory) {

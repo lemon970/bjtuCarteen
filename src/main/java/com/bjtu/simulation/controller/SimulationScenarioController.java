@@ -12,12 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.ScenarioBatchRunRequest;
-import com.bjtu.simulation.service.ScenarioPresetCatalog;
 import com.bjtu.simulation.service.ScenarioRunService;
-import com.bjtu.simulation.service.SimulationReportRepository;
-import com.bjtu.simulation.service.SimulationRunService;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
@@ -30,18 +26,6 @@ public class SimulationScenarioController {
     @Autowired
     public SimulationScenarioController(ScenarioRunService scenarioRunService) {
         this.scenarioRunService = scenarioRunService;
-    }
-
-    public SimulationScenarioController() {
-        this(SimulationApiSupport.createReportMapper());
-    }
-
-    SimulationScenarioController(ObjectMapper mapper) {
-        this.scenarioRunService = new ScenarioRunService(
-                new ScenarioPresetCatalog(),
-                new SimulationRunService(),
-                new SimulationReportRepository(mapper),
-                mapper);
     }
 
     @GetMapping("/scenarios")

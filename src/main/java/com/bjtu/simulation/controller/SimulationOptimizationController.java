@@ -12,10 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.OptimizationRequest;
 import com.bjtu.simulation.service.OptimizationService;
-import com.bjtu.simulation.service.SimulationConfigNormalizer;
-import com.bjtu.simulation.service.SimulationRunService;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.validation.Valid;
 
@@ -29,17 +26,6 @@ public class SimulationOptimizationController {
     @Autowired
     public SimulationOptimizationController(OptimizationService optimizationService) {
         this.optimizationService = optimizationService;
-    }
-
-    public SimulationOptimizationController() {
-        this(SimulationApiSupport.createReportMapper());
-    }
-
-    SimulationOptimizationController(ObjectMapper mapper) {
-        this.optimizationService = new OptimizationService(
-                new SimulationRunService(),
-                new SimulationConfigNormalizer(),
-                mapper);
     }
 
     @PostMapping("/optimize")
