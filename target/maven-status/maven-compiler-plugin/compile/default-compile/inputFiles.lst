@@ -13,6 +13,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ApiRe
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FrameSeatLayout.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\OptimizationRequest.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ProbabilityModelSummary.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\QueueChoiceModel.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\QueueTheoryMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ScenarioBatchRunRequest.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ScenarioExpectedMetrics.java
@@ -26,6 +27,8 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\Takea
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeBucket.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeInsight.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeMetrics.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WindowAttractivenessConfig.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WindowChoiceMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\BaseEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\CanteenState.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\MovementEvent.java
@@ -40,6 +43,10 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\St
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\StudentLeaveEvent.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\StudentProfileFactory.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\TakeawayDecisionPolicy.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\WindowAttractivenessSampler.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\WindowChoiceMetricsBuilder.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\WindowRole.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\WindowRoleAssigner.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\engine\WindowSelectionPolicy.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\ArrivalGroup.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\ArrivalSample.java

@@ -16,7 +16,7 @@ class StudentProfileFactory {
                    SimConfig config,
                    int windowCount,
                    SimulationRandomSampler random) {
-        return create(id, arrivalGroup, partySize, null, partySize, 0, config, windowCount, random);
+        return create(id, arrivalGroup, partySize, null, partySize, 0, config, windowCount, random, null);
     }
 
     Student create(String id,
@@ -28,6 +28,25 @@ class StudentProfileFactory {
                    SimConfig config,
                    int windowCount,
                    SimulationRandomSampler random) {
+        return create(id, arrivalGroup, partySize, groupId, groupSize, groupMemberIndex,
+                config, windowCount, random, null);
+    }
+
+    /**
+     * RFC-009 PR-9C 入口:当 {@code windowChoiceWeights} 非 null 时走 PREFERENCE_AWARE 加权抽样,
+     * 否则走 STATIC_SPLIT 均匀抽样。两条路径**每个学生只消耗一次主 random**,保证同 seed 下
+     * 后续随机流不错位。
+     */
+    Student create(String id,
+                   ArrivalGroup arrivalGroup,
+                   int partySize,
+                   String groupId,
+                   int groupSize,
+                   int groupMemberIndex,
+                   SimConfig config,
+                   int windowCount,
+                   SimulationRandomSampler random,
+                   double[] windowChoiceWeights) {
         List<Double> preferenceRange = config.getRandomBounds() == null
                 ? null
                 : config.getRandomBounds().getPreferenceRange();
@@ -57,7 +76,7 @@ class StudentProfileFactory {
         Student.PatienceLevel patienceLevel = samplePatienceLevel(random);
         int patienceLimit = resolvePatienceLimit(queueLimit, patienceLevel, random);
 
-        int windowPreference = windowCount == 0 ? 0 : random.nextInt(0, windowCount - 1);
+        int windowPreference = resolveWindowPreference(windowCount, windowChoiceWeights, random);
         Student.SeatToleranceLevel seatToleranceLevel = sampleSeatToleranceLevel(packPreferenceLevel, random);
 
         return new Student(
@@ -146,5 +165,31 @@ class StudentProfileFactory {
         double clamped = SimulationMath.clamp(value, 0.0, 1.0);
         double scaled = Math.round(clamped / step) * step;
         return SimulationMath.clamp(scaled, 0.0, 1.0);
+    }
+
+    /**
+     * RFC-009 PR-9C:windowPreference 抽样路径派发。
+     *
+     * <p>STATIC_SPLIT(weights = null):保持现行均匀抽样行为(等价于
+     * {@code random.nextInt(0, windowCount - 1)}),消费一次主 random。</p>
+     *
+     * <p>PREFERENCE_AWARE(weights != null):走 cumulative-weight 加权抽样,
+     * 同样消费一次主 random(走 {@code random.nextDouble()}),保证后续随机流不错位。</p>
+     */
+    private int resolveWindowPreference(int windowCount,
+                                        double[] windowChoiceWeights,
+                                        SimulationRandomSampler random) {
+        if (windowCount <= 0) {
+            return 0;
+        }
+        if (windowChoiceWeights == null) {
+            return random.nextInt(0, windowCount - 1);
+        }
+        if (windowChoiceWeights.length != windowCount) {
+            throw new IllegalStateException(
+                    "windowChoiceWeights length " + windowChoiceWeights.length
+                            + " does not match windowCount " + windowCount);
+        }
+        return WindowAttractivenessSampler.sample(windowChoiceWeights, random);
     }
 }

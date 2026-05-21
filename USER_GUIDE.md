@@ -67,3 +67,20 @@
 - 到达样本
 - 打包决策样本
 - 分页历史快照
+
+## 队列选择模型（queue_choice_model，RFC-009）
+
+`base_config.queue_choice_model` 控制学生在到达时的窗口偏好生成方式，默认值 `STATIC_SPLIT` 与历史行为完全一致：
+
+- **STATIC_SPLIT（默认）**：每个学生的 `windowPreference` 在所有窗口上均匀抽样；后续 score-based 选择策略不变；报告 schema 与旧版字节级一致，**不输出** `window_choice_metrics` 顶级字段。
+- **PREFERENCE_AWARE**：在 `STATIC_SPLIT` 基础上，按 `base_config.window_attractiveness` 配置把普通窗口分为 popular / normal / cold 三类，按吸引力做 cumulative-weight 加权抽样生成 `windowPreference`。打包窗口仍参与抽样池，权重等于 `normal_attractiveness`（中性）。WindowSelectionPolicy、legacy score、StudentProfile 字段均不变。
+
+`window_attractiveness` 关键字段（缺省时按默认填充并写 `window_attractiveness_missing_filled_default` warning）：
+
+- `popular_window_ratio` / `cold_window_ratio`：占普通窗口的比例，二者之和必须 ≤ 1.0。
+- `popular_attractiveness ≥ normal_attractiveness ≥ cold_attractiveness > 0`：违反则配置校验直接 fail-fast。
+
+PREFERENCE_AWARE 报告会在 `summary.window_choice_metrics` 输出诊断指标：popular / normal / cold 三档窗口数、preference 占比、served 占比、平均等待分钟、`max_window_queue_gap`、`window_served_count_cv`。所有 share 类指标的分母锁定**普通窗口集合**（POPULAR + NORMAL + COLD），打包窗口不计入分母。
+
+`WORKLOAD_ROUTING` / `HYBRID_OVERFLOW` 仍处于 V2/V3 占位，在引擎层 fail-fast 抛 `UnsupportedOperationException`。
+

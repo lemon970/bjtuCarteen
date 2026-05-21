@@ -6,6 +6,7 @@ import com.bjtu.simulation.model.ArrivalSample;
 import com.bjtu.simulation.model.SeatCellSnapshot;
 import com.bjtu.simulation.model.TableSnapshot;
 import com.bjtu.simulation.model.TakeawayDecisionRecord;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 public class SimulationSummary {
     private final List<SimulationResult> history;
@@ -95,6 +96,12 @@ public class SimulationSummary {
     private final double theoreticalTakeawayRate;
     /** 打包率三段分解,辅助理解实际 vs 理论的差距来源。 */
     private final TakeawayRateBreakdown takeawayRateBreakdown;
+
+    /**
+     * RFC-009 §9 PREFERENCE_AWARE 报告专属指标。STATIC_SPLIT 下保持 null,
+     * 由 {@link JsonInclude}(NON_NULL) 在 JSON 中整体省略 {@code window_choice_metrics}。
+     */
+    private WindowChoiceMetrics windowChoiceMetrics;
 
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
@@ -638,5 +645,19 @@ public class SimulationSummary {
 
     public TakeawayRateBreakdown getTakeawayRateBreakdown() {
         return takeawayRateBreakdown;
+    }
+
+    /**
+     * RFC-009 §9 PREFERENCE_AWARE 报告专属指标。STATIC_SPLIT 下整体不写出
+     * {@code window_choice_metrics} 顶级字段(@JsonInclude(NON_NULL))。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public WindowChoiceMetrics getWindowChoiceMetrics() {
+        return windowChoiceMetrics;
+    }
+
+    /** 由 {@code SimulationRunService} 在 PREFERENCE_AWARE 路径上写入;其它情况保持 null。 */
+    public void setWindowChoiceMetrics(WindowChoiceMetrics windowChoiceMetrics) {
+        this.windowChoiceMetrics = windowChoiceMetrics;
     }
 }

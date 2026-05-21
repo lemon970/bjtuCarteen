@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationResult;
+import com.bjtu.simulation.dto.QueueChoiceModel;
 import com.bjtu.simulation.model.ArrivalGroup;
 import com.bjtu.simulation.model.ArrivalSample;
 import com.bjtu.simulation.model.DiningArea;
@@ -47,6 +48,10 @@ public class SimulationEngine {
     private final List<Long> windowAvailableAtSeconds;
     private int takeawayWindowCount;
     private int normalWindowCount;
+    // RFC-009 PR-9C: PREFERENCE_AWARE 启用时,普通窗口角色 + weighted-sampling 权重数组。
+    // STATIC_SPLIT 下保持 null,StudentProfileFactory 走旧均匀抽样路径。
+    private final List<WindowRole> windowRoles;
+    private final double[] windowChoiceWeights;
 
     private int arrivedCount = 0;
     private int normalArrivalCount = 0;
@@ -115,6 +120,20 @@ public class SimulationEngine {
         this.randomSampler = new SimulationRandomSampler(new Random(effectiveSeed));
         this.durationPolicy = new SimulationDurationPolicy(safeConfig, randomSampler);
 
+        // RFC-009 PR-9C: PREFERENCE_AWARE 接通 weighted windowPreference generation。
+        // STATIC_SPLIT 走旧均匀抽样路径;WORKLOAD_ROUTING / HYBRID_OVERFLOW 仍 fail-fast。
+        QueueChoiceModel queueChoiceModel = safeConfig.getBaseConfig().getQueueChoiceModel();
+        if (queueChoiceModel == null) {
+            queueChoiceModel = QueueChoiceModel.STATIC_SPLIT;
+        }
+        switch (queueChoiceModel) {
+            case STATIC_SPLIT, PREFERENCE_AWARE -> { /* both supported in PR-9C */ }
+            case WORKLOAD_ROUTING -> throw new UnsupportedOperationException(
+                    "queueChoiceModel=WORKLOAD_ROUTING: V2/V3 not enabled (RFC-009)");
+            case HYBRID_OVERFLOW -> throw new UnsupportedOperationException(
+                    "queueChoiceModel=HYBRID_OVERFLOW: V2/V3 not enabled (RFC-009)");
+        }
+
         int windowCount = Math.max(0, safeConfig.getBaseConfig().getWindowCount());
         this.takeawayWindowCount = Math.min(windowCount, Math.max(0, safeConfig.getBaseConfig().getTakeawayWindowCount()));
         this.normalWindowCount = Math.max(0, windowCount - this.takeawayWindowCount);
@@ -133,6 +152,20 @@ public class SimulationEngine {
             windowAvailableAtSeconds.add(0L);
         }
         recalculateWindowTypeCounts();
+
+        // RFC-009 PR-9C: 在 windowTypes 构建完成后分配普通窗口角色。
+        // 必须使用独立 Random(roleSeed = effectiveSeed ^ ROLE_ASSIGNMENT_SALT),
+        // 不消耗主 randomSampler,保证后续随机流不被本特性污染。
+        if (queueChoiceModel == QueueChoiceModel.PREFERENCE_AWARE && windowCount > 0) {
+            var attractiveness = safeConfig.getBaseConfig().getWindowAttractiveness();
+            // Validator 已保证 PREFERENCE_AWARE 时 attractiveness 非 null
+            this.windowRoles = WindowRoleAssigner.assign(this.windowTypes, attractiveness, this.effectiveSeed);
+            this.windowChoiceWeights = WindowRoleAssigner.buildWeights(this.windowRoles, attractiveness);
+        } else {
+            this.windowRoles = null;
+            this.windowChoiceWeights = null;
+        }
+
         this.currentTime = 0;
     }
 
@@ -309,7 +342,8 @@ public class SimulationEngine {
                 groupMemberIndex,
                 config,
                 canteenState.getWindowCount(),
-                randomSampler);
+                randomSampler,
+                windowChoiceWeights);
         studentRoster.put(id, student);
         if (student.isGrouped()) {
             groupCount++;
@@ -662,6 +696,34 @@ public class SimulationEngine {
 
     public List<String> getWindowTypes() {
         return Collections.unmodifiableList(windowTypes);
+    }
+
+    /** RFC-009 PR-9C 测试 hook:暴露普通窗口角色分配,STATIC_SPLIT 下返回 null。 */
+    List<WindowRole> getWindowRolesForTests() {
+        return windowRoles;
+    }
+
+    /** RFC-009 PR-9C 测试 hook:暴露 weighted-sampling 权重数组,STATIC_SPLIT 下返回 null。 */
+    double[] getWindowChoiceWeightsForTests() {
+        return windowChoiceWeights == null ? null : windowChoiceWeights.clone();
+    }
+
+    /**
+     * RFC-009 PR-9D:在 PREFERENCE_AWARE 模式下基于当前引擎状态构造
+     * {@link com.bjtu.simulation.dto.WindowChoiceMetrics};STATIC_SPLIT 下返回 null,
+     * 由 {@code SimulationRunService} 决定是否写入 {@code SimulationSummary}。
+     */
+    public com.bjtu.simulation.dto.WindowChoiceMetrics buildWindowChoiceMetrics() {
+        if (windowRoles == null) {
+            return null;
+        }
+        return WindowChoiceMetricsBuilder.build(
+                QueueChoiceModel.PREFERENCE_AWARE.name(),
+                windowRoles,
+                windowServedCounts,
+                studentRoster,
+                getWaitTimeSamples(),
+                history);
     }
 
     public int getTakeawayWindowCount() {

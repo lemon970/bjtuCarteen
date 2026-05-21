@@ -63,6 +63,10 @@ public class SimulationRunService {
         engine.runAll();
 
         SimulationSummary summary = buildSummary(config, engine);
+        // RFC-009 PR-9D:仅在 PREFERENCE_AWARE 时附加 window_choice_metrics。
+        // STATIC_SPLIT 下 buildWindowChoiceMetrics() 返回 null,summary getter 加了
+        // @JsonInclude(NON_NULL),JSON 中整体省略该顶级字段(§11 T7)。
+        summary.setWindowChoiceMetrics(engine.buildWindowChoiceMetrics());
         return new SimulationReport(
                 REPORT_VERSION,
                 reportId,
