@@ -5,8 +5,9 @@ package com.bjtu.simulation.dto;
  *
  * <p>仅在 {@code queueChoiceModel == PREFERENCE_AWARE} 时由 {@code SimulationRunService} 写入
  * {@link SimulationSummary#getWindowChoiceMetrics()};STATIC_SPLIT 报告通过
- * {@code @JsonInclude(NON_NULL)} 完全省略 {@code window_choice_metrics} 顶级字段,
- * 保证默认报告外观字节级稳定(详见 RFC §11 T7 / §10 验收清单)。</p>
+ * {@code @JsonInclude(NON_NULL)} 完全省略 {@code summary.window_choice_metrics} 字段
+ * (位于 summary 节点下,非 report 顶级字段),保证默认报告外观字节级稳定
+ * (详见 RFC §11 T7 / §10 验收清单)。</p>
  *
  * <p>Share 类指标的分母统一锁定**普通窗口集合**(POPULAR + NORMAL + COLD),
  * 打包窗口不计入分母(RFC §9.2 守恒约束)。</p>

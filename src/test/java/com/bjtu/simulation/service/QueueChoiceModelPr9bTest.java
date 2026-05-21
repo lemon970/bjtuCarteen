@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li>T1: STATIC_SPLIT 默认核心指标不变(default 与 explicit STATIC_SPLIT 同 seed 字节级一致)。</li>
  *   <li>T5: §8.1 配置校验规则。</li>
- *   <li>T7: 默认报告无 window_choice_metrics 顶级字段。</li>
+ *   <li>T7: 默认报告无 summary.window_choice_metrics 字段。</li>
  *   <li>T-9B-1: PREFERENCE_AWARE / WORKLOAD_ROUTING / HYBRID_OVERFLOW 在 PR-9B fail-fast。</li>
  * </ul>
  */

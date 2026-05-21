@@ -102,7 +102,9 @@ final class WindowChoiceMetricsBuilder {
         double normServedShare = servedDenom > 0 ? normServed / servedDenom : 0.0;
         double coldServedShare = servedDenom > 0 ? coldServed / servedDenom : 0.0;
 
-        // ---- Avg wait per role(各普通窗口角色样本均值) ----
+        // ---- Avg wait per role(各普通窗口角色样本均值,按 partySize 加权)----
+        // 与 WaitTimeMetricsCalculator 口径一致:每条 WaitTimeSample 代表 partySize 个学生,
+        // 故必须按 partySize 加权,否则一条 partySize=3 的样本会被低估为 1 个学生体验。
         double[] waitSums = new double[3]; // [popular, normal, cold]
         long[] waitCounts = new long[3];
         if (waitTimeSamples != null) {
@@ -120,8 +122,9 @@ final class WindowChoiceMetricsBuilder {
                 if (bucket < 0) {
                     continue;
                 }
-                waitSums[bucket] += sample.getWaitMinutes();
-                waitCounts[bucket]++;
+                int count = Math.max(1, sample.getPartySize());
+                waitSums[bucket] += sample.getWaitMinutes() * count;
+                waitCounts[bucket] += count;
             }
         }
         double popAvgWait = waitCounts[0] > 0 ? waitSums[0] / waitCounts[0] : 0.0;

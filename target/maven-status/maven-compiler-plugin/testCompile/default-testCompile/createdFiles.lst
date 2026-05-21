@@ -17,6 +17,7 @@ com\bjtu\simulation\service\RainEmergencyEndToEndTest.class
 com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.class
 com\bjtu\simulation\engine\QueueChoiceModelPr9cIntegrationTest$1.class
 com\bjtu\simulation\service\HistoricalDiagnosticsServiceBaselineTest.class
+com\bjtu\simulation\engine\WindowChoiceMetricsBuilderTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$RecordingRunner.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$StubRepo.class
 com\bjtu\simulation\service\SimulationTimelineBuilderWaitWindowTest.class

@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  *   <li>T-9D-1: STATIC_SPLIT 报告对象 {@code summary.windowChoiceMetrics == null}。</li>
- *   <li>T-9D-2: STATIC_SPLIT 报告 JSON 中不含 {@code window_choice_metrics} 顶级字段。</li>
+ *   <li>T-9D-2: STATIC_SPLIT 报告 JSON 中不含 summary.window_choice_metrics 字段。</li>
  *   <li>T-9D-3: PREFERENCE_AWARE 报告含 {@code window_choice_metrics};所有字段非空。</li>
  *   <li>T-9D-4: window_count 拆分(popular/normal/cold/takeaway)与 base_config 一致。</li>
  *   <li>T-9D-5: preference + served share 三类之和 ≈ 1.0(普通窗口集合内归一)。</li>

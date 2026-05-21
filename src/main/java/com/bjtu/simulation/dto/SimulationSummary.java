@@ -649,7 +649,7 @@ public class SimulationSummary {
 
     /**
      * RFC-009 §9 PREFERENCE_AWARE 报告专属指标。STATIC_SPLIT 下整体不写出
-     * {@code window_choice_metrics} 顶级字段(@JsonInclude(NON_NULL))。
+     * {@code summary.window_choice_metrics} 字段(@JsonInclude(NON_NULL))。
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public WindowChoiceMetrics getWindowChoiceMetrics() {
