@@ -26,6 +26,15 @@ import com.bjtu.simulation.model.WaitTimeSample;
 import com.bjtu.simulation.service.SimulationMath;
 
 public class SimulationEngine {
+    /**
+     * RFC-009 PR-9E:PREFERENCE_AWARE preference stickiness multiplier。
+     * 放大的是 chooseBestWindow 中"非偏好窗口惩罚"(nonPreferredPenalty),
+     * 不是直接给 POPULAR / NORMAL / COLD role 加分。热门窗口服务份额提升来自:
+     * weighted windowPreference generation(PR-9C)+ stronger preference stickiness(本 PR)。
+     * STATIC_SPLIT 走 weight=1.0 路径,与 PR-9D 行为字节级等价。
+     */
+    private static final double PREFERENCE_AWARE_PENALTY_MULTIPLIER = 3.0;
+
     private final Map<String, Student> studentRoster = new ConcurrentHashMap<>();
     private final SimConfig config;
     private final SimulationRandomSampler randomSampler;
@@ -35,6 +44,7 @@ public class SimulationEngine {
     private final SimulationInvariantChecker invariantChecker = new SimulationInvariantChecker();
     private final SimulationSnapshotRecorder snapshotRecorder = new SimulationSnapshotRecorder();
     private final long effectiveSeed;
+    private final QueueChoiceModel queueChoiceModel;
 
     private long currentTime = 0L;
     private final PriorityQueue<BaseEvent> eventQueue = new PriorityQueue<>();
@@ -133,6 +143,7 @@ public class SimulationEngine {
             case HYBRID_OVERFLOW -> throw new UnsupportedOperationException(
                     "queueChoiceModel=HYBRID_OVERFLOW: V2/V3 not enabled (RFC-009)");
         }
+        this.queueChoiceModel = queueChoiceModel;
 
         int windowCount = Math.max(0, safeConfig.getBaseConfig().getWindowCount());
         this.takeawayWindowCount = Math.min(windowCount, Math.max(0, safeConfig.getBaseConfig().getTakeawayWindowCount()));
@@ -366,6 +377,11 @@ public class SimulationEngine {
 
     public int chooseWindowForStudent(Student student) {
         boolean willTakeaway = predictTakeawayIntent(student);
+        // RFC-009 PR-9E:STATIC_SPLIT 走 weight=1.0 路径(等价 PR-9D);
+        // PREFERENCE_AWARE 启用 stickier preference penalty。
+        double preferenceWeight = (queueChoiceModel == QueueChoiceModel.PREFERENCE_AWARE)
+                ? PREFERENCE_AWARE_PENALTY_MULTIPLIER
+                : 1.0;
         return windowSelectionPolicy.choose(
                 student,
                 canteenState,
@@ -375,7 +391,8 @@ public class SimulationEngine {
                 currentQueuePressure(),
                 currentSeatUtilizationRate(),
                 takeawayWindowCount,
-                willTakeaway);
+                willTakeaway,
+                preferenceWeight);
     }
 
     private boolean predictTakeawayIntent(Student student) {

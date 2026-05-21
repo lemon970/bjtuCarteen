@@ -14,7 +14,8 @@ class WindowSelectionPolicy {
                double queuePressure,
                double seatPressure,
                int takeawayWindowCount,
-               boolean willTakeaway) {
+               boolean willTakeaway,
+               double preferenceWeight) {
         List<Integer> queues = canteenState.getWindowQueues();
         if (queues.isEmpty()) {
             return -1;
@@ -34,10 +35,10 @@ class WindowSelectionPolicy {
         // 让出到全局评分,避免单一打包窗口成为瓶颈打破窗口间排队均衡(Bug-01)。
         if (willTakeaway && takeawayWindowCount > 0) {
             int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true,
-                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
             if (takeawayWindow >= 0) {
                 int unifiedWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, null,
-                        queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                        queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
                 if (unifiedWindow < 0 || queues.get(takeawayWindow) - queues.get(unifiedWindow) <= 2) {
                     return takeawayWindow;
                 }
@@ -51,7 +52,7 @@ class WindowSelectionPolicy {
 
         if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.DINE_IN_BIASED) {
             int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false,
-                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
             if (normalWindow >= 0) {
                 return normalWindow;
             }
@@ -59,9 +60,9 @@ class WindowSelectionPolicy {
 
         if (student.getPackPreferenceLevel() == Student.PackPreferenceLevel.BALANCED) {
             int normalWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, false,
-                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
             int takeawayWindow = chooseBestWindow(student, preferred, patienceLimit, partySize, true,
-                    queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                    queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
             if (normalWindow >= 0
                     && takeawayWindow >= 0
                     && !shouldBalancedStudentUseTakeawayWindow(normalWindow, takeawayWindow,
@@ -71,9 +72,14 @@ class WindowSelectionPolicy {
         }
 
         return chooseBestWindow(student, preferred, patienceLimit, partySize, null,
-                queues, windowAvailableAtSeconds, windowTypes, currentTime);
+                queues, windowAvailableAtSeconds, windowTypes, currentTime, preferenceWeight);
     }
 
+    /**
+     * RFC-009 PR-9E:{@code preferenceWeight} 放大的是"非偏好窗口惩罚",不是直接给热门窗口加分。
+     * 热门窗口服务份额提升来自:weighted windowPreference generation(PR-9C)+ stronger
+     * preference stickiness(本 PR)。STATIC_SPLIT 下 weight=1.0,代码路径与 PR-9D 等价。
+     */
     private int chooseBestWindow(Student student,
                                  int preferred,
                                  int patienceLimit,
@@ -82,12 +88,14 @@ class WindowSelectionPolicy {
                                  List<Integer> queues,
                                  List<Long> windowAvailableAtSeconds,
                                  List<String> windowTypes,
-                                 long currentTime) {
-        double nonPreferredPenalty = switch (student.getPatienceLevel()) {
+                                 long currentTime,
+                                 double preferenceWeight) {
+        double basePenalty = switch (student.getPatienceLevel()) {
             case LOW -> 0.15;
             case MEDIUM -> 0.45;
             case HIGH -> 0.90;
         };
+        double nonPreferredPenalty = basePenalty * preferenceWeight;
         int bestWindow = -1;
         double bestScore = Double.MAX_VALUE;
         for (int i = 0; i < queues.size(); i++) {

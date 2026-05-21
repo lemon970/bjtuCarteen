@@ -1,4 +1,5 @@
 com\bjtu\simulation\engine\TakeawayRateBoundTest.class
+com\bjtu\simulation\engine\QueueChoiceModelPr9eTest.class
 com\bjtu\simulation\service\TheoreticalTakeawayBaselineAccuracyTest.class
 com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest$FileEntry.class
 com\bjtu\simulation\service\QueueChoiceModelPr9dTest.class

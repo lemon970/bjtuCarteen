@@ -66,5 +66,13 @@ export const DEFAULT_FORM = {
   groupBehaviorCorrelation: 0.75,
   preferAdjacentSeats: true,
   walkTimeMean: 8,
-  congestionPenalty: 0.35
+  congestionPenalty: 0.35,
+  // RFC-009 PR-9D 前端入口:队列选择模型与窗口吸引力。
+  // 默认 STATIC_SPLIT 与历史行为完全一致;PREFERENCE_AWARE 时才会发送 window_attractiveness。
+  queueChoiceModel: 'STATIC_SPLIT',
+  popularWindowRatio: 0.25,
+  coldWindowRatio: 0.25,
+  popularAttractiveness: 1.4,
+  normalAttractiveness: 1.0,
+  coldAttractiveness: 0.8
 }

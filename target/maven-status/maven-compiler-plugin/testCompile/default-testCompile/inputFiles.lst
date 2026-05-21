@@ -4,6 +4,7 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\controlle
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\controller\SimulationOptimizationAsyncControllerIntegrationTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\DynamicTakeawayDecisionTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\QueueChoiceModelPr9cIntegrationTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\QueueChoiceModelPr9eTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\SeatReservationTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\SeatWaitQueueTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.java

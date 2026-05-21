@@ -5,6 +5,7 @@ import MetricCard from '../components/MetricCard'
 import SeatUtilizationLine from '../components/charts/SeatUtilizationLine'
 import TrendChart from '../components/charts/TrendChart'
 import WaitTimePanel from '../components/WaitTimePanel'
+import WindowChoiceMetricsCard from '../components/WindowChoiceMetricsCard'
 import { buildAnalysis, formatNumber, formatPercent, read } from '../utils/simulation'
 
 function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
@@ -68,6 +69,8 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
       />
 
       <WaitTimePanel summary={summary} />
+
+      <WindowChoiceMetricsCard summary={summary} />
 
       <AdvancedStatsPanel reportId={reportId} />
 

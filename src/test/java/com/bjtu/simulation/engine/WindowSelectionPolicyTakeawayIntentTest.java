@@ -32,7 +32,7 @@ class WindowSelectionPolicyTakeawayIntentTest {
 
         int chosen = policy.choose(student, state, available, windowTypes,
                 /*currentTime=*/0L, /*queuePressure=*/0.0, /*seatPressure=*/0.0,
-                /*takeawayWindowCount=*/1, /*willTakeaway=*/true);
+                /*takeawayWindowCount=*/1, /*willTakeaway=*/true, /*preferenceWeight=*/1.0);
 
         assertEquals(2, chosen,
                 "wantsTakeaway=true 应优先选打包窗口(index 2),即使普通窗口空");
@@ -47,7 +47,7 @@ class WindowSelectionPolicyTakeawayIntentTest {
         Student student = dineInBiasedStudent("s2", /*patienceLimit=*/20);
 
         int chosen = policy.choose(student, state, available, windowTypes,
-                0L, 0.0, 0.0, 1, true);
+                0L, 0.0, 0.0, 1, true, 1.0);
 
         assertEquals(0, chosen, "打包窗口超耐心后,应 fallback 到普通窗口");
         assertNotEquals(-1, chosen, "fallback 不应返回 -1");
@@ -62,7 +62,7 @@ class WindowSelectionPolicyTakeawayIntentTest {
         Student student = dineInBiasedStudent("s3", 30);
 
         int chosen = policy.choose(student, state, available, windowTypes,
-                0L, 0.0, 0.0, 1, /*willTakeaway=*/false);
+                0L, 0.0, 0.0, 1, /*willTakeaway=*/false, /*preferenceWeight=*/1.0);
 
         // DINE_IN_BIASED + willTakeaway=false → 走原 packPreferenceLevel 路径
         // windowTypePenalty: TAKEAWAY +1.50 / NORMAL -0.20 → 选 NORMAL
@@ -79,7 +79,7 @@ class WindowSelectionPolicyTakeawayIntentTest {
         Student student = dineInBiasedStudent("s4", 30);
 
         int chosen = policy.choose(student, state, available, windowTypes,
-                0L, 0.0, 0.0, /*takeawayWindowCount=*/0, /*willTakeaway=*/true);
+                0L, 0.0, 0.0, /*takeawayWindowCount=*/0, /*willTakeaway=*/true, /*preferenceWeight=*/1.0);
 
         // takeawayWindowCount=0,新增的 willTakeaway 分支跳过,走原路径
         assertTrue(chosen == 0 || chosen == 1, "应在两个普通窗口中选,got " + chosen);
