@@ -64,10 +64,11 @@ function InputPage({
               className="input-control h-9 py-0 text-xs"
               value={runMode}
               onChange={(event) => onRunModeChange?.(event.target.value)}
+              title="自动:按到达人数和时长自动判定;同步:HTTP 阻塞直到完成,适合短仿真;异步:提交后轮询任务,适合长仿真避免超时"
             >
-              <option value="auto">自动</option>
-              <option value="sync">同步</option>
-              <option value="async">异步</option>
+              <option value="auto" title="估算到达 ≥8000 人或时长 ≥4 小时走异步,其余走同步">自动(推荐)</option>
+              <option value="sync" title="HTTP 阻塞直到仿真完成,适合短仿真和调试">同步(立即查看结果)</option>
+              <option value="async" title="提交后轮询任务,适合大仿真避免 HTTP 超时">异步(适合大仿真)</option>
             </select>
           </label>
           <button type="button" className="btn-secondary" onClick={onReset}>重置</button>
