@@ -28,13 +28,17 @@ public class SimulationRunService {
     private final SimulationTimelineBuilder timelineBuilder;
     private final QueueTheoryMetricsCalculator queueTheoryMetricsCalculator;
     private final WaitTimeMetricsCalculator waitTimeMetricsCalculator;
+    private final WaitExperienceProxyCalculator waitExperienceProxyCalculator;
+    private final FairnessCalculator fairnessCalculator;
 
     public SimulationRunService() {
         this(new SimulationConfigNormalizer(),
                 new SimulationArrivalScheduler(),
                 new SimulationTimelineBuilder(),
                 new QueueTheoryMetricsCalculator(),
-                new WaitTimeMetricsCalculator());
+                new WaitTimeMetricsCalculator(),
+                new WaitExperienceProxyCalculator(),
+                new FairnessCalculator());
     }
 
     @Autowired
@@ -42,12 +46,16 @@ public class SimulationRunService {
                                 SimulationArrivalScheduler arrivalScheduler,
                                 SimulationTimelineBuilder timelineBuilder,
                                 QueueTheoryMetricsCalculator queueTheoryMetricsCalculator,
-                                WaitTimeMetricsCalculator waitTimeMetricsCalculator) {
+                                WaitTimeMetricsCalculator waitTimeMetricsCalculator,
+                                WaitExperienceProxyCalculator waitExperienceProxyCalculator,
+                                FairnessCalculator fairnessCalculator) {
         this.configNormalizer = configNormalizer;
         this.arrivalScheduler = arrivalScheduler;
         this.timelineBuilder = timelineBuilder;
         this.queueTheoryMetricsCalculator = queueTheoryMetricsCalculator;
         this.waitTimeMetricsCalculator = waitTimeMetricsCalculator;
+        this.waitExperienceProxyCalculator = waitExperienceProxyCalculator;
+        this.fairnessCalculator = fairnessCalculator;
     }
 
     public SimulationReport run(SimConfig inputConfig) {
@@ -68,6 +76,15 @@ public class SimulationRunService {
         // @JsonInclude(NON_NULL),JSON 中整体省略 summary.window_choice_metrics 字段
         // (位于 summary 节点下,非 report 顶级字段;§11 T7)。
         summary.setWindowChoiceMetrics(engine.buildWindowChoiceMetrics());
+        // RFC-011:基于已有 wait samples + windowServedCounts + windowTypes 派生 2 组
+        // sub-DTO。calculator 内部对 party-weighted 总样本数 < 50 返回 null,
+        // 由 @JsonInclude(NON_NULL) 在 JSON 中省略。无 RNG 消耗,确定性。
+        summary.setWaitExperienceProxyMetrics(
+                waitExperienceProxyCalculator.build(engine.getWaitTimeSamples(), config));
+        summary.setFairnessMetrics(
+                fairnessCalculator.build(engine.getWaitTimeSamples(),
+                        engine.getWindowServedCounts(),
+                        engine.getWindowTypes()));
         return new SimulationReport(
                 REPORT_VERSION,
                 reportId,

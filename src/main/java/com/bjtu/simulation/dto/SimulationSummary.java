@@ -103,6 +103,18 @@ public class SimulationSummary {
      */
     private WindowChoiceMetrics windowChoiceMetrics;
 
+    /**
+     * RFC-011 §A 等待体验代理指标。party-weighted 样本数 &lt; 50 时保持 null,
+     * 由 {@link JsonInclude}(NON_NULL) 在 JSON 中整体省略 {@code wait_experience_proxy_metrics}。
+     */
+    private WaitExperienceProxyMetrics waitExperienceProxyMetrics;
+
+    /**
+     * RFC-011 §B 公平性指标。party-weighted 样本数 &lt; 50 时保持 null,
+     * 由 {@link JsonInclude}(NON_NULL) 在 JSON 中整体省略 {@code fairness_metrics}。
+     */
+    private FairnessMetrics fairnessMetrics;
+
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
                              int arrivedCount,
@@ -659,5 +671,33 @@ public class SimulationSummary {
     /** 由 {@code SimulationRunService} 在 PREFERENCE_AWARE 路径上写入;其它情况保持 null。 */
     public void setWindowChoiceMetrics(WindowChoiceMetrics windowChoiceMetrics) {
         this.windowChoiceMetrics = windowChoiceMetrics;
+    }
+
+    /**
+     * RFC-011 §A 等待体验代理指标。party-weighted 样本数 &lt; 50 时整体保持 null,
+     * 由 {@code @JsonInclude(NON_NULL)} 在 JSON 中省略 {@code wait_experience_proxy_metrics}。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public WaitExperienceProxyMetrics getWaitExperienceProxyMetrics() {
+        return waitExperienceProxyMetrics;
+    }
+
+    /** 由 {@code SimulationRunService} 在 buildSummary 后写入(可能为 null,样本不足)。 */
+    public void setWaitExperienceProxyMetrics(WaitExperienceProxyMetrics waitExperienceProxyMetrics) {
+        this.waitExperienceProxyMetrics = waitExperienceProxyMetrics;
+    }
+
+    /**
+     * RFC-011 §B 公平性指标。party-weighted 样本数 &lt; 50 时整体保持 null,
+     * 由 {@code @JsonInclude(NON_NULL)} 在 JSON 中省略 {@code fairness_metrics}。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public FairnessMetrics getFairnessMetrics() {
+        return fairnessMetrics;
+    }
+
+    /** 由 {@code SimulationRunService} 在 buildSummary 后写入(可能为 null,样本不足)。 */
+    public void setFairnessMetrics(FairnessMetrics fairnessMetrics) {
+        this.fairnessMetrics = fairnessMetrics;
     }
 }

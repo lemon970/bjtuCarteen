@@ -28,6 +28,7 @@ com\bjtu\simulation\engine\SimulationEngine$1.class
 com\bjtu\simulation\service\HistoricalQualityScorer$DimensionResult.class
 com\bjtu\simulation\dto\MetricSensitivityCurve.class
 com\bjtu\simulation\engine\WindowSelectionPolicy.class
+com\bjtu\simulation\dto\WaitExperienceProxyMetrics.class
 com\bjtu\simulation\dto\BatchRunRequest.class
 com\bjtu\simulation\service\OptimizationTaskRecord.class
 com\bjtu\simulation\service\WhitelistedParameterMutator$1.class
@@ -57,6 +58,8 @@ com\bjtu\simulation\service\ReportSummaryStore$RepairOutcome.class
 com\bjtu\simulation\model\TakeawayDecisionRecord.class
 com\bjtu\simulation\service\ExternalAnalysisService.class
 com\bjtu\simulation\model\DiningArea.class
+com\bjtu\simulation\service\WaitExperienceProxyCalculator.class
+com\bjtu\simulation\dto\FairnessMetrics.class
 com\bjtu\simulation\service\InternalStatisticsAnalyzer.class
 com\bjtu\simulation\engine\TakeawayDecisionPolicy.class
 com\bjtu\simulation\engine\WindowRole.class
@@ -97,6 +100,7 @@ com\bjtu\simulation\engine\WindowSelectionPolicy$1.class
 com\bjtu\simulation\service\ReportListItemMapper.class
 com\bjtu\simulation\dto\SimulationTimePoint.class
 com\bjtu\simulation\service\PerSeedMetricExtractor.class
+com\bjtu\simulation\service\FairnessCalculator.class
 com\bjtu\simulation\dto\SimConfig$RandomBounds.class
 com\bjtu\simulation\dto\WindowAttractivenessConfig.class
 com\bjtu\simulation\service\ReportSummaryStore$VerifyOutcome.class

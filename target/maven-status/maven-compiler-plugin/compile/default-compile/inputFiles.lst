@@ -15,6 +15,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\AxisR
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BatchRunReport.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BatchRunRequest.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\CiBounds.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FairnessMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FrameSeatLayout.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\MetricSensitivityCurve.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\MetricStat.java
@@ -36,6 +37,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\Simul
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\SimulationSummary.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\SimulationTimePoint.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\TakeawayRateBreakdown.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitExperienceProxyMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeBucket.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeInsight.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\WaitTimeMetrics.java
@@ -74,6 +76,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\A
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\BatchRunService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ConfidenceIntervalCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ExternalAnalysisService.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\FairnessCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalDiagnosticsService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\HistoricalQualityScorer.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\InternalStatisticsAnalyzer.java
@@ -97,6 +100,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\S
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationTaskRecord.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationTaskService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\SimulationTimelineBuilder.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WaitExperienceProxyCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WaitTimeMetricsCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WeatherFactorPolicy.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\WhitelistedParameterMutator.java
