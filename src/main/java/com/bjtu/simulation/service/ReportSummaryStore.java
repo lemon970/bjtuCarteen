@@ -279,16 +279,6 @@ public class ReportSummaryStore {
         return outcome;
     }
 
-    /** 占位:第一版禁用,需 phase 2/3 显式启用。 */
-    public void compactSummaryStore() {
-        throw new UnsupportedOperationException("compactSummaryStore is disabled in phase 1");
-    }
-
-    /** 占位:危险操作,第一版禁用。 */
-    public void fullResetSummaryStore() {
-        throw new UnsupportedOperationException("fullResetSummaryStore is disabled in phase 1");
-    }
-
     // ---- helpers ----
 
     private void moveToQuarantine(Path file, RepairOutcome outcome) {

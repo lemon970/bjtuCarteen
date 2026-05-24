@@ -4,7 +4,7 @@
 
 后端：
 
-- **Controller 层**：运行、报告、优化、场景模型、分析五类入口分开承载，URL 保持 `/api/simulation/**` 和 `/api/analysis/**`。
+- **Controller 层**：运行、报告、场景模型、分析四类入口分开承载，URL 保持 `/api/simulation/**` 和 `/api/analysis/**`。
 - **Scenario 层**：`ScenarioPresetCatalog` 提供权威预设模型，`ScenarioRunService` 负责批量运行和对比摘要。
 - **Simulation 层**：`SimulationEngine` 负责事件调度，随机采样、学生画像、窗口选择、不变量校验、快照记录已拆到独立类。
 - **Report 层**：`SimulationReportRepository` 负责文件读写，`ReportListItemMapper` 负责报告列表摘要映射。
@@ -58,13 +58,6 @@ flowchart LR
 - `GET /api/simulation/report/{id}/history`：分页读取 history。
 - `GET /api/simulation/scenarios`：读取预设模型目录。
 - `POST /api/simulation/scenarios/run`：批量运行模型。
-
-优化（Deprecated 同步 + RFC-005 异步）：
-
-- `POST /api/simulation/optimize`：同步 batch_compare（阻塞，标记 `deprecated_optimization=true`）。
-- `POST /api/simulation/optimize/async`：异步 batch_compare（PR-1 串行 worker），返回 `batch_task_id`。
-- `GET /api/simulation/optimize/task/{id}`：batch 状态心跳（不含 `results` 详情）。
-- `GET /api/simulation/optimize/task/{id}/result`：batch 完整结果（未完成时 409）。
 
 分析（由 C++ 后处理）：
 

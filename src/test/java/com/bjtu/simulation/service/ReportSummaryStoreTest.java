@@ -564,15 +564,6 @@ class ReportSummaryStoreTest {
     }
 
     @Test
-    void compactAndFullResetAreDisabledInPhaseOne(@TempDir Path tmp) {
-        Path store = tmp.resolve("analysis-store");
-        Path reports = tmp.resolve("reports");
-        ReportSummaryStore svc = newStore(store, reports);
-        assertThrows(UnsupportedOperationException.class, svc::compactSummaryStore);
-        assertThrows(UnsupportedOperationException.class, svc::fullResetSummaryStore);
-    }
-
-    @Test
     void deriveIdFromFileNameHandlesStandardFormat() {
         assertEquals("abc-123",
                 ReportSummaryStore.deriveIdFromFileName("simulation-report-20260519-143022-abc-123.json"));
