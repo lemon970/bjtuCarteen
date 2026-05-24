@@ -136,15 +136,6 @@
 
 - `include_history=true`：返回完整 history。
 
-### `GET /api/simulation/report/{id}/history`
-
-分页读取事件级 history。
-
-参数：
-
-- `page`：从 1 开始。
-- `page_size`：1 到 5000。
-
 ### `GET /api/simulation/report/{id}/csv`
 
 导出 CSV，包含到达样本、打包决策样本和历史快照。

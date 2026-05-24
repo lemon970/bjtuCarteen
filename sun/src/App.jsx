@@ -4,7 +4,6 @@ import {
   getReportById,
   getTaskStatus,
   loadLatestReport,
-  loadReportHistory,
   loadScenarioCatalog,
   runScenarioBatch,
   runSimulation,
@@ -36,9 +35,7 @@ function App() {
   const [scenarioCatalog, setScenarioCatalog] = useState(null)
   const [selectedScenarioIds, setSelectedScenarioIds] = useState(['lunch_peak_pressure'])
   const [scenarioResults, setScenarioResults] = useState([])
-  const [historyPage, setHistoryPage] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [runMode, setRunMode] = useState('auto')
   const [activeTaskId, setActiveTaskId] = useState(null)
@@ -97,7 +94,6 @@ function App() {
     const mode = decideRunMode(form, runMode)
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     setScenarioResults([])
     setActiveTaskId(null)
 
@@ -178,7 +174,6 @@ function App() {
     const ids = selectedScenarioIds.length ? selectedScenarioIds : (scenarioCatalog || []).map((item) => item.id)
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     try {
       const data = await runScenarioBatch(ids)
       const results = data?.results || []
@@ -202,7 +197,6 @@ function App() {
   const handleLoadLatest = async () => {
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     try {
       const data = await loadLatestReport()
       setReport(data)
@@ -218,21 +212,6 @@ function App() {
       setMessage(`读取失败：${error.message}`)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleLoadHistory = async (page = 1) => {
-    if (!reportId) {
-      return
-    }
-    setHistoryLoading(true)
-    try {
-      const data = await loadReportHistory(reportId, page)
-      setHistoryPage(data)
-    } catch (error) {
-      setMessage(`历史快照读取失败：${error.message}`)
-    } finally {
-      setHistoryLoading(false)
     }
   }
 
@@ -278,9 +257,6 @@ function App() {
         <DisplayPage
           report={report}
           scenarioResults={scenarioResults}
-          historyPage={historyPage}
-          historyLoading={historyLoading}
-          onLoadHistory={handleLoadHistory}
           onLoadLatest={handleLoadLatest}
         />
       )}

@@ -15,7 +15,7 @@
 
 - `App.jsx`：保留全局状态、路由（hash）和 API 调用。`handleRun` 按 `decideRunMode` 在同步 `/run` 与异步 `/run/async` 之间分叉；异步路径通过 `useTaskPolling` 拿到终态后调 `/report/{id}` 取完整报告，再走 `setReport / navigate('display')` 与同步路径汇合。
 - `InputPage.jsx`：模型选择、参数输入和运行预估（Tailwind 卡片 + 渐变进度条）。header 提供"运行模式"下拉（auto / sync / async），auto 时由 `decideRunMode` 按估算到达人数与时长决定路径。
-- `DisplayPage.jsx`：KPI、等待体验、ECharts 趋势图、座位图、场景对比 Tab、历史分页。
+- `DisplayPage.jsx`：KPI、等待体验、ECharts 趋势图、座位图、场景对比 Tab。
 - `AnalysisPage.jsx`：结论摘要、等待模型、`<AdvancedStatsPanel>`（C++ 高级统计）、打包决策、参数复盘。
 - `utils/asyncRunDecision.js`：纯函数 `decideRunMode(form, userToggle)`，把 `auto` 翻译成 `sync` 或 `async`。
 - `utils/taskPoller.js`：纯 JS 状态机，承担分级 interval（1s → 2s → 5s）、连续错误熔断（默认 3 次）、硬超时（10 分钟）和 `stop()` 幂等。
@@ -54,7 +54,6 @@ flowchart LR
 - `GET /api/simulation/task/{id}/status`：异步任务状态轮询（前端按 1s → 2s → 5s 节奏轮询直到终态）。
 - `GET /api/simulation/report/latest`：读取最新报告。
 - `GET /api/simulation/report/{id}`：按 ID 读取报告（默认含 `summary.timeline`，剥 `history` / `arrival_samples` / `table_snapshots`）。
-- `GET /api/simulation/report/{id}/history`：分页读取 history。
 - `GET /api/simulation/report/{id}/csv`：导出到达样本 / 打包决策 / 历史快照 CSV。
 - `GET /api/simulation/scenarios`：读取预设模型目录。
 - `POST /api/simulation/scenarios/run`：批量运行模型。

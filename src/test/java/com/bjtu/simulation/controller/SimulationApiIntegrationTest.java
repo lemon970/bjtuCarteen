@@ -315,23 +315,6 @@ class SimulationApiIntegrationTest {
     }
 
     @Test
-    void reportTimelineAndHistoryShouldSupportPagination() throws Exception {
-        String reportId = createReportAndGetId();
-
-        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
-                        .param("page", "1")
-                        .param("page_size", "3"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_id").value(reportId))
-                .andExpect(jsonPath("$.data.collection").value("history"))
-                .andExpect(jsonPath("$.data.page").value(1))
-                .andExpect(jsonPath("$.data.page_size").value(3))
-                .andExpect(jsonPath("$.data.total_items").exists())
-                .andExpect(jsonPath("$.data.items").isArray());
-    }
-
-    @Test
     void fullReportShouldOmitHistoryByDefaultAndReturnItWhenRequested() throws Exception {
         String reportId = createReportAndGetId();
 
@@ -379,23 +362,6 @@ class SimulationApiIntegrationTest {
         int responseBytes = result.getResponse().getContentAsByteArray().length;
         org.junit.jupiter.api.Assertions.assertTrue(responseBytes < 2_000_000,
                 "1000-student default response should remain below 2 MB, actual=" + responseBytes);
-    }
-
-    @Test
-    void reportPageEndpointShouldRejectInvalidPagination() throws Exception {
-        String reportId = createReportAndGetId();
-
-        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
-                        .param("page", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("page must be >= 1"));
-
-        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
-                        .param("page_size", "5001"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("page_size must be in [1, 5000]"));
     }
 
     private String createReportAndGetId() throws Exception {

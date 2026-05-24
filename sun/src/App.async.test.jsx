@@ -18,7 +18,6 @@ vi.mock('./api/simulationApi', () => ({
   getTaskStatus: vi.fn(),
   getReportById: vi.fn(),
   loadLatestReport: vi.fn(() => new Promise(() => {})),
-  loadReportHistory: vi.fn(),
   loadScenarioCatalog: vi.fn(() => Promise.resolve({ scenarios: [] })),
   runScenarioBatch: vi.fn(),
   csvExportUrl: vi.fn(() => '#'),

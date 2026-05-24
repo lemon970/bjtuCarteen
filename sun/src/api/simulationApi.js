@@ -1,4 +1,4 @@
-import { API_BASE, HISTORY_PAGE_SIZE } from '../constants'
+import { API_BASE } from '../constants'
 
 const ANALYSIS_BASE = '/api/analysis'
 
@@ -62,10 +62,6 @@ export function runScenarioBatch(scenarioIds, overrides) {
 
 export function loadLatestReport() {
   return requestJson('/report/latest')
-}
-
-export function loadReportHistory(reportId, page = 1) {
-  return requestJson(`/report/${reportId}/history?page=${page}&page_size=${HISTORY_PAGE_SIZE}`)
 }
 
 export function csvExportUrl(reportId) {

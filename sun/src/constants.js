@@ -2,7 +2,6 @@ export const API_BASE = '/api/simulation'
 export const MAX_STUDENTS = 1000
 export const MAX_SEATS = 1000
 export const MAX_RENDERED_SEATS = 360
-export const HISTORY_PAGE_SIZE = 20
 
 export const ASYNC_RUN_THRESHOLDS = {
   estimatedArrivals: 8000,
