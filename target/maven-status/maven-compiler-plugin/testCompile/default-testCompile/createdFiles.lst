@@ -4,6 +4,7 @@ com\bjtu\simulation\service\TheoreticalTakeawayBaselineAccuracyTest.class
 com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest$FileEntry.class
 com\bjtu\simulation\service\QueueChoiceModelPr9dTest.class
 com\bjtu\simulation\service\InternalStatisticsAnalyzerTest.class
+com\bjtu\simulation\service\PerSeedMetricExtractorTest.class
 com\bjtu\simulation\tools\CuratedSamplesGenerator$SamplePlan.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest$MapRepo.class
 com\bjtu\simulation\engine\StudentProfileFactoryTakeawayIntentTest.class
@@ -14,6 +15,7 @@ com\bjtu\simulation\engine\WindowAttractivenessSamplerTest.class
 com\bjtu\simulation\engine\WindowBalancingTest.class
 com\bjtu\simulation\controller\SimulationApiIntegrationTest.class
 com\bjtu\simulation\service\FixedIntervalGroupDistributionTest.class
+com\bjtu\simulation\service\SensitivityAnalysisServiceTest.class
 com\bjtu\simulation\service\RainEmergencyEndToEndTest.class
 com\bjtu\simulation\controller\AnalysisControllerIntegrationTest.class
 com\bjtu\simulation\engine\QueueChoiceModelPr9cIntegrationTest$1.class
@@ -27,8 +29,10 @@ com\bjtu\simulation\service\HistoricalQualityScorerTest.class
 com\bjtu\simulation\service\WeatherFactorPolicyTest.class
 com\bjtu\simulation\service\LunchPeakWindowBalanceTest.class
 com\bjtu\simulation\engine\QueueChoiceModelPr9cIntegrationTest.class
+com\bjtu\simulation\service\AggregateMetricsCalculatorTest.class
 com\bjtu\simulation\engine\DynamicTakeawayDecisionTest.class
 com\bjtu\simulation\service\SimulationTaskServiceLifecycleTest.class
+com\bjtu\simulation\service\ConfidenceIntervalCalculatorTest.class
 com\bjtu\simulation\service\QueueChoiceModelPr9bTest.class
 com\bjtu\simulation\controller\SimulationControllerTest.class
 com\bjtu\simulation\engine\SeatWaitQueueTest.class
@@ -44,9 +48,11 @@ com\bjtu\simulation\service\TimelineFrameLayoutTest.class
 com\bjtu\simulation\service\GroupArrivalDistributionTest.class
 com\bjtu\simulation\service\OptimizationTaskServiceTest$FakeSimulationRunService.class
 com\bjtu\simulation\engine\SeatReservationTest.class
+com\bjtu\simulation\service\WhitelistedParameterMutatorTest.class
 com\bjtu\simulation\service\SimulationConfigNormalizerTest.class
 com\bjtu\simulation\service\ReportSummaryStoreTest.class
 com\bjtu\simulation\service\OptimizationResultBuilderTest.class
+com\bjtu\simulation\service\BatchRunServiceTest.class
 com\bjtu\simulation\service\HistoricalDiagnosticsServiceTest.class
 com\bjtu\simulation\service\SimulationReportRepositoryTest.class
 com\bjtu\simulation\service\ExternalAnalysisServiceTest.class

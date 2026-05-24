@@ -15,6 +15,9 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\Wi
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\WindowChoiceMetricsBuilderTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\WindowSelectionPolicyTakeawayIntentTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\AggregateMetricsCalculatorTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\BatchRunServiceTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ConfidenceIntervalCalculatorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ExternalAnalysisServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\FixedIntervalGroupDistributionTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\GroupArrivalDistributionTest.java
@@ -26,6 +29,7 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\I
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\LunchPeakWindowBalanceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\OptimizationResultBuilderTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\OptimizationTaskServiceTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\PerSeedMetricExtractorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\QueueChoiceModelPr9bTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\QueueChoiceModelPr9dTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\RainEmergencyEndToEndTest.java
@@ -34,6 +38,7 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\R
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ScenarioPresetNumberFieldStepConformanceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ScenarioRunServiceContractTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SeatUtilizationMetricsTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SensitivityAnalysisServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationConfigNormalizerTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationReportRepositoryTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\SimulationRunServiceBoundaryTest.java
@@ -45,4 +50,5 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\T
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\TimelineFrameLayoutTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\WaitTimeMetricsCalculatorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\WeatherFactorPolicyTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\WhitelistedParameterMutatorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\tools\CuratedSamplesGenerator.java
