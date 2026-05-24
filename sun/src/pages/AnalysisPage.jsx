@@ -1,12 +1,10 @@
 import AdvancedStatsPanel from '../components/AdvancedStatsPanel'
 import BottleneckDiagnosisPanel from '../components/BottleneckDiagnosisPanel'
 import ChartPanel from '../components/ChartPanel'
-import FairnessPanel from '../components/FairnessPanel'
 import InsightNarrative from '../components/InsightNarrative'
 import MetricCard from '../components/MetricCard'
 import SeatUtilizationLine from '../components/charts/SeatUtilizationLine'
 import TrendChart from '../components/charts/TrendChart'
-import WaitExperienceProxyPanel from '../components/WaitExperienceProxyPanel'
 import WaitTimePanel from '../components/WaitTimePanel'
 import WindowChoiceMetricsCard from '../components/WindowChoiceMetricsCard'
 import { buildAnalysis, formatNumber, formatPercent, read } from '../utils/simulation'
@@ -74,10 +72,6 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
       <WaitTimePanel summary={summary} />
 
       <BottleneckDiagnosisPanel summary={summary} />
-
-      <WaitExperienceProxyPanel summary={summary} />
-
-      <FairnessPanel summary={summary} />
 
       <WindowChoiceMetricsCard summary={summary} />
 
