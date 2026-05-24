@@ -61,16 +61,6 @@ public class SimulationReportController {
         }
     }
 
-    @GetMapping("/report/list")
-    public ResponseEntity<ApiResponse<JsonNode>> getReportList() {
-        try {
-            return ResponseEntity.ok(ApiResponse.success(reportRepository.listReports()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, e.getMessage()));
-        }
-    }
-
     @GetMapping("/report/{id}")
     public ResponseEntity<ApiResponse<JsonNode>> getReportByIdWithOptions(
             @PathVariable("id") String reportId,
@@ -95,14 +85,6 @@ public class SimulationReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(500, e.getMessage()));
         }
-    }
-
-    @GetMapping("/report/{id}/timeline")
-    public ResponseEntity<ApiResponse<JsonNode>> getReportTimelinePage(
-            @PathVariable("id") String reportId,
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "page_size", defaultValue = "500") int pageSize) {
-        return getReportSummaryArrayPage(reportId, "timeline", page, pageSize);
     }
 
     @GetMapping("/report/{id}/history")

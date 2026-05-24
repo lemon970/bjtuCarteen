@@ -47,10 +47,6 @@ public class ScenarioRunService {
         return data;
     }
 
-    public ObjectNode runScenarios(ScenarioBatchRunRequest request) {
-        return runScenarios(request, false);
-    }
-
     public ObjectNode runScenarios(ScenarioBatchRunRequest request, boolean includeHistory) {
         List<String> scenarioIds = request == null ? List.of() : request.getScenarioIds();
         if (scenarioIds == null || scenarioIds.isEmpty()) {

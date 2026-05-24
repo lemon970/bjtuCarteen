@@ -316,32 +316,8 @@ class SimulationApiIntegrationTest {
     }
 
     @Test
-    void reportListShouldReturnWrappedHistoryRecords() throws Exception {
-        mockMvc.perform(get("/api/simulation/report/list"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.count").exists())
-                .andExpect(jsonPath("$.data.reports").isArray());
-    }
-
-    @Test
     void reportTimelineAndHistoryShouldSupportPagination() throws Exception {
         String reportId = createReportAndGetId();
-
-        mockMvc.perform(get("/api/simulation/report/{id}/timeline", reportId)
-                        .param("page", "1")
-                        .param("page_size", "2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_id").value(reportId))
-                .andExpect(jsonPath("$.data.collection").value("timeline"))
-                .andExpect(jsonPath("$.data.page").value(1))
-                .andExpect(jsonPath("$.data.page_size").value(2))
-                .andExpect(jsonPath("$.data.total_items").exists())
-                .andExpect(jsonPath("$.data.total_pages").exists())
-                .andExpect(jsonPath("$.data.has_next").exists())
-                .andExpect(jsonPath("$.data.items").isArray())
-                .andExpect(jsonPath("$.data.items[0].time_seconds").exists());
 
         mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
                         .param("page", "1")
@@ -410,7 +386,7 @@ class SimulationApiIntegrationTest {
     void reportPageEndpointShouldRejectInvalidPagination() throws Exception {
         String reportId = createReportAndGetId();
 
-        mockMvc.perform(get("/api/simulation/report/{id}/timeline", reportId)
+        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
                         .param("page", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))

@@ -1,13 +1,9 @@
 package com.bjtu.simulation.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-
 import com.bjtu.simulation.config.AppBeansConfig;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -60,26 +56,6 @@ class InternalStatisticsAnalyzerTest {
         assertTrue(lower <= mean, () -> "lower " + lower + " should be <= mean " + mean);
         assertTrue(upper >= mean, () -> "upper " + upper + " should be >= mean " + mean);
         assertTrue(ci.path("sample_count").asInt() == queueSeries.length);
-    }
-
-    @Test
-    void batchAnalyzeShouldProduceAnovaAndMonteCarlo() {
-        ObjectNode r1 = sampleReport("rid-a", 0.4, 5.0, new int[]{100, 80}, new double[]{1, 1, 1, 1});
-        ObjectNode r2 = sampleReport("rid-b", 0.65, 9.0, new int[]{120, 90}, new double[]{8, 8, 7, 9});
-        ObjectNode r3 = sampleReport("rid-c", 0.55, 7.0, new int[]{110, 85}, new double[]{4, 5, 4, 5});
-
-        ObjectNode result = analyzer.batchAnalyze(List.of(r1, r2, r3));
-        assertEquals(3, result.path("report_count").asInt());
-
-        JsonNode mc = result.path("monte_carlo");
-        assertTrue(mc.path("seat_utilization_rate").has("mean"));
-        assertTrue(mc.path("seat_utilization_rate").has("stddev"));
-
-        JsonNode anova = result.path("anova");
-        assertTrue(anova.path("enabled").asBoolean());
-        assertTrue(anova.path("f_statistic").asDouble() > 0.0);
-        assertEquals(3, anova.path("group_count").asInt());
-        assertNotEquals(anova.path("strongest_group").asText(), anova.path("weakest_group").asText());
     }
 
     private ObjectNode sampleReport(String reportId,

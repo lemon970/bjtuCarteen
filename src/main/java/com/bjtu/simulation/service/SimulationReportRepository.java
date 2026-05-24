@@ -15,7 +15,6 @@ import com.bjtu.simulation.config.AppBeansConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -34,7 +33,6 @@ public class SimulationReportRepository {
     private static final String JSON_SUFFIX = ".json";
 
     private final ObjectMapper reportMapper;
-    private final ReportListItemMapper listItemMapper;
     private final ReportSummaryStore summaryStore;
 
     @Autowired
@@ -52,7 +50,6 @@ public class SimulationReportRepository {
 
     public SimulationReportRepository(ObjectMapper reportMapper, ReportSummaryStore summaryStore) {
         this.reportMapper = reportMapper;
-        this.listItemMapper = new ReportListItemMapper(reportMapper);
         this.summaryStore = summaryStore;
     }
 
@@ -93,29 +90,6 @@ public class SimulationReportRepository {
             return Optional.of(reportMapper.readTree(latestPath.toFile()));
         } catch (IOException e) {
             throw new IllegalStateException("failed to read latest report", e);
-        }
-    }
-
-    public JsonNode listReports() {
-        ObjectNode data = reportMapper.createObjectNode();
-        ArrayNode reports = reportMapper.createArrayNode();
-
-        if (!Files.exists(REPORTS_DIR)) {
-            data.put("count", 0);
-            data.set("reports", reports);
-            return data;
-        }
-
-        try (Stream<Path> paths = Files.list(REPORTS_DIR)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(this::isHistoricalReportFile)
-                    .sorted(Comparator.comparingLong(this::lastModifiedMillis).reversed())
-                    .forEach(path -> addReportListItem(reports, path));
-            data.put("count", reports.size());
-            data.set("reports", reports);
-            return data;
-        } catch (IOException e) {
-            throw new IllegalStateException("failed to list reports", e);
         }
     }
 
@@ -232,17 +206,20 @@ public class SimulationReportRepository {
         }
     }
 
-    private void addReportListItem(ArrayNode reports, Path path) {
-        try {
-            JsonNode report = reportMapper.readTree(path.toFile());
-            reports.add(listItemMapper.toReportListItem(report, path));
-        } catch (IOException e) {
-            ObjectNode item = reportMapper.createObjectNode();
-            item.put("file_name", path.getFileName().toString());
-            item.put("parse_error", true);
-            item.put("message", "failed to parse report file");
-            reports.add(item);
+    private static String extractReportIdFromFileName(Path path) {
+        String fileName = path.getFileName().toString();
+        String prefix = "simulation-report-";
+        String suffix = ".json";
+        if (!fileName.startsWith(prefix) || !fileName.endsWith(suffix)) {
+            return "";
         }
+        String body = fileName.substring(prefix.length(), fileName.length() - suffix.length());
+        int firstDash = body.indexOf('-');
+        int secondDash = firstDash < 0 ? -1 : body.indexOf('-', firstDash + 1);
+        if (secondDash < 0 || secondDash + 1 >= body.length()) {
+            return "";
+        }
+        return body.substring(secondDash + 1);
     }
 
     private Path findReportPathById(String reportId) {
@@ -257,7 +234,7 @@ public class SimulationReportRepository {
                     .toList();
 
             for (Path path : candidates) {
-                if (reportId.equals(ReportListItemMapper.extractReportIdFromFileName(path))) {
+                if (reportId.equals(extractReportIdFromFileName(path))) {
                     return path;
                 }
             }

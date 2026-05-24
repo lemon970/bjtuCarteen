@@ -108,59 +108,6 @@ public class ExternalAnalysisService {
         }
     }
 
-    public AnalysisResult runForReports(List<String> reportIds) {
-        if (reportIds == null || reportIds.size() < 2) {
-            return AnalysisResult.unavailable("batch analyze requires at least 2 report ids");
-        }
-        for (String id : reportIds) {
-            if (!reportRepository.isSafeReportId(id)) {
-                return AnalysisResult.unavailable("invalid report id in batch: " + id);
-            }
-        }
-        List<JsonNode> resolved = new java.util.ArrayList<>();
-        for (String id : reportIds) {
-            reportRepository.readById(id).ifPresent(resolved::add);
-        }
-        if (resolved.size() < 2) {
-            return AnalysisResult.unavailable("fewer than 2 readable reports for batch analysis");
-        }
-        if (!isBinaryAvailable()) {
-            return AnalysisResult.available(fallback.batchAnalyze(resolved));
-        }
-
-        Path tempDir = null;
-        try {
-            tempDir = Files.createTempDirectory("canteen-batch-");
-            Path inputDir = Files.createDirectory(tempDir.resolve("inputs"));
-            int written = 0;
-            for (int i = 0; i < resolved.size(); i++) {
-                Files.writeString(inputDir.resolve(reportIds.get(i) + ".json"),
-                        reportMapper.writeValueAsString(resolved.get(i)),
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.TRUNCATE_EXISTING);
-                ++written;
-            }
-            if (written < 2) {
-                return AnalysisResult.unavailable("fewer than 2 readable reports for batch analysis");
-            }
-            Path outputFile = tempDir.resolve("cross-scenario.json");
-            List<String> command = List.of(
-                    binaryPath.toAbsolutePath().toString(),
-                    "--mode=batch-analyze",
-                    "--input-dir=" + inputDir.toAbsolutePath(),
-                    "--output=" + outputFile.toAbsolutePath());
-            ProcessExecutionOutcome outcome = processRunner.run(command, PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            return interpret(outcome, outputFile, "cpp-canteen-analyze");
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            return AnalysisResult.unavailable("analysis invocation failed: " + e.getMessage());
-        } finally {
-            cleanup(tempDir);
-        }
-    }
-
     private boolean isBinaryAvailable() {
         return binaryPath != null && Files.isRegularFile(binaryPath);
     }

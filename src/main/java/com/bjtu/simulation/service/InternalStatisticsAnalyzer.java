@@ -52,19 +52,6 @@ public class InternalStatisticsAnalyzer {
         return root;
     }
 
-    public ObjectNode batchAnalyze(List<JsonNode> reports) {
-        ObjectNode root = mapper.createObjectNode();
-        root.put("schema_version", SCHEMA_VERSION);
-        root.put("computed_by", "java-internal");
-        root.put("report_count", reports == null ? 0 : reports.size());
-        if (reports == null || reports.isEmpty()) {
-            return root;
-        }
-        root.set("monte_carlo", buildMonteCarlo(reports));
-        root.set("anova", buildAnova(reports));
-        return root;
-    }
-
     private ObjectNode buildConfidenceIntervals(JsonNode summary) {
         ObjectNode wrap = mapper.createObjectNode();
         List<Double> waitSamples = extractWaitSamples(summary);

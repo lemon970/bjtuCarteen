@@ -121,16 +121,9 @@ class SimulationControllerTest {
     }
 
     @Test
-    void historyReportEndpointsShouldReturnListAndReportById() {
+    void historyReportEndpointsShouldReturnReportById() {
         JsonNode report = runAndGetReport(baseConfig());
         String reportId = report.path("report_id").asText();
-
-        ResponseEntity<ApiResponse<JsonNode>> list = reportController.getReportList();
-        assertEquals(HttpStatus.OK, list.getStatusCode());
-        assertNotNull(list.getBody());
-        assertEquals(0, list.getBody().getCode());
-        assertTrue(list.getBody().getData().path("count").asInt() >= 1);
-        assertTrue(list.getBody().getData().path("reports").isArray());
 
         ResponseEntity<ApiResponse<JsonNode>> found = reportController.getReportByIdWithOptions(reportId, false);
         assertEquals(HttpStatus.OK, found.getStatusCode());
