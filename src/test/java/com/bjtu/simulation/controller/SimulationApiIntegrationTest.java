@@ -117,8 +117,7 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.timeline[0].queueing_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].table_snapshots").doesNotExist())
-                .andExpect(jsonPath("$.data.summary.avg_movement_time_minutes").exists())
-                .andExpect(jsonPath("$.data.summary.queue_theory_metrics.model_type").exists());
+                .andExpect(jsonPath("$.data.summary.avg_movement_time_minutes").exists());
     }
 
     // F1: 跨层契约 — 后端响应必须包含前端 normalizePoint (sun/src/utils/simulation.js:595-608)

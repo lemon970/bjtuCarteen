@@ -37,7 +37,6 @@ public class SimulationSummary {
 
     private final long peakTimeMinutes;
     private final long totalPeakTimeMinutes;
-    private final int peakWindowId;
     private final int maxQueueSize;
 
     private final int maxTotalQueueSize;
@@ -70,7 +69,6 @@ public class SimulationSummary {
     private final List<ArrivalSample> arrivalSamples;
     private final List<TakeawayDecisionRecord> takeawayDecisionRecords;
     private final ProbabilityModelSummary probabilityModel;
-    private final QueueTheoryMetrics queueTheoryMetrics;
     private final int groupCount;
     private final int groupedStudentCount;
     private final double avgGroupSize;
@@ -104,18 +102,6 @@ public class SimulationSummary {
     private WindowChoiceMetrics windowChoiceMetrics;
 
     /**
-     * RFC-011 §A 等待体验代理指标。party-weighted 样本数 &lt; 50 时保持 null,
-     * 由 {@link JsonInclude}(NON_NULL) 在 JSON 中整体省略 {@code wait_experience_proxy_metrics}。
-     */
-    private WaitExperienceProxyMetrics waitExperienceProxyMetrics;
-
-    /**
-     * RFC-011 §B 公平性指标。party-weighted 样本数 &lt; 50 时保持 null,
-     * 由 {@link JsonInclude}(NON_NULL) 在 JSON 中整体省略 {@code fairness_metrics}。
-     */
-    private FairnessMetrics fairnessMetrics;
-
-    /**
      * RFC-012 派生瓶颈诊断。由 {@code service/BottleneckAnalyzer} 在 buildSummary 后注入,
      * 4 类瓶颈(WINDOW_SERVICE_CAPACITY / SEAT_CAPACITY / TAKEAWAY_CAPACITY / ARRIVAL_SURGE)
      * 均未触发时 primary=BALANCED、bottlenecks=[]。{@code summary} 节点本身不省略,
@@ -147,7 +133,6 @@ public class SimulationSummary {
                              int movementSampleCount,
                              long peakTimeMinutes,
                              long totalPeakTimeMinutes,
-                             int peakWindowId,
                              int maxQueueSize,
                              int maxTotalQueueSize,
                              double avgTotalQueueSize,
@@ -175,7 +160,6 @@ public class SimulationSummary {
                              List<ArrivalSample> arrivalSamples,
                              List<TakeawayDecisionRecord> takeawayDecisionRecords,
                              ProbabilityModelSummary probabilityModel,
-                             QueueTheoryMetrics queueTheoryMetrics,
                              int groupCount,
                              int groupedStudentCount,
                              double avgGroupSize,
@@ -196,14 +180,14 @@ public class SimulationSummary {
                 noSeatSwitchToTakeawayCount, weatherDrivenTakeawayCount, leaveCount,
                 avgWaitTimeMinutes, totalWaitTimeMinutes, waitTimeMetrics,
                 avgMovementTimeMinutes, totalMovementTimeMinutes, movementSampleCount,
-                peakTimeMinutes, totalPeakTimeMinutes, peakWindowId, maxQueueSize,
+                peakTimeMinutes, totalPeakTimeMinutes, maxQueueSize,
                 maxTotalQueueSize, avgTotalQueueSize, maxOccupiedSeats, avgOccupiedSeats,
                 seatUtilizationRate, windowServedCounts, windowTypes, normalWindowCount,
                 takeawayWindowCount, normalWindowServedCount, takeawayWindowServedCount,
                 takeawayRate, dineInRate, takeawayWindowRatio, normalWindowServedRate,
                 takeawayWindowServedRate, simulationEndTimeSeconds, simulationEndTimeMinutes,
                 totalSeats, occupiedSeats, emptySeats, tableSnapshots, seatCells,
-                arrivalSamples, takeawayDecisionRecords, probabilityModel, queueTheoryMetrics,
+                arrivalSamples, takeawayDecisionRecords, probabilityModel,
                 groupCount, groupedStudentCount, avgGroupSize, sameTableGroupRate,
                 splitGroupRate, noSeatAbandonedCount, noSeatAbandonedRate, seatWaitQueueMax,
                 seatWaitAvgSeconds, reservedSeatsAvg, seatTimeWeightedUtilization,
@@ -234,7 +218,6 @@ public class SimulationSummary {
                              int movementSampleCount,
                              long peakTimeMinutes,
                              long totalPeakTimeMinutes,
-                             int peakWindowId,
                              int maxQueueSize,
                              int maxTotalQueueSize,
                              double avgTotalQueueSize,
@@ -262,7 +245,6 @@ public class SimulationSummary {
                              List<ArrivalSample> arrivalSamples,
                              List<TakeawayDecisionRecord> takeawayDecisionRecords,
                              ProbabilityModelSummary probabilityModel,
-                             QueueTheoryMetrics queueTheoryMetrics,
                              int groupCount,
                              int groupedStudentCount,
                              double avgGroupSize,
@@ -302,7 +284,6 @@ public class SimulationSummary {
         this.movementSampleCount = movementSampleCount;
         this.peakTimeMinutes = peakTimeMinutes;
         this.totalPeakTimeMinutes = totalPeakTimeMinutes;
-        this.peakWindowId = peakWindowId;
         this.maxQueueSize = maxQueueSize;
         this.maxTotalQueueSize = maxTotalQueueSize;
         this.avgTotalQueueSize = avgTotalQueueSize;
@@ -330,7 +311,6 @@ public class SimulationSummary {
         this.arrivalSamples = arrivalSamples;
         this.takeawayDecisionRecords = takeawayDecisionRecords;
         this.probabilityModel = probabilityModel;
-        this.queueTheoryMetrics = queueTheoryMetrics;
         this.groupCount = groupCount;
         this.groupedStudentCount = groupedStudentCount;
         this.avgGroupSize = avgGroupSize;
@@ -488,10 +468,6 @@ public class SimulationSummary {
         return totalPeakTimeMinutes;
     }
 
-    public int getPeakWindowId() {
-        return peakWindowId;
-    }
-
     public int getMaxQueueSize() {
         return maxQueueSize;
     }
@@ -600,10 +576,6 @@ public class SimulationSummary {
         return probabilityModel;
     }
 
-    public QueueTheoryMetrics getQueueTheoryMetrics() {
-        return queueTheoryMetrics;
-    }
-
     public int getGroupCount() {
         return groupCount;
     }
@@ -680,34 +652,6 @@ public class SimulationSummary {
     /** 由 {@code SimulationRunService} 在 PREFERENCE_AWARE 路径上写入;其它情况保持 null。 */
     public void setWindowChoiceMetrics(WindowChoiceMetrics windowChoiceMetrics) {
         this.windowChoiceMetrics = windowChoiceMetrics;
-    }
-
-    /**
-     * RFC-011 §A 等待体验代理指标。party-weighted 样本数 &lt; 50 时整体保持 null,
-     * 由 {@code @JsonInclude(NON_NULL)} 在 JSON 中省略 {@code wait_experience_proxy_metrics}。
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public WaitExperienceProxyMetrics getWaitExperienceProxyMetrics() {
-        return waitExperienceProxyMetrics;
-    }
-
-    /** 由 {@code SimulationRunService} 在 buildSummary 后写入(可能为 null,样本不足)。 */
-    public void setWaitExperienceProxyMetrics(WaitExperienceProxyMetrics waitExperienceProxyMetrics) {
-        this.waitExperienceProxyMetrics = waitExperienceProxyMetrics;
-    }
-
-    /**
-     * RFC-011 §B 公平性指标。party-weighted 样本数 &lt; 50 时整体保持 null,
-     * 由 {@code @JsonInclude(NON_NULL)} 在 JSON 中省略 {@code fairness_metrics}。
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public FairnessMetrics getFairnessMetrics() {
-        return fairnessMetrics;
-    }
-
-    /** 由 {@code SimulationRunService} 在 buildSummary 后写入(可能为 null,样本不足)。 */
-    public void setFairnessMetrics(FairnessMetrics fairnessMetrics) {
-        this.fairnessMetrics = fairnessMetrics;
     }
 
     /**

@@ -62,7 +62,6 @@ class SimulationControllerTest {
         assertEquals(first.path("dine_in_count").asInt(), second.path("dine_in_count").asInt());
         assertEquals(first.path("takeaway_count").asInt(), second.path("takeaway_count").asInt());
         assertEquals(first.path("max_queue_size").asInt(), second.path("max_queue_size").asInt());
-        assertEquals(first.path("peak_window_id").asInt(), second.path("peak_window_id").asInt());
     }
 
     @Test

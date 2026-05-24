@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.bjtu.simulation.dto.QueueTheoryMetrics;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.bjtu.simulation.dto.SimulationSummary;
@@ -26,20 +25,14 @@ public class SimulationRunService {
     private final SimulationConfigNormalizer configNormalizer;
     private final SimulationArrivalScheduler arrivalScheduler;
     private final SimulationTimelineBuilder timelineBuilder;
-    private final QueueTheoryMetricsCalculator queueTheoryMetricsCalculator;
     private final WaitTimeMetricsCalculator waitTimeMetricsCalculator;
-    private final WaitExperienceProxyCalculator waitExperienceProxyCalculator;
-    private final FairnessCalculator fairnessCalculator;
     private final BottleneckAnalyzer bottleneckAnalyzer;
 
     public SimulationRunService() {
         this(new SimulationConfigNormalizer(),
                 new SimulationArrivalScheduler(),
                 new SimulationTimelineBuilder(),
-                new QueueTheoryMetricsCalculator(),
                 new WaitTimeMetricsCalculator(),
-                new WaitExperienceProxyCalculator(),
-                new FairnessCalculator(),
                 new BottleneckAnalyzer());
     }
 
@@ -47,18 +40,12 @@ public class SimulationRunService {
     public SimulationRunService(SimulationConfigNormalizer configNormalizer,
                                 SimulationArrivalScheduler arrivalScheduler,
                                 SimulationTimelineBuilder timelineBuilder,
-                                QueueTheoryMetricsCalculator queueTheoryMetricsCalculator,
                                 WaitTimeMetricsCalculator waitTimeMetricsCalculator,
-                                WaitExperienceProxyCalculator waitExperienceProxyCalculator,
-                                FairnessCalculator fairnessCalculator,
                                 BottleneckAnalyzer bottleneckAnalyzer) {
         this.configNormalizer = configNormalizer;
         this.arrivalScheduler = arrivalScheduler;
         this.timelineBuilder = timelineBuilder;
-        this.queueTheoryMetricsCalculator = queueTheoryMetricsCalculator;
         this.waitTimeMetricsCalculator = waitTimeMetricsCalculator;
-        this.waitExperienceProxyCalculator = waitExperienceProxyCalculator;
-        this.fairnessCalculator = fairnessCalculator;
         this.bottleneckAnalyzer = bottleneckAnalyzer;
     }
 
@@ -75,22 +62,7 @@ public class SimulationRunService {
         engine.runAll();
 
         SimulationSummary summary = buildSummary(config, engine);
-        // RFC-009 PR-9D:仅在 PREFERENCE_AWARE 时附加 window_choice_metrics。
-        // STATIC_SPLIT 下 buildWindowChoiceMetrics() 返回 null,summary getter 加了
-        // @JsonInclude(NON_NULL),JSON 中整体省略 summary.window_choice_metrics 字段
-        // (位于 summary 节点下,非 report 顶级字段;§11 T7)。
         summary.setWindowChoiceMetrics(engine.buildWindowChoiceMetrics());
-        // RFC-011:基于已有 wait samples + windowServedCounts + windowTypes 派生 2 组
-        // sub-DTO。calculator 内部对 party-weighted 总样本数 < 50 返回 null,
-        // 由 @JsonInclude(NON_NULL) 在 JSON 中省略。无 RNG 消耗,确定性。
-        summary.setWaitExperienceProxyMetrics(
-                waitExperienceProxyCalculator.build(engine.getWaitTimeSamples(), config));
-        summary.setFairnessMetrics(
-                fairnessCalculator.build(engine.getWaitTimeSamples(),
-                        engine.getWindowServedCounts(),
-                        engine.getWindowTypes()));
-        // RFC-012:派生瓶颈诊断,纯后处理。读 summary 已有字段 + config,
-        // 不读 engine、不消耗 RNG;同 seed 字节级稳定。
         summary.setBottleneckDiagnosis(bottleneckAnalyzer.analyze(summary, config));
         return new SimulationReport(
                 REPORT_VERSION,
@@ -119,7 +91,6 @@ public class SimulationRunService {
         int takeawayWindowCount = engine.getTakeawayWindowCount();
         int normalWindowServedCount = engine.getNormalWindowServedCount();
         int takeawayWindowServedCount = engine.getTakeawayWindowServedCount();
-        QueueTheoryMetrics queueTheoryMetrics = queueTheoryMetricsCalculator.build(config, windowCount);
         WaitTimeMetrics waitTimeMetrics = waitTimeMetricsCalculator.build(
                 engine.getWaitTimeSamples(),
                 engine.getMaxTotalQueueSize(),
@@ -164,7 +135,6 @@ public class SimulationRunService {
                 engine.getMovementSampleCount(),
                 engine.getPeakTime() / 60,
                 engine.getTotalPeakTime() / 60,
-                engine.getPeakWindowId(),
                 engine.getMaxQueueSizeEver(),
                 engine.getMaxTotalQueueSize(),
                 SimulationMath.round3(engine.getAvgTotalQueueSize()),
@@ -192,7 +162,6 @@ public class SimulationRunService {
                 arrivalSamples,
                 takeawayDecisionRecords,
                 buildProbabilityModel(config, arrivalSamples, takeawayDecisionRecords.size()),
-                queueTheoryMetrics,
                 engine.getGroupCount(),
                 engine.getGroupedStudentCount(),
                 SimulationMath.rate(engine.getGroupedStudentCount(), engine.getGroupCount()),

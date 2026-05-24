@@ -127,13 +127,9 @@ class BottleneckDiagnosisIntegrationTest {
     @Test
     void t12Int3_preferenceAwareCoexistsWithRfc011() {
         SimulationReport report = runService.run(preferenceAwareConfig(), "rfc012-int3");
-        // PREFERENCE_AWARE 下 PR-9D / RFC-011 / RFC-012 同时非 null
+        // PREFERENCE_AWARE 下 PR-9D / RFC-012 同时非 null
         assertNotNull(report.getSummary().getWindowChoiceMetrics(),
                 "PREFERENCE_AWARE 下 PR-9D windowChoiceMetrics 应非 null");
-        assertNotNull(report.getSummary().getWaitExperienceProxyMetrics(),
-                "RFC-011 §A 必须共存");
-        assertNotNull(report.getSummary().getFairnessMetrics(),
-                "RFC-011 §B 必须共存");
         assertNotNull(report.getSummary().getBottleneckDiagnosis(),
                 "RFC-012 bottleneckDiagnosis 必须共存");
 
