@@ -116,8 +116,10 @@ const styleFor = sev => SEVERITY_STYLE[String(sev || '').toLowerCase()] || SEVER
 
 ```
 windowId === -1  → "—"
-windowId >= 0    → "窗口 #" + windowId        ← 直接显示后端值,不擅自 +1
+windowId >= 0    → "窗口 ID #" + windowId        ← 直接显示后端值,不擅自 +1
 ```
+
+**显示文案选用 "窗口 ID #N" 而非 "窗口 #N"**,显式提示 N 是内部 0-based 索引,避免用户误读为"第 N 个"。
 
 雷达图本轮**不做**(决策保留)。
 
@@ -199,8 +201,8 @@ WindowChoiceMetricsCard → AdvancedStatsPanel → 打包决策表 → 参数复
 
 **`windowId` 边界**:
 - `windowId = -1` → DOM 文本 "—"
-- `windowId = 0` → DOM 文本 "窗口 #0"(不变 +1)
-- `windowId = 7` → DOM 文本 "窗口 #7"
+- `windowId = 0` → DOM 文本 "窗口 ID #0"(不变 +1)
+- `windowId = 7` → DOM 文本 "窗口 ID #7"
 
 ---
 
@@ -216,8 +218,11 @@ WindowChoiceMetricsCard → AdvancedStatsPanel → 打包决策表 → 参数复
 瓶颈诊断(窗口服务能力 / 座位容量 / 打包窗口 / 到达冲击 / 无瓶颈),
 均为基于 SimulationSummary 已有字段的派生启发式指标,**仅用于同
 模型内相对比较**(如不同配置间 A/B 对照),不解释为真实感知等待
-时间或绝对优劣判断。样本不足(< 50)时,等待体验代理与公平性
-不展示。
+时间或绝对优劣判断。
+
+**样本不足时(party-weighted 样本数 < 50),等待体验代理与公平性
+面板不显示,这是预期行为**;瓶颈诊断不依赖样本量,任何配置都会
+显示(包括 BALANCED 兜底)。
 ```
 
 ---
@@ -228,8 +233,8 @@ PR 合入前以下全部 ✅ 才算交付:
 
 ### 6.1 自动化测试
 
-- [ ] `cd src_24281231 && mvn -DskipFrontend=true test` → **415 全绿**(0 改)
-- [ ] `cd src_24281231/sun && npm test -- --run` → **76 全绿**
+- [ ] `cd src_24281231 && mvn -DskipFrontend=true test` → **全绿,测试数量不因本 PR 减少**(后端 0 改,理论上 baseline 不变;若有修复型副作用导致计数变化需在 PR 描述里解释)
+- [ ] `cd src_24281231/sun && npm test -- --run` → **全绿,前端测试数量预计 +14**(本 PR 新增 3 个 panel test + 1 个 AnalysisPage 集成用例;若 +14 与实际有偏差需在 PR 描述里解释)
 - [ ] `cd src_24281231 && npm run build:backend` EXIT 0(同时不破 `ServedFrontendBundleFreshnessTest`)
 
 ### 6.2 浏览器手动验证(3 个路径必须各跑一次)
@@ -243,7 +248,9 @@ PR 合入前以下全部 ✅ 才算交付:
 - [ ] `git diff --stat origin/claude...HEAD -- src/main/java` 输出**空**
 - [ ] `git diff --stat origin/claude...HEAD -- src/test/java` 输出**空**
 - [ ] `git diff --stat origin/claude...HEAD -- pom.xml` 输出**空**
-- [ ] `git diff --stat origin/claude...HEAD -- 'src/main/resources/**'` 输出**空**(除 frontend bundle 重建产物)
+- [ ] `git diff --stat origin/claude...HEAD -- 'src/main/resources/**'` 输出**仅含**:
+  - `src/main/resources/static/**`(`npm run build:backend` 产出的 frontend bundle:`index.html` / `assets/*.js` / `assets/*.css` / 静态资源)
+  - **不得**包含 `application.properties` / `application.yml` / `logback.xml` / 模板文件 / SQL 脚本 / `i18n/*.properties` 或任何非 frontend bundle 的资源文件;若有,视为越界并必须撤回
 
 ### 6.4 依赖 0 引入
 
