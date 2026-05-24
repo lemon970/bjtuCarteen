@@ -17,6 +17,8 @@ D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\engine\Wi
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\release\ServedFrontendBundleFreshnessTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\AggregateMetricsCalculatorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\BatchRunServiceTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\BottleneckAnalyzerTest.java
+D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\BottleneckDiagnosisIntegrationTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ConfidenceIntervalCalculatorTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\ExternalAnalysisServiceTest.java
 D:\desktop\stu\software\src_24281231\src\test\java\com\bjtu\simulation\service\FairnessCalculatorTest.java

@@ -115,6 +115,15 @@ public class SimulationSummary {
      */
     private FairnessMetrics fairnessMetrics;
 
+    /**
+     * RFC-012 派生瓶颈诊断。由 {@code service/BottleneckAnalyzer} 在 buildSummary 后注入,
+     * 4 类瓶颈(WINDOW_SERVICE_CAPACITY / SEAT_CAPACITY / TAKEAWAY_CAPACITY / ARRIVAL_SURGE)
+     * 均未触发时 primary=BALANCED、bottlenecks=[]。{@code summary} 节点本身不省略,
+     * 但 {@code bottleneckDiagnosis} 在被显式注入前为 null,通过
+     * {@link JsonInclude}(NON_NULL) 在 JSON 中省略 {@code bottleneck_diagnosis}。
+     */
+    private BottleneckDiagnosis bottleneckDiagnosis;
+
     public SimulationSummary(List<SimulationResult> history,
                              List<SimulationTimePoint> timeline,
                              int arrivedCount,
@@ -699,5 +708,21 @@ public class SimulationSummary {
     /** 由 {@code SimulationRunService} 在 buildSummary 后写入(可能为 null,样本不足)。 */
     public void setFairnessMetrics(FairnessMetrics fairnessMetrics) {
         this.fairnessMetrics = fairnessMetrics;
+    }
+
+    /**
+     * RFC-012 派生瓶颈诊断。{@code @JsonInclude(NON_NULL)} 守:未注入前
+     * (默认构造路径)字段为 null,JSON 整体省略 {@code bottleneck_diagnosis};
+     * 注入后(运行 {@code SimulationRunService.run()})始终非 null,即使 4 类均未触发
+     * 也带 {@code primary=BALANCED}、{@code bottlenecks=[]}。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public BottleneckDiagnosis getBottleneckDiagnosis() {
+        return bottleneckDiagnosis;
+    }
+
+    /** 由 {@code SimulationRunService} 在 buildSummary 后通过 {@code BottleneckAnalyzer.analyze} 写入。 */
+    public void setBottleneckDiagnosis(BottleneckDiagnosis bottleneckDiagnosis) {
+        this.bottleneckDiagnosis = bottleneckDiagnosis;
     }
 }

@@ -14,7 +14,12 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\ApiRe
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\AxisResult.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BatchRunReport.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BatchRunRequest.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BottleneckDiagnosis.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BottleneckEvidence.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BottleneckSeverity.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\BottleneckType.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\CiBounds.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\DetectedBottleneck.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FairnessMetrics.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\FrameSeatLayout.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\dto\MetricSensitivityCurve.java
@@ -74,6 +79,7 @@ D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\Tak
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\model\WaitTimeSample.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\AggregateMetricsCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\BatchRunService.java
+D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\BottleneckAnalyzer.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ConfidenceIntervalCalculator.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\ExternalAnalysisService.java
 D:\desktop\stu\software\src_24281231\src\main\java\com\bjtu\simulation\service\FairnessCalculator.java

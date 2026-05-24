@@ -49,6 +49,8 @@ com\bjtu\simulation\service\SensitivityAnalysisService.class
 com\bjtu\simulation\service\SimulationArrivalScheduler.class
 com\bjtu\simulation\dto\WaitTimeMetrics.class
 com\bjtu\simulation\model\Student$SeatToleranceLevel.class
+com\bjtu\simulation\dto\BottleneckDiagnosis.class
+com\bjtu\simulation\service\BottleneckAnalyzer.class
 com\bjtu\simulation\service\ReportSummaryStore$SourceCheck.class
 com\bjtu\simulation\service\OptimizationTaskService.class
 com\bjtu\simulation\dto\FrameSeatLayout.class
@@ -95,10 +97,12 @@ com\bjtu\simulation\service\InternalStatisticsAnalyzer$MetricExtractor.class
 com\bjtu\simulation\service\SimulationRunService.class
 com\bjtu\simulation\service\SimulationTaskService.class
 com\bjtu\simulation\service\SimulationTimelineBuilder.class
+com\bjtu\simulation\dto\BottleneckType.class
 com\bjtu\simulation\service\ExternalAnalysisService$DefaultProcessRunner.class
 com\bjtu\simulation\engine\WindowSelectionPolicy$1.class
 com\bjtu\simulation\service\ReportListItemMapper.class
 com\bjtu\simulation\dto\SimulationTimePoint.class
+com\bjtu\simulation\dto\BottleneckEvidence.class
 com\bjtu\simulation\service\PerSeedMetricExtractor.class
 com\bjtu\simulation\service\FairnessCalculator.class
 com\bjtu\simulation\dto\SimConfig$RandomBounds.class
@@ -139,6 +143,7 @@ com\bjtu\simulation\dto\CiBounds.class
 com\bjtu\simulation\engine\WindowChoiceMetricsBuilder.class
 com\bjtu\simulation\model\Student$PackPreferenceLevel.class
 com\bjtu\simulation\dto\WindowChoiceMetrics.class
+com\bjtu\simulation\dto\BottleneckSeverity.class
 com\bjtu\simulation\dto\SimConfig$BaseConfig.class
 com\bjtu\simulation\service\ScenarioPresetCatalog.class
 com\bjtu\simulation\service\OptimizationResultBuilder.class
@@ -146,6 +151,7 @@ com\bjtu\simulation\dto\ScenarioPreset.class
 com\bjtu\simulation\service\ScenarioRunService.class
 com\bjtu\simulation\service\SimulationTaskRecord.class
 com\bjtu\simulation\dto\WhitelistedParam.class
+com\bjtu\simulation\dto\DetectedBottleneck.class
 com\bjtu\simulation\dto\ScenarioBatchRunRequest.class
 com\bjtu\simulation\engine\MovementEvent.class
 com\bjtu\simulation\engine\SimulationRandomSampler.class

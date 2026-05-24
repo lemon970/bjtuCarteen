@@ -1,3 +1,4 @@
+com\bjtu\simulation\service\BottleneckDiagnosisIntegrationTest.class
 com\bjtu\simulation\engine\TakeawayRateBoundTest.class
 com\bjtu\simulation\engine\QueueChoiceModelPr9eTest.class
 com\bjtu\simulation\service\SimulationSummaryRfc011IntegrationTest.class
@@ -64,3 +65,4 @@ com\bjtu\simulation\service\SeatUtilizationMetricsTest.class
 com\bjtu\simulation\service\RainEmergencyWeatherFactorStepTest.class
 com\bjtu\simulation\service\SunnyLowPackTakeawayBoundsTest.class
 com\bjtu\simulation\service\OptimizationTaskServiceTest.class
+com\bjtu\simulation\service\BottleneckAnalyzerTest.class

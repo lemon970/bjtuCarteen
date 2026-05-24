@@ -30,6 +30,7 @@ public class SimulationRunService {
     private final WaitTimeMetricsCalculator waitTimeMetricsCalculator;
     private final WaitExperienceProxyCalculator waitExperienceProxyCalculator;
     private final FairnessCalculator fairnessCalculator;
+    private final BottleneckAnalyzer bottleneckAnalyzer;
 
     public SimulationRunService() {
         this(new SimulationConfigNormalizer(),
@@ -38,7 +39,8 @@ public class SimulationRunService {
                 new QueueTheoryMetricsCalculator(),
                 new WaitTimeMetricsCalculator(),
                 new WaitExperienceProxyCalculator(),
-                new FairnessCalculator());
+                new FairnessCalculator(),
+                new BottleneckAnalyzer());
     }
 
     @Autowired
@@ -48,7 +50,8 @@ public class SimulationRunService {
                                 QueueTheoryMetricsCalculator queueTheoryMetricsCalculator,
                                 WaitTimeMetricsCalculator waitTimeMetricsCalculator,
                                 WaitExperienceProxyCalculator waitExperienceProxyCalculator,
-                                FairnessCalculator fairnessCalculator) {
+                                FairnessCalculator fairnessCalculator,
+                                BottleneckAnalyzer bottleneckAnalyzer) {
         this.configNormalizer = configNormalizer;
         this.arrivalScheduler = arrivalScheduler;
         this.timelineBuilder = timelineBuilder;
@@ -56,6 +59,7 @@ public class SimulationRunService {
         this.waitTimeMetricsCalculator = waitTimeMetricsCalculator;
         this.waitExperienceProxyCalculator = waitExperienceProxyCalculator;
         this.fairnessCalculator = fairnessCalculator;
+        this.bottleneckAnalyzer = bottleneckAnalyzer;
     }
 
     public SimulationReport run(SimConfig inputConfig) {
@@ -85,6 +89,9 @@ public class SimulationRunService {
                 fairnessCalculator.build(engine.getWaitTimeSamples(),
                         engine.getWindowServedCounts(),
                         engine.getWindowTypes()));
+        // RFC-012:派生瓶颈诊断,纯后处理。读 summary 已有字段 + config,
+        // 不读 engine、不消耗 RNG;同 seed 字节级稳定。
+        summary.setBottleneckDiagnosis(bottleneckAnalyzer.analyze(summary, config));
         return new SimulationReport(
                 REPORT_VERSION,
                 reportId,
