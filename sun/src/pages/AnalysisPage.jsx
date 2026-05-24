@@ -2,13 +2,14 @@ import AdvancedStatsPanel from '../components/AdvancedStatsPanel'
 import BottleneckDiagnosisPanel from '../components/BottleneckDiagnosisPanel'
 import ChartPanel from '../components/ChartPanel'
 import InsightNarrative from '../components/InsightNarrative'
+import InterventionPanel from '../components/InterventionPanel'
 import MetricCard from '../components/MetricCard'
 import SeatUtilizationLine from '../components/charts/SeatUtilizationLine'
 import TrendChart from '../components/charts/TrendChart'
 import WaitTimePanel from '../components/WaitTimePanel'
 import { buildAnalysis, formatNumber, formatPercent, read } from '../utils/simulation'
 
-function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
+function AnalysisPage({ report, scenarioResults = [], payload, form, runFn, onLoadLatest }) {
   const summary = report?.summary || {}
   const config = report?.config || payload
   const base = config?.base_config || config?.baseConfig || {}
@@ -71,6 +72,8 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
       <WaitTimePanel summary={summary} />
 
       <BottleneckDiagnosisPanel summary={summary} />
+
+      {form && runFn && <InterventionPanel form={form} report={report} runFn={runFn} />}
 
       <AdvancedStatsPanel reportId={reportId} />
 

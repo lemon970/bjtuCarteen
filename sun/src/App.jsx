@@ -262,7 +262,17 @@ function App() {
       )}
 
       {activePage === 'analysis' && (
-        <AnalysisPage report={report} scenarioResults={scenarioResults} payload={payload} onLoadLatest={handleLoadLatest} />
+        <AnalysisPage
+          report={report}
+          scenarioResults={scenarioResults}
+          payload={payload}
+          onLoadLatest={handleLoadLatest}
+          form={form}
+          runFn={async (mutatedForm) => {
+            const mutatedPayload = buildPayload(mutatedForm)
+            return await runSimulation(mutatedPayload)
+          }}
+        />
       )}
     </AppLayout>
   )

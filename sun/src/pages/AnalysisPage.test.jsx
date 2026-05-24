@@ -68,4 +68,30 @@ describe('AnalysisPage RFC-012 集成', () => {
     render(<AnalysisPage report={report} />)
     expect(screen.getByText('本次仿真未触发打包决策样本。')).toBeInTheDocument()
   })
+
+  it('summary.bottleneck_diagnosis 存在且 form 与 runFn 提供时,InterventionPanel 渲染在瓶颈 panel 之后', () => {
+    const report = {
+      report_id: 'test-iv',
+      summary: {
+        typical_wait_time_minutes: 8,
+        bottleneck_diagnosis: {
+          primary: 'takeaway_capacity',
+          severity: 'HIGH',
+          bottlenecks: []
+        }
+      },
+      config: { duration: 1 }
+    }
+    const form = {
+      duration: 1, windowCount: 5, takeawayWindowCount: 1,
+      totalSeats: 200, arrivalRate: 100, seed: 42
+    }
+    render(<AnalysisPage report={report} form={form} runFn={() => Promise.resolve(report)} />)
+
+    const bottleneck = screen.getByTestId('bottleneck-diagnosis-panel')
+    const intervention = screen.getByTestId('intervention-panel')
+    expect(bottleneck).toBeInTheDocument()
+    expect(intervention).toBeInTheDocument()
+    expect(bottleneck.compareDocumentPosition(intervention) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
