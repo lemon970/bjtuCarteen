@@ -241,34 +241,6 @@ function InputPage({
               <input type="file" accept=".json" onChange={onFileUpload} className="mt-1 block w-full text-sm" />
             </label>
           </div>
-
-          {/* RFC-009 PR-9D 前端入口:队列选择模型与窗口吸引力。 */}
-          <div className="mt-6 rounded-xl border border-canvas-border bg-canvas-base p-4">
-            <h3 className="text-sm font-semibold text-slate-900">队列选择模型(RFC-009 实验)</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              该模式只改变学生偏好窗口的生成分布,不直接修改窗口选择评分;队列过长时仍按原有排队逻辑回避。
-            </p>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <SelectField
-                label="队列选择模型"
-                value={form.queueChoiceModel || 'STATIC_SPLIT'}
-                options={[
-                  ['STATIC_SPLIT', '静态均匀偏好(默认)'],
-                  ['PREFERENCE_AWARE', '偏好感知窗口(实验)']
-                ]}
-                onChange={(value) => onFieldChange('queueChoiceModel', value)}
-              />
-              {form.queueChoiceModel === 'PREFERENCE_AWARE' && (
-                <>
-                  <NumberField label="热门窗口比例" min="0" max="1" step="0.05" value={form.popularWindowRatio} onChange={(value) => onFieldChange('popularWindowRatio', value)} />
-                  <NumberField label="冷门窗口比例" min="0" max="1" step="0.05" value={form.coldWindowRatio} onChange={(value) => onFieldChange('coldWindowRatio', value)} />
-                  <NumberField label="热门吸引力" min="0.1" step="0.05" value={form.popularAttractiveness} onChange={(value) => onFieldChange('popularAttractiveness', value)} />
-                  <NumberField label="普通吸引力" min="0.1" step="0.05" value={form.normalAttractiveness} onChange={(value) => onFieldChange('normalAttractiveness', value)} />
-                  <NumberField label="冷门吸引力" min="0.1" step="0.05" value={form.coldAttractiveness} onChange={(value) => onFieldChange('coldAttractiveness', value)} />
-                </>
-              )}
-            </div>
-          </div>
         </details>
       </form>
     </div>

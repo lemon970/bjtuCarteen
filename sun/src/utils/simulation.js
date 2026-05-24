@@ -483,13 +483,7 @@ export function buildPayload(form) {
       total_students: Math.min(
         MAX_STUDENTS,
         Math.max(0, Math.floor(toNumber(form.totalStudents, DEFAULT_FORM.totalStudents)))
-      ),
-      // RFC-009 PR-9D 前端入口:STATIC_SPLIT(默认)与 PREFERENCE_AWARE 切换。
-      // STATIC_SPLIT 时不发送 window_attractiveness,避免请求体噪声;
-      // 后端在 STATIC_SPLIT 报告中也不会输出 summary.window_choice_metrics。
-      queue_choice_model: form.queueChoiceModel === 'PREFERENCE_AWARE'
-        ? 'PREFERENCE_AWARE'
-        : 'STATIC_SPLIT'
+      )
     },
     weather_config: {
       current_weather: form.currentWeather || DEFAULT_FORM.currentWeather,
@@ -551,22 +545,6 @@ export function buildPayload(form) {
     payload.seed = Math.trunc(seed)
   }
 
-  // RFC-009 PR-9D:仅在 PREFERENCE_AWARE 时附加 window_attractiveness;
-  // STATIC_SPLIT 默认路径上完全不发送该字段,保持请求体与历史一致。
-  if (form.queueChoiceModel === 'PREFERENCE_AWARE') {
-    payload.base_config.window_attractiveness = {
-      popular_window_ratio: clamp(
-        toNumber(form.popularWindowRatio, DEFAULT_FORM.popularWindowRatio), 0, 1),
-      cold_window_ratio: clamp(
-        toNumber(form.coldWindowRatio, DEFAULT_FORM.coldWindowRatio), 0, 1),
-      popular_attractiveness: Math.max(
-        0.001, toNumber(form.popularAttractiveness, DEFAULT_FORM.popularAttractiveness)),
-      normal_attractiveness: Math.max(
-        0.001, toNumber(form.normalAttractiveness, DEFAULT_FORM.normalAttractiveness)),
-      cold_attractiveness: Math.max(
-        0.001, toNumber(form.coldAttractiveness, DEFAULT_FORM.coldAttractiveness))
-    }
-  }
   return payload
 }
 
@@ -594,14 +572,6 @@ export function applyPayloadToForm(payload) {
     DEFAULT_FORM.preferenceMin,
     DEFAULT_FORM.preferenceMax
   ]
-
-  // RFC-009 PR-9D:从 base_config 回填队列选择模型与窗口吸引力。
-  // 旧报告无这两个字段时退回 DEFAULT_FORM(STATIC_SPLIT 默认)。
-  const rawQueueChoiceModel = read(base, 'queueChoiceModel', 'queue_choice_model')
-  const queueChoiceModel = rawQueueChoiceModel === 'PREFERENCE_AWARE'
-    ? 'PREFERENCE_AWARE'
-    : DEFAULT_FORM.queueChoiceModel
-  const attractiveness = read(base, 'windowAttractiveness', 'window_attractiveness') || {}
 
   return {
     ...DEFAULT_FORM,
@@ -659,18 +629,7 @@ export function applyPayloadToForm(payload) {
     diningMin: Array.isArray(diningRange) ? diningRange[0] : DEFAULT_FORM.diningMin,
     diningMax: Array.isArray(diningRange) ? diningRange[1] : DEFAULT_FORM.diningMax,
     preferenceMin: Array.isArray(preferenceRange) ? preferenceRange[0] : DEFAULT_FORM.preferenceMin,
-    preferenceMax: Array.isArray(preferenceRange) ? preferenceRange[1] : DEFAULT_FORM.preferenceMax,
-    queueChoiceModel,
-    popularWindowRatio: read(attractiveness, 'popularWindowRatio', 'popular_window_ratio')
-      ?? DEFAULT_FORM.popularWindowRatio,
-    coldWindowRatio: read(attractiveness, 'coldWindowRatio', 'cold_window_ratio')
-      ?? DEFAULT_FORM.coldWindowRatio,
-    popularAttractiveness: read(attractiveness, 'popularAttractiveness', 'popular_attractiveness')
-      ?? DEFAULT_FORM.popularAttractiveness,
-    normalAttractiveness: read(attractiveness, 'normalAttractiveness', 'normal_attractiveness')
-      ?? DEFAULT_FORM.normalAttractiveness,
-    coldAttractiveness: read(attractiveness, 'coldAttractiveness', 'cold_attractiveness')
-      ?? DEFAULT_FORM.coldAttractiveness
+    preferenceMax: Array.isArray(preferenceRange) ? preferenceRange[1] : DEFAULT_FORM.preferenceMax
   }
 }
 
