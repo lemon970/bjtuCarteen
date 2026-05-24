@@ -37,7 +37,7 @@
 
 ### `POST /api/simulation/run/async`
 
-异步提交单次仿真任务，立即返回 `202 Accepted`。客户端拿到 `task_id` 后通过状态轮询或 SSE 订阅进度，避免长仿真在 HTTP 上超时。
+异步提交单次仿真任务，立即返回 `202 Accepted`。客户端拿到 `task_id` 后通过状态轮询获取进度，避免长仿真在 HTTP 上超时。
 
 请求体与同步 `/run` 共用 `SimConfig`（可空，空体走默认配置）。
 
@@ -45,7 +45,7 @@
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `task_id` | string | 任务 ID，作为 `/task/{id}/status` 与 `/task/{id}/stream` 的路径参数 |
+| `task_id` | string | 任务 ID，作为 `/task/{id}/status` 的路径参数 |
 | `report_id` | string | 任务完成后落库的报告 ID；提交时即预分配，与最终 `reports/` 中文件名一致 |
 | `status` | string | `PENDING` / `RUNNING` / `COMPLETED` / `FAILED` / `CANCELLED`（`CANCELLED` 仅作为 enum 占位，本期无路径触发） |
 | `submitted_at_epoch_millis` | long | 提交时刻 |
@@ -59,21 +59,11 @@
 
 ### `GET /api/simulation/task/{id}/status`
 
-按 `task_id` 查询单次仿真异步任务状态。
+按 `task_id` 查询单次仿真异步任务状态。前端按 1s → 2s → 5s 节奏轮询直到 `status` 进入终态（`COMPLETED` / `FAILED` / `CANCELLED`）。
 
 响应：
 - `200`，`data` 字段全集同 `/run/async`（全部经 `SimulationTaskService.toSnapshot`）。
 - `404`，`code: 404`，`message: "task not found"`。
-
-### `GET /api/simulation/task/{id}/stream`
-
-Server-Sent Events 流，推送任务状态。**响应 `Content-Type: text/event-stream`，不是普通 JSON 响应**。
-
-事件：
-- `event: status`，`data` 是 `toSnapshot(record)` 的 JSON。每 500ms 推一次，直到任务进入终态（`COMPLETED` / `FAILED` / `CANCELLED`），随后服务端 `complete()` 关闭连接。
-- `event: error`，`data: "task not found"`，在 `taskId` 无效时立即推送并关闭。
-
-SSE 连接超时 10 分钟。当浏览器、反向代理或企业网关阻塞 SSE，或前端建连失败时，可回退到对 `/task/{id}/status` 轮询（snapshot 字段一致，无信息差）。本期不实现 cancel / 主动 timeout。
 
 ## 2. 场景模型
 
@@ -138,10 +128,6 @@ SSE 连接超时 10 分钟。当浏览器、反向代理或企业网关阻塞 SS
 
 读取最新报告。
 
-### `GET /api/simulation/report/list`
-
-读取历史报告列表。列表项只包含摘要，不包含完整 history。
-
 ### `GET /api/simulation/report/{id}`
 
 读取指定报告。默认不返回 `summary.history`。
@@ -193,6 +179,8 @@ SSE 连接超时 10 分钟。当浏览器、反向代理或企业网关阻塞 SS
 | `wait_time_insight` | object | - | 等待体验状态和归因 |
 | `timeline` | array | - | 分钟级快照。每帧除已有 `seat_utilization_rate` 外,还包含 `seat_unavailable_rate` / `seat_reserved_share` / `seat_free_rate` / `reserved_seats`,以及 `frame_seat_layout[]`(每张桌子的紧凑结构,前端时间轴回放据此渲染成组占用色块)。`table_snapshots` 仍按既有策略剥除以控制响应大小。|
 | `total_peak_time_minutes` | number | 分钟 | 总队列峰值出现的首个分钟（与 `peakTimeMinutes` 单窗口峰值口径区分）|
+| `window_choice_metrics` | object | - | RFC-009 PR-9D·**仅 `PREFERENCE_AWARE` 模式输出**(`@JsonInclude(NON_NULL)`):popular/normal/cold 三档窗口诊断,含 preference 占比、served 占比、平均等待分钟、`max_window_queue_gap`、`window_served_count_cv`,share 类指标分母锁定普通窗口。 |
+| `bottleneck_diagnosis` | object | - | RFC-012·派生瓶颈诊断。`primary` 取 `window_service_capacity` / `seat_capacity` / `takeaway_capacity` / `arrival_surge` / `balanced` 之一;`bottlenecks[]` 按 severity 降序 + enum 序排序,每项含 `type` / `severity` / `evidence{ metric_name, observed_value, threshold, window_id }`。`window_id` 为 0-based 内部索引,SEAT/ARRIVAL 路径填 `-1`。 |
 
 ## 6. 等待体验模型
 
@@ -223,7 +211,7 @@ wait = serviceStartTime - queueEnterTime
 
 降级语义:
 - **报告不存在**(`reportId` 在 `reports/` 目录中找不到)→ 返回 `code: 503`，`data = { "available": false, "reason": "report not found: ..." }`
-- **C++ binary 缺失但报告存在** → 返回 `code: 0` + 由 `InternalStatisticsAnalyzer`(Java)计算的统计结果,响应中带 `source: "java_fallback"` 标记,**前端无需特殊处理**
+- **C++ binary 缺失但报告存在** → 返回 `code: 0` + 由 `InternalStatisticsAnalyzer`(Java)计算的统计结果,响应中带 `computed_by: "java-internal"` 标记,**前端无需特殊处理**
 - **C++ binary 调用失败 / 解析失败 / 超时** → 返回 `code: 503`,`data` 标记 `available: false`
 
 ### `POST /api/analysis/run`
@@ -241,30 +229,18 @@ wait = serviceStartTime - queueEnterTime
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `available` | boolean | 报告存在且分析可用(C++ 直接成功 或 Java fallback 成功)|
-| `source` | string | `"cpp-canteen-analyze"`(C++ 路径)或 `"java_fallback"`(binary 缺失时由 `InternalStatisticsAnalyzer` 计算)|
-| `report_id` | string | 回显报告 ID |
-| `confidence_intervals.wait` | object | `{ point, lower, upper, alpha }` 等待时间 95% CI |
-| `confidence_intervals.utilization` | object | 同上结构，座位利用率 95% CI |
-| `confidence_intervals.takeaway_rate` | object | 同上结构，打包率 95% CI |
-| `bottleneck_score` | number | 0~100，由窗口队列 Gini 系数 + 持续拥挤分钟数综合算出 |
-| `bottleneck_breakdown` | object | `{ gini, congested_minutes, peak_window }` |
+| `computed_by` | string | `"cpp-canteen-analyze"`(C++ 路径)或 `"java-internal"`(binary 缺失时由 `InternalStatisticsAnalyzer` 计算)|
+| `schema_version` | string | 分析结果 schema 版本,当前 `"1.0"` |
+| `source_report_id` | string | 回显报告 ID |
+| `confidence_intervals.wait_time_minutes` | object | `{ metric, alpha, sample_count, mean, lower, upper }` 等待时间 95% Bootstrap CI |
+| `confidence_intervals.seat_utilization_rate` | object | 同上结构,座位利用率 95% CI |
+| `bottleneck.score` | number | 0~100,由窗口队列 Gini + 持续拥挤分钟数综合 |
+| `bottleneck.gini_coefficient` | number | `windowServedCounts` 的 Gini(0=均衡,1=完全集中) |
+| `bottleneck.worst_window_id` | integer | 服务量最大的窗口 0-based 索引 |
+| `bottleneck.sustained_peak_minutes` | integer | `seatUtilizationRate ≥ 0.7` 的分钟数 |
+| `headline_metrics` | object | `typical_wait_time_minutes` / `seat_utilization_rate` / `takeaway_rate` / `served_count` / `abandoned_count` 摘要,与 summary 对应字段一致 |
 
-### `POST /api/analysis/cross-scenario`
-
-```json
-{ "scenario_ids": ["lunch_peak_pressure", "takeaway_intervention"] }
-```
-
-约束：至少 2 个场景，否则 `code: 400`。
-
-成功响应 `data` 增加 `anova` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `anova.f_statistic` | number | 单因素 ANOVA F 值 |
-| `anova.p_value` | number | 显著性水平 |
-| `anova.significant` | boolean | `p < 0.05` |
-| `anova.group_means` | object[] | 各场景的组均值 |
+> 跨场景 ANOVA 不再作为独立 endpoint 暴露;`/api/simulation/scenarios/run` 已经返回多场景对比摘要,前端 `<AdvancedStatsPanel>` 仅消费单报告高级统计。
 
 ### 错误码
 

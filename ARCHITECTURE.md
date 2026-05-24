@@ -7,9 +7,9 @@
 - **Controller 层**：运行、报告、场景模型、分析四类入口分开承载，URL 保持 `/api/simulation/**` 和 `/api/analysis/**`。
 - **Scenario 层**：`ScenarioPresetCatalog` 提供权威预设模型，`ScenarioRunService` 负责批量运行和对比摘要。
 - **Simulation 层**：`SimulationEngine` 负责事件调度，随机采样、学生画像、窗口选择、不变量校验、快照记录已拆到独立类。
-- **Report 层**：`SimulationReportRepository` 负责文件读写，`ReportListItemMapper` 负责报告列表摘要映射。
-- **Metrics 层**：等待体验、队列论指标和概率模型摘要在运行结束后聚合，不保存完整等待明细。
-- **Analysis 层（新）**：`ExternalAnalysisService` 封装 C++ binary 调用（`ProcessBuilder` + 30s 超时 + 缺失降级），输入为已写入的 `reports/<id>.json`。
+- **Report 层**：`SimulationReportRepository` 负责单报告 JSON 文件读写与 `report_id` 安全校验。
+- **Metrics 层**：等待体验、概率模型摘要、瓶颈诊断在运行结束后聚合，不保存完整等待明细。
+- **Analysis 层**：`ExternalAnalysisService` 封装 C++ binary 调用（`ProcessBuilder` + 30s 超时 + 缺失降级），输入为已写入的 `reports/<id>.json`；二进制缺失时由 `InternalStatisticsAnalyzer`(Java) 计算等价指标。
 
 前端：
 
@@ -40,7 +40,7 @@ flowchart LR
   K --> L["ExternalAnalysisService"]
   L --> M["canteen-analyze.exe (mode=analyze)"]
   M -->|binary missing| N["InternalStatisticsAnalyzer (Java fallback)"]
-  M -->|success| O["confidence_intervals / bottleneck_score / anova"]
+  M -->|success| O["confidence_intervals / bottleneck / headline_metrics"]
   O --> P["前端 AdvancedStatsPanel"]
   N --> P
 ```
@@ -51,18 +51,17 @@ flowchart LR
 
 - `POST /api/simulation/run`：运行单个配置（同步，HTTP 阻塞至完成）。
 - `POST /api/simulation/run/async`：异步提交，返回 `task_id` + 初始 snapshot。
-- `GET /api/simulation/task/{id}/status`：异步任务状态轮询。
-- `GET /api/simulation/task/{id}/stream`：异步任务 SSE 流（`text/event-stream`，前端可回退 polling）。
+- `GET /api/simulation/task/{id}/status`：异步任务状态轮询（前端按 1s → 2s → 5s 节奏轮询直到终态）。
 - `GET /api/simulation/report/latest`：读取最新报告。
 - `GET /api/simulation/report/{id}`：按 ID 读取报告（默认含 `summary.timeline`，剥 `history` / `arrival_samples` / `table_snapshots`）。
 - `GET /api/simulation/report/{id}/history`：分页读取 history。
+- `GET /api/simulation/report/{id}/csv`：导出到达样本 / 打包决策 / 历史快照 CSV。
 - `GET /api/simulation/scenarios`：读取预设模型目录。
 - `POST /api/simulation/scenarios/run`：批量运行模型。
 
 分析（由 C++ 后处理）：
 
-- `POST /api/analysis/run`：单报告高级统计。
-- `POST /api/analysis/cross-scenario`：批量场景跑完后跨场景分析。
+- `POST /api/analysis/run`：单报告高级统计（C++ binary 缺失时回落到 `InternalStatisticsAnalyzer`）。
 
 完整字段定义见 `API.md`。
 
