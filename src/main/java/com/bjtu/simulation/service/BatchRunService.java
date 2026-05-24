@@ -11,7 +11,6 @@ import com.bjtu.simulation.dto.AggregateMetrics;
 import com.bjtu.simulation.dto.BatchRunReport;
 import com.bjtu.simulation.dto.BatchRunRequest;
 import com.bjtu.simulation.dto.PerSeedMetric;
-import com.bjtu.simulation.dto.PerSeedMode;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,8 +24,7 @@ import org.springframework.stereotype.Service;
  * mean / stddev / median / p10 / p90 / 95% t-interval CI)。
  *
  * <p>串行复用 {@link SimulationRunService#run(SimConfig, String)} × N,聚合成 {@link BatchRunReport}。
- * 不实现并行、不实现 FULL_REPORTS_DEBUG(留给后续独立 sub-RFC)。本轮 ciMethod 恒为 "t",
- * Bootstrap 移到 Future Work。</p>
+ * 本轮 ciMethod 恒为 "t",Bootstrap 移到 Future Work。</p>
  *
  * <p>Determinism 承诺:相同 baseConfig + seeds + 显式 runId 两次调用,perSeedMetrics + aggregate
  * 字节级一致;缺省 runId 退化为 UUID,该路径不在字节级一致测试覆盖中。</p>
@@ -65,15 +63,6 @@ public class BatchRunService {
         if (seeds == null || seeds.length == 0) {
             throw new IllegalArgumentException("seeds must be non-empty");
         }
-        if (request.getMaxParallel() > 1) {
-            throw new UnsupportedOperationException(
-                    "parallel batch mode not enabled in RFC-010A");
-        }
-        PerSeedMode mode = request.getMode() == null ? PerSeedMode.METRICS_ONLY : request.getMode();
-        if (mode == PerSeedMode.FULL_REPORTS_DEBUG) {
-            throw new UnsupportedOperationException(
-                    "FULL_REPORTS_DEBUG not enabled in RFC-010A");
-        }
 
         String runId = request.getRunId() != null ? request.getRunId()
                 : UUID.randomUUID().toString();
@@ -91,7 +80,7 @@ public class BatchRunService {
         long[] seedsCopy = new long[seeds.length];
         System.arraycopy(seeds, 0, seedsCopy, 0, seeds.length);
         AggregateMetrics aggregate = aggregateCalculator.aggregate(perSeedMetrics);
-        return new BatchRunReport(runId, baseConfigDigest, seedsCopy, perSeedMetrics, mode, aggregate);
+        return new BatchRunReport(runId, baseConfigDigest, seedsCopy, perSeedMetrics, aggregate);
     }
 
     private SimConfig cloneConfig(SimConfig source) {

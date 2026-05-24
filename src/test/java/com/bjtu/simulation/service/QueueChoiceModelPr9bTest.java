@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test;
  *   <li>T1: STATIC_SPLIT 默认核心指标不变(default 与 explicit STATIC_SPLIT 同 seed 字节级一致)。</li>
  *   <li>T5: §8.1 配置校验规则。</li>
  *   <li>T7: 默认报告无 summary.window_choice_metrics 字段。</li>
- *   <li>T-9B-1: PREFERENCE_AWARE / WORKLOAD_ROUTING / HYBRID_OVERFLOW 在 PR-9B fail-fast。</li>
  * </ul>
  */
 class QueueChoiceModelPr9bTest {
@@ -185,31 +184,6 @@ class QueueChoiceModelPr9bTest {
             assertFalse(root.get("summary").has("window_choice_metrics"),
                     "summary.window_choice_metrics must not be present in PR-9B");
         }
-    }
-
-    // ---- T-9B-1: fail-fast for枚举值 (PR-9C 之后) ----
-    // PR-9C 起,PREFERENCE_AWARE 已正式启用,只有 WORKLOAD_ROUTING / HYBRID_OVERFLOW 仍 fail-fast。
-
-    @Test
-    void t9b1_workloadRoutingShouldFailFast() {
-        SimConfig config = baselineConfig(20260520L);
-        config.getBaseConfig().setQueueChoiceModel(QueueChoiceModel.WORKLOAD_ROUTING);
-
-        UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class,
-                () -> runService.run(config, "rfc009-pr9b-t9b1-workload"));
-        assertTrue(ex.getMessage().contains("V2/V3 not enabled"),
-                () -> ex.getMessage());
-    }
-
-    @Test
-    void t9b1_hybridOverflowShouldFailFast() {
-        SimConfig config = baselineConfig(20260520L);
-        config.getBaseConfig().setQueueChoiceModel(QueueChoiceModel.HYBRID_OVERFLOW);
-
-        UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class,
-                () -> runService.run(config, "rfc009-pr9b-t9b1-hybrid"));
-        assertTrue(ex.getMessage().contains("V2/V3 not enabled"),
-                () -> ex.getMessage());
     }
 
     // ---- helpers ----

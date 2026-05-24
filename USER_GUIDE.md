@@ -82,5 +82,3 @@
 
 PREFERENCE_AWARE 报告会在 `summary.window_choice_metrics` 输出诊断指标：popular / normal / cold 三档窗口数、preference 占比、served 占比、平均等待分钟、`max_window_queue_gap`、`window_served_count_cv`。所有 share 类指标的分母锁定**普通窗口集合**（POPULAR + NORMAL + COLD），打包窗口不计入分母。
 
-`WORKLOAD_ROUTING` / `HYBRID_OVERFLOW` 仍处于 V2/V3 占位，在引擎层 fail-fast 抛 `UnsupportedOperationException`。
-

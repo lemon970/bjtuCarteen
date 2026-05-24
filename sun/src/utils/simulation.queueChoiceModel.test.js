@@ -43,7 +43,7 @@ describe('RFC-009 PR-9D queue_choice_model 前端入口', () => {
   })
 
   it('未识别的 queueChoiceModel 视为 STATIC_SPLIT,不发送 window_attractiveness', () => {
-    const payload = buildPayload({ ...DEFAULT_FORM, queueChoiceModel: 'WORKLOAD_ROUTING' })
+    const payload = buildPayload({ ...DEFAULT_FORM, queueChoiceModel: 'INVALID_UNKNOWN_VALUE' })
     expect(payload.base_config.queue_choice_model).toBe('STATIC_SPLIT')
     expect(payload.base_config.window_attractiveness).toBeUndefined()
   })
@@ -101,8 +101,8 @@ describe('RFC-009 PR-9D queue_choice_model 前端入口', () => {
     expect(form.coldAttractiveness).toBe(DEFAULT_FORM.coldAttractiveness)
   })
 
-  it('queue_choice_model = WORKLOAD_ROUTING 等未知值在回填时降级到 STATIC_SPLIT', () => {
-    const payload = { base_config: { queue_choice_model: 'WORKLOAD_ROUTING' } }
+  it('queue_choice_model = INVALID_UNKNOWN_VALUE 等未知值在回填时降级到 STATIC_SPLIT', () => {
+    const payload = { base_config: { queue_choice_model: 'INVALID_UNKNOWN_VALUE' } }
     const form = applyPayloadToForm(payload)
     expect(form.queueChoiceModel).toBe('STATIC_SPLIT')
   })

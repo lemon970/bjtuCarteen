@@ -131,17 +131,10 @@ public class SimulationEngine {
         this.durationPolicy = new SimulationDurationPolicy(safeConfig, randomSampler);
 
         // RFC-009 PR-9C: PREFERENCE_AWARE 接通 weighted windowPreference generation。
-        // STATIC_SPLIT 走旧均匀抽样路径;WORKLOAD_ROUTING / HYBRID_OVERFLOW 仍 fail-fast。
+        // STATIC_SPLIT 走旧均匀抽样路径。
         QueueChoiceModel queueChoiceModel = safeConfig.getBaseConfig().getQueueChoiceModel();
         if (queueChoiceModel == null) {
             queueChoiceModel = QueueChoiceModel.STATIC_SPLIT;
-        }
-        switch (queueChoiceModel) {
-            case STATIC_SPLIT, PREFERENCE_AWARE -> { /* both supported in PR-9C */ }
-            case WORKLOAD_ROUTING -> throw new UnsupportedOperationException(
-                    "queueChoiceModel=WORKLOAD_ROUTING: V2/V3 not enabled (RFC-009)");
-            case HYBRID_OVERFLOW -> throw new UnsupportedOperationException(
-                    "queueChoiceModel=HYBRID_OVERFLOW: V2/V3 not enabled (RFC-009)");
         }
         this.queueChoiceModel = queueChoiceModel;
 

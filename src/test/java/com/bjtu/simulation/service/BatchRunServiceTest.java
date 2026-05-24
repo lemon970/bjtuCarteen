@@ -22,7 +22,6 @@ import com.bjtu.simulation.dto.BatchRunReport;
 import com.bjtu.simulation.dto.BatchRunRequest;
 import com.bjtu.simulation.dto.MetricStat;
 import com.bjtu.simulation.dto.PerSeedMetric;
-import com.bjtu.simulation.dto.PerSeedMode;
 import com.bjtu.simulation.dto.QueueChoiceModel;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.WindowAttractivenessConfig;
@@ -124,7 +123,7 @@ class BatchRunServiceTest {
             fieldNames.add(f.getName());
         }
         assertFalse(fieldNames.contains("runs"),
-                "BatchRunReport 类不应声明 runs 字段(RFC-010A 不实现 FULL_REPORTS_DEBUG)");
+                "BatchRunReport 类不应声明 runs 字段");
 
         // JSON-level: 序列化后不出现 runs 节点
         JsonNode root = mapper.readTree(mapper.writeValueAsBytes(report));
@@ -132,21 +131,6 @@ class BatchRunServiceTest {
     }
 
     // ---- T-10A-3 ----
-
-    @Test
-    void t10a3_fullReportsDebugThrowsUoe() {
-        BatchRunRequest req = new BatchRunRequest(staticSplitConfig(), seedList(1L));
-        req.setRunId("batch-uoe-mode");
-        req.setMode(PerSeedMode.FULL_REPORTS_DEBUG);
-
-        UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class,
-                () -> service.run(req));
-        assertTrue(ex.getMessage().contains("FULL_REPORTS_DEBUG not enabled in RFC-010A"),
-                () -> "UOE message 必须含 'FULL_REPORTS_DEBUG not enabled in RFC-010A',实际:"
-                        + ex.getMessage());
-    }
-
-    // ---- T-10A-4 ----
 
     @Test
     void t10a4_staticSplitElevenFieldsLayout() {
@@ -194,20 +178,6 @@ class BatchRunServiceTest {
     }
 
     // ---- T-10A-6 ----
-
-    @Test
-    void t10a6_maxParallelGreaterThanOneThrowsUoe() {
-        BatchRunRequest req = new BatchRunRequest(staticSplitConfig(), seedList(1L));
-        req.setRunId("batch-uoe-parallel");
-        req.setMaxParallel(2);
-
-        UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class,
-                () -> service.run(req));
-        assertTrue(ex.getMessage().contains("parallel batch mode not enabled"),
-                () -> "UOE message 必须含 'parallel batch mode not enabled',实际:" + ex.getMessage());
-    }
-
-    // ---- T-10A-7 ----
 
     @Test
     void t10a7_emptyOrNullSeedsThrowsIae() {
@@ -344,24 +314,24 @@ class BatchRunServiceTest {
         req.setRunId("batch-six-fields");
         BatchRunReport report = service.run(req);
 
-        // class-level: 仍然不允许声明 runs 字段(FULL_REPORTS_DEBUG 仍未实现)
+        // class-level: 仍然不允许声明 runs 字段
         for (Field f : BatchRunReport.class.getDeclaredFields()) {
             assertNotEquals("runs", f.getName(),
-                    "BatchRunReport 类不应声明 runs 字段(FULL_REPORTS_DEBUG 未实现)");
+                    "BatchRunReport 类不应声明 runs 字段");
         }
 
         // JSON-level: 序列化后不出现 runs 节点
         JsonNode root = mapper.readTree(mapper.writeValueAsBytes(report));
         assertFalse(root.has("runs"), "BatchRunReport JSON 不应包含 'runs' 字段");
 
-        // 顶层精确 6 字段(snake_case),含 aggregate
+        // 顶层精确 5 字段(snake_case),含 aggregate
         Set<String> top = new HashSet<>();
         root.fieldNames().forEachRemaining(top::add);
         Set<String> expected = new HashSet<>(
                 Arrays.asList("run_id", "base_config_digest", "seeds",
-                        "per_seed_metrics", "mode", "aggregate"));
+                        "per_seed_metrics", "aggregate"));
         assertEquals(expected, top,
-                "BatchRunReport JSON 顶层字段必须严格为 6 个(snake_case):" + expected + ",实际:" + top);
+                "BatchRunReport JSON 顶层字段必须严格为 5 个(snake_case):" + expected + ",实际:" + top);
     }
 
     // ---- T-10B-AGG-1 ----
