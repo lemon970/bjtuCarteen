@@ -34,10 +34,18 @@ function InterventionPanel({ form, report, runFn }) {
   const [progress, setProgress] = useState(null)
   const [batchResult, setBatchResult] = useState(null)
 
+  const previewDisabled = Number(form?.duration) < 0.5
+
   useEffect(() => {
     setSelectedKeys(defaultPreselect(primary))
     setBatchResult(null)
   }, [primary])
+
+  useEffect(() => {
+    if (previewDisabled && fidelityKey === 'preview') {
+      setFidelityKey('full')
+    }
+  }, [previewDisabled, fidelityKey])
 
   function toggleKey(key, checked) {
     setSelectedKeys(prev => {
@@ -79,7 +87,6 @@ function InterventionPanel({ form, report, runFn }) {
   }, [batchResult])
 
   const seedMissing = isSeedMissing(form?.seed)
-  const peakWarn = form?.peakEnabled && fidelityKey === 'fast'
 
   if (!report) return null
 
@@ -104,28 +111,28 @@ function InterventionPanel({ form, report, runFn }) {
 
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <span className="text-xs text-slate-500">对照精度：</span>
-        {Object.entries(FIDELITY_PRESETS).map(([key, preset]) => (
-          <label key={key} className="flex items-center gap-1 text-xs">
-            <input
-              type="radio"
-              name="fidelity"
-              value={key}
-              checked={fidelityKey === key}
-              onChange={() => setFidelityKey(key)}
-              disabled={running}
-              className="accent-bjtu-500"
-              aria-label={preset.label}
-            />
-            <span title={preset.hint}>{preset.label}</span>
-          </label>
-        ))}
+        {Object.entries(FIDELITY_PRESETS).map(([key, preset]) => {
+          const disabled = running || (key === 'preview' && previewDisabled)
+          const hint = key === 'preview' && previewDisabled
+            ? `${preset.hint}（baseline duration < 0.5h，预览档已停用）`
+            : preset.hint
+          return (
+            <label key={key} className="flex items-center gap-1 text-xs">
+              <input
+                type="radio"
+                name="fidelity"
+                value={key}
+                checked={fidelityKey === key}
+                onChange={() => setFidelityKey(key)}
+                disabled={disabled}
+                className="accent-bjtu-500"
+                aria-label={preset.label}
+              />
+              <span title={hint}>{preset.label}</span>
+            </label>
+          )
+        })}
       </div>
-
-      {peakWarn && (
-        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
-          当前场景含峰值窗口，极速档可能错过峰值，建议用预览或完整档。
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 mb-3">
         {ALL_KEYS.map(key => (
@@ -173,7 +180,7 @@ function InterventionPanel({ form, report, runFn }) {
             </p>
           )}
           <p className="mt-2 text-xs text-slate-400">
-            基于单次仿真，实际系统因随机性会有波动，本工具用于结构性对照而非精确预测。baseline 按 fidelity 重跑，与首次报告可能略不同（随机种子相同，duration 不同）。
+            基于单次仿真，实际系统因随机性会有波动，本工具用于结构性对照而非精确预测。预览档将 duration 与 lunch/dinner peak 窗口同比缩放，保持场景"时间形状"，与完整档方向可比但绝对量级会偏弱。
           </p>
         </>
       )}
