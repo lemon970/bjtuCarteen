@@ -45,13 +45,20 @@ export function normalizeBottleneckPrimary(primary) {
 }
 
 export const FIDELITY_PRESETS = {
-  full:    { multiplier: 1.0,  label: '完整',  hint: '原 duration 完整跑' },
-  preview: { multiplier: 0.5,  label: '预览',  hint: '半时长，可能错过峰值' },
-  fast:    { multiplier: 0.25, label: '极速',  hint: '1/4 时长，峰值场景结论可能偏弱' }
+  full:    { multiplier: 1.0, label: '完整', hint: '原 duration 完整跑' },
+  preview: { multiplier: 0.5, label: '预览', hint: '半时长 + peak 同比缩放，方向可比' }
 }
+
+const TIME_AXIS_MINUTE_FIELDS = ['lunchPeakStart', 'lunchPeakEnd', 'dinnerPeakStart', 'dinnerPeakEnd']
 
 export function applyFidelity(form, fidelityKey) {
   const preset = FIDELITY_PRESETS[fidelityKey] || FIDELITY_PRESETS.full
-  const raw = Number(form.duration) * preset.multiplier
-  return { ...form, duration: roundDuration(raw) }
+  const m = preset.multiplier
+  const next = { ...form, duration: roundDuration(Number(form.duration) * m) }
+  for (const key of TIME_AXIS_MINUTE_FIELDS) {
+    if (typeof form[key] === 'number' && Number.isFinite(form[key])) {
+      next[key] = Math.max(0, Math.round(form[key] * m))
+    }
+  }
+  return next
 }
