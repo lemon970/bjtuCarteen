@@ -73,15 +73,55 @@ describe('InterventionPanel', () => {
     expect(setPayload).not.toHaveBeenCalled()
   })
 
-  it('fidelity 切到极速 → 传给 runFn 的 form.duration 是 0.25 倍', async () => {
+  it('fidelity 切到预览 → 传给 runFn 的 form.duration 是 0.5 倍', async () => {
     const runFn = vi.fn(async () => baseReport('balanced', 5))
     render(<InterventionPanel form={{ ...baseForm, duration: 2 }} report={baseReport('takeaway_capacity')} runFn={runFn} />)
-    fireEvent.click(screen.getByRole('radio', { name: /极速/ }))
+    fireEvent.click(screen.getByRole('radio', { name: /预览/ }))
     fireEvent.click(screen.getByRole('button', { name: /开始对照/ }))
     await waitFor(() => expect(runFn).toHaveBeenCalled())
     runFn.mock.calls.forEach(call => {
-      expect(call[0].duration).toBe(0.5)
+      expect(call[0].duration).toBe(1)
     })
+  })
+
+  it('预览档同时缩放 lunch/dinner peak（保持场景时间形状）', async () => {
+    const runFn = vi.fn(async () => baseReport('balanced', 5))
+    const peakForm = {
+      ...baseForm, duration: 2,
+      lunchPeakStart: 30, lunchPeakEnd: 90,
+      dinnerPeakStart: 720, dinnerPeakEnd: 780,
+      peakEnabled: true
+    }
+    render(<InterventionPanel form={peakForm} report={baseReport('takeaway_capacity')} runFn={runFn} />)
+    fireEvent.click(screen.getByRole('radio', { name: /预览/ }))
+    fireEvent.click(screen.getByRole('button', { name: /开始对照/ }))
+    await waitFor(() => expect(runFn).toHaveBeenCalled())
+    runFn.mock.calls.forEach(call => {
+      expect(call[0].duration).toBe(1)
+      expect(call[0].lunchPeakStart).toBe(15)
+      expect(call[0].lunchPeakEnd).toBe(45)
+      expect(call[0].dinnerPeakStart).toBe(360)
+      expect(call[0].dinnerPeakEnd).toBe(390)
+    })
+  })
+
+  it('duration < 0.5 时预览档禁用，强制回退 full', () => {
+    render(
+      <InterventionPanel
+        form={{ ...baseForm, duration: 0.3 }}
+        report={baseReport('takeaway_capacity')}
+        runFn={vi.fn()}
+      />
+    )
+    const previewRadio = screen.getByRole('radio', { name: /预览/ })
+    expect(previewRadio.disabled).toBe(true)
+    const fullRadio = screen.getByRole('radio', { name: /完整/ })
+    expect(fullRadio.checked).toBe(true)
+  })
+
+  it('FIDELITY_PRESETS 不再渲染极速档', () => {
+    render(<InterventionPanel form={baseForm} report={baseReport('takeaway_capacity')} runFn={vi.fn()} />)
+    expect(screen.queryByRole('radio', { name: /极速/ })).toBeNull()
   })
 
   it('intervention 失败时其他列仍渲染，该列标错误', async () => {

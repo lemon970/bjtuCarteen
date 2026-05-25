@@ -71,12 +71,12 @@ describe('runInterventions', () => {
     const runFn = vi.fn(async (form) => ({ summary: {}, config: form }))
     await runInterventions({
       baselineForm: { ...baseForm, duration: 2 },
-      fidelityKey: 'fast',
+      fidelityKey: 'preview',
       interventionKeys: ['ADD_NORMAL_WINDOW'],
       runFn
     })
     runFn.mock.calls.forEach(call => {
-      expect(call[0].duration).toBe(0.5)
+      expect(call[0].duration).toBe(1)
     })
   })
 })

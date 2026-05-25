@@ -79,21 +79,21 @@ describe('summary 文案', () => {
 })
 
 describe('fidelity', () => {
-  it('FIDELITY_PRESETS 三档', () => {
+  it('FIDELITY_PRESETS 两档（v3 起 fast 档已下线）', () => {
     expect(FIDELITY_PRESETS.full.multiplier).toBe(1.0)
     expect(FIDELITY_PRESETS.preview.multiplier).toBe(0.5)
-    expect(FIDELITY_PRESETS.fast.multiplier).toBe(0.25)
+    expect(FIDELITY_PRESETS.fast).toBeUndefined()
   })
   it('applyFidelity 缩放 duration', () => {
     expect(applyFidelity({ duration: 2 }, 'full').duration).toBe(2)
     expect(applyFidelity({ duration: 2 }, 'preview').duration).toBe(1)
-    expect(applyFidelity({ duration: 2 }, 'fast').duration).toBe(0.5)
   })
   it('applyFidelity 守 MIN_DURATION_HOURS 下限', () => {
-    expect(applyFidelity({ duration: 0.1 }, 'fast').duration).toBe(MIN_DURATION_HOURS)
+    expect(applyFidelity({ duration: 0.05 }, 'preview').duration).toBe(MIN_DURATION_HOURS)
   })
-  it('applyFidelity 未知 key 回退 full', () => {
+  it('applyFidelity 未知 key 回退 full（含已下线的 fast）', () => {
     expect(applyFidelity({ duration: 2 }, 'unknown').duration).toBe(2)
+    expect(applyFidelity({ duration: 2 }, 'fast').duration).toBe(2)
   })
   it('roundDuration 保留 2 位小数', () => {
     expect(roundDuration(1.234)).toBe(1.23)
