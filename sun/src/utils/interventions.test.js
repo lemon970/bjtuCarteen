@@ -116,3 +116,64 @@ describe('normalizeBottleneckPrimary', () => {
     expect(normalizeBottleneckPrimary('  seat_capacity  ')).toBe('seat_capacity')
   })
 })
+
+// 已知缺陷捕获：v1 applyFidelity 只缩 duration，不缩 peak 窗口。
+// 用"午高峰压力测试"预设参数（duration=2h, lunchPeakStart=30, lunchPeakEnd=90）
+// 演示当前实现破坏场景形状的根因。手测现象：完整档与预览档对照同一干预出现
+// sign flip，因为 fast 档下 30 min 仿真还没到 30 min 的 lunchPeakStart，
+// 峰值完全不触发；preview 档下峰值被截断、warmup 占比翻倍，场景已不同。
+// 修复目标：peak 窗口按 fidelity multiplier 同比缩放，保持场景"时间形状"。
+describe('applyFidelity 应保持场景形状（午高峰压力测试场景）', () => {
+  const lunchPeakForm = {
+    duration: 2,
+    lunchPeakStart: 30,
+    lunchPeakEnd: 90,
+    dinnerPeakStart: 720,
+    dinnerPeakEnd: 780,
+    arrivalRate: 300,
+    peakEnabled: true
+  }
+
+  it('preview 档：lunchPeakStart 应跟随 duration × 0.5 缩放', () => {
+    const r = applyFidelity(lunchPeakForm, 'preview')
+    expect(r.duration).toBe(1)
+    expect(r.lunchPeakStart).toBe(15)
+    expect(r.lunchPeakEnd).toBe(45)
+  })
+
+  it('preview 档：dinnerPeak 也应同比缩放', () => {
+    const r = applyFidelity(lunchPeakForm, 'preview')
+    expect(r.dinnerPeakStart).toBe(360)
+    expect(r.dinnerPeakEnd).toBe(390)
+  })
+
+  it('preview 档：lunch 峰值占总时长比例应与 full 档保持一致', () => {
+    const full = applyFidelity(lunchPeakForm, 'full')
+    const preview = applyFidelity(lunchPeakForm, 'preview')
+    const fullRatio = (full.lunchPeakEnd - full.lunchPeakStart) / (full.duration * 60)
+    const previewRatio = (preview.lunchPeakEnd - preview.lunchPeakStart) / (preview.duration * 60)
+    expect(previewRatio).toBeCloseTo(fullRatio, 2)
+  })
+
+  it('preview 档：warmup 占比（峰值起点 / 总时长）应保持一致', () => {
+    const full = applyFidelity(lunchPeakForm, 'full')
+    const preview = applyFidelity(lunchPeakForm, 'preview')
+    const fullWarmup = full.lunchPeakStart / (full.duration * 60)
+    const previewWarmup = preview.lunchPeakStart / (preview.duration * 60)
+    expect(previewWarmup).toBeCloseTo(fullWarmup, 2)
+  })
+
+  it('full 档：peak 字段不应被改动', () => {
+    const r = applyFidelity(lunchPeakForm, 'full')
+    expect(r.lunchPeakStart).toBe(30)
+    expect(r.lunchPeakEnd).toBe(90)
+    expect(r.dinnerPeakStart).toBe(720)
+    expect(r.dinnerPeakEnd).toBe(780)
+  })
+
+  it('peak 字段缺失时不抛错，只缩 duration', () => {
+    const minimal = { duration: 2 }
+    expect(() => applyFidelity(minimal, 'preview')).not.toThrow()
+    expect(applyFidelity(minimal, 'preview').duration).toBe(1)
+  })
+})
