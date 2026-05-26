@@ -11,7 +11,7 @@ function AppLayout({ activePage, onNavigate, reportId, snapshotCount, children }
               BJ
             </span>
             <div className="leading-tight">
-              <p className="text-xs font-medium text-bjtu-700">BJTU · 信息工程学院</p>
+              <p className="text-xs font-medium text-bjtu-700">BJTU · 计算机科学与技术学院</p>
               <h1 className="text-lg font-semibold text-slate-900">食堂就餐仿真工作台</h1>
             </div>
           </div>
