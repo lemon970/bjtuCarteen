@@ -7,15 +7,13 @@ import HistoricalQualityCard from './HistoricalQualityCard'
 function AdvancedStatsPanel({ reportId }) {
   const [state, setState] = useState({ status: 'idle', data: null, error: '' })
   const [includeQuality, setIncludeQuality] = useState(false)
-  const [includeDiagnostics, setIncludeDiagnostics] = useState(false)
 
   const onRun = async () => {
     if (!reportId) return
     setState({ status: 'loading', data: null, error: '' })
     try {
       const data = await runAnalysis(reportId, {
-        includeHistoricalQuality: includeQuality,
-        includeHistoricalDiagnostics: includeDiagnostics
+        includeHistoricalQuality: includeQuality
       })
       setState({ status: 'ok', data, error: '' })
     } catch (error) {
@@ -34,10 +32,9 @@ function AdvancedStatsPanel({ reportId }) {
     <section className="panel">
       <div className="panel-title">
         <div>
-          <h2>高级统计 (C++ 后处理)</h2>
+          <h2>高级统计</h2>
           <p>
-            把当前报告交给 <code className="text-bjtu-700">canteen-analyze</code> 二进制做 bootstrap 置信区间和瓶颈打分。
-            未编译 C++ 时会优雅降级。
+            把当前报告交给后端 <code className="text-bjtu-700">InternalStatisticsAnalyzer</code> 计算 bootstrap 95% 置信区间和 Gini 瓶颈打分。
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -55,16 +52,6 @@ function AdvancedStatsPanel({ reportId }) {
               />
               <span>启用历史质量分析</span>
             </label>
-            <label className="flex items-center gap-2 text-slate-500">
-              <input
-                type="checkbox"
-                data-testid="toggle-historical-diagnostics"
-                checked={includeDiagnostics}
-                onChange={(e) => setIncludeDiagnostics(e.target.checked)}
-                disabled={state.status === 'loading'}
-              />
-              <span>包含诊断细节(调试用)</span>
-            </label>
           </div>
         </div>
       </div>
@@ -77,9 +64,9 @@ function AdvancedStatsPanel({ reportId }) {
 
       {state.status === 'unavailable' && (
         <div className="rounded-xl border border-canvas-border bg-canvas-base p-4 text-sm">
-          <p className="font-semibold text-slate-700">分析二进制不可用</p>
+          <p className="font-semibold text-slate-700">分析不可用</p>
           <p className="mt-1 text-slate-500">
-            原因:{state.error}。请按 dataAnalyze/README.md 编译 canteen-analyze 后重试。
+            原因:{state.error}
           </p>
         </div>
       )}

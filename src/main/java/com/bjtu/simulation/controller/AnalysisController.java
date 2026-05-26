@@ -49,44 +49,33 @@ public class AnalysisController {
                     .body(ApiResponse.error(400, "report_id is required"));
         }
         AnalysisResult result = externalAnalysisService.runForReport(reportId);
-        boolean includeDiagnostics = request != null && Boolean.TRUE.equals(request.getIncludeHistoricalDiagnostics());
         boolean includeQuality = request != null && Boolean.TRUE.equals(request.getIncludeHistoricalQuality());
-        return wrap(result, reportId, includeDiagnostics, includeQuality);
+        return wrap(result, reportId, includeQuality);
     }
 
     private ResponseEntity<ApiResponse<JsonNode>> wrap(AnalysisResult result,
                                                         String reportId,
-                                                        boolean includeDiagnostics,
                                                         boolean includeQuality) {
         if (result.isAvailable()) {
             JsonNode payload = result.getPayload();
-            JsonNode merged = mergeHistoricalSubtrees(payload, reportId, includeDiagnostics, includeQuality);
+            JsonNode merged = mergeHistoricalQuality(payload, reportId, includeQuality);
             return ResponseEntity.ok(ApiResponse.success(merged));
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("available", false);
         body.put("reason", result.getReason() == null ? "unknown" : result.getReason());
-        JsonNode merged = mergeHistoricalSubtrees(body, reportId, includeDiagnostics, includeQuality);
+        JsonNode merged = mergeHistoricalQuality(body, reportId, includeQuality);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ApiResponse<>(503, "analysis unavailable", merged));
     }
 
-    /**
-     * 关键拓扑:两个 flag 都 true 时,只调一次 diagnose,把同一个 ObjectNode
-     * 既合到响应又喂给 scorer。这是 RFC-003 §1.4 推荐方案 (A) 的实现:diagnostics
-     * 子树和 quality.basis 字段同源,杜绝两边数字不一致。
-     */
-    private JsonNode mergeHistoricalSubtrees(JsonNode payload, String reportId,
-                                             boolean includeDiagnostics, boolean includeQuality) {
-        if (!includeDiagnostics && !includeQuality) return payload;
+    private JsonNode mergeHistoricalQuality(JsonNode payload, String reportId, boolean includeQuality) {
+        if (!includeQuality) return payload;
         if (!(payload instanceof ObjectNode)) return payload;
         ObjectNode obj = (ObjectNode) payload;
         ObjectNode diagnostics = historicalDiagnosticsService.diagnose(reportId);
-        if (includeDiagnostics) obj.set("historical_diagnostics", diagnostics);
-        if (includeQuality) {
-            ObjectNode quality = historicalQualityScorer.score(diagnostics, reportId);
-            obj.set("historical_quality", quality);
-        }
+        ObjectNode quality = historicalQualityScorer.score(diagnostics, reportId);
+        obj.set("historical_quality", quality);
         return obj;
     }
 
@@ -94,19 +83,11 @@ public class AnalysisController {
         @JsonAlias("report_id")
         private String reportId;
 
-        @JsonAlias("include_historical_diagnostics")
-        private Boolean includeHistoricalDiagnostics;
-
         @JsonAlias("include_historical_quality")
         private Boolean includeHistoricalQuality;
 
         public String getReportId() { return reportId; }
         public void setReportId(String reportId) { this.reportId = reportId; }
-
-        public Boolean getIncludeHistoricalDiagnostics() { return includeHistoricalDiagnostics; }
-        public void setIncludeHistoricalDiagnostics(Boolean includeHistoricalDiagnostics) {
-            this.includeHistoricalDiagnostics = includeHistoricalDiagnostics;
-        }
 
         public Boolean getIncludeHistoricalQuality() { return includeHistoricalQuality; }
         public void setIncludeHistoricalQuality(Boolean includeHistoricalQuality) {

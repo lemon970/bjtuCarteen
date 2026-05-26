@@ -73,9 +73,6 @@ export function runAnalysis(reportId, options = {}) {
   if (options.includeHistoricalQuality === true) {
     body.include_historical_quality = true
   }
-  if (options.includeHistoricalDiagnostics === true) {
-    body.include_historical_diagnostics = true
-  }
   return requestJson('/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

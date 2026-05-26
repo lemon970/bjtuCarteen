@@ -51,7 +51,7 @@ class AnalysisControllerIntegrationTest {
     }
 
     @Test
-    void runEndpointDefaultShouldNotIncludeHistoricalDiagnostics() throws Exception {
+    void runEndpointDefaultShouldNotIncludeAnyHistoricalSubtree() throws Exception {
         MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         mockMvc.perform(post("/api/analysis/run")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -59,57 +59,8 @@ class AnalysisControllerIntegrationTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value(503))
                 .andExpect(jsonPath("$.data.available").value(false))
-                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
-    }
-
-    @Test
-    void runEndpointIncludeFalseShouldNotIncludeHistoricalDiagnostics() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        mockMvc.perform(post("/api/analysis/run")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"report_id\":\"missing-id\",\"include_historical_diagnostics\":false}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
-    }
-
-    @Test
-    void runEndpointIncludeTrueShouldMergeHistoricalDiagnosticsEvenOn503() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        mockMvc.perform(post("/api/analysis/run")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"report_id\":\"missing-id\",\"include_historical_diagnostics\":true}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.data.available").value(false))
-                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true))
-                .andExpect(jsonPath("$.data.historical_diagnostics.schema_version").value("1.1"))
-                .andExpect(jsonPath("$.data.historical_diagnostics.computed_by").value("java-summary-store"))
-                .andExpect(jsonPath("$.data.historical_diagnostics.basis.current_summary_present").value(false))
-                .andExpect(jsonPath("$.data.historical_diagnostics.basis.matching_strategy").exists())
-                .andExpect(jsonPath("$.data.historical_diagnostics.quality_score").doesNotExist())
-                .andExpect(jsonPath("$.data.historical_diagnostics.level").doesNotExist())
-                .andExpect(jsonPath("$.data.historical_diagnostics.tier").doesNotExist())
-                .andExpect(jsonPath("$.data.historical_diagnostics.score").doesNotExist());
-    }
-
-    @Test
-    void runEndpointCamelCaseIncludeFlagShouldAlsoEnableDiagnostics() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        mockMvc.perform(post("/api/analysis/run")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reportId\":\"missing-id\",\"includeHistoricalDiagnostics\":true}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true));
-    }
-
-    @Test
-    void runEndpointDefaultShouldNotIncludeHistoricalQuality() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        mockMvc.perform(post("/api/analysis/run")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"report_id\":\"missing-id\"}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.data.historical_quality").doesNotExist())
-                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist());
+                .andExpect(jsonPath("$.data.historical_diagnostics").doesNotExist())
+                .andExpect(jsonPath("$.data.historical_quality").doesNotExist());
     }
 
     @Test
@@ -123,7 +74,7 @@ class AnalysisControllerIntegrationTest {
     }
 
     @Test
-    void runEndpointIncludeQualityOnlyShouldNotEmitDiagnostics() throws Exception {
+    void runEndpointIncludeQualityShouldEmitQualityWithoutDiagnostics() throws Exception {
         MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         mockMvc.perform(post("/api/analysis/run")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,21 +96,6 @@ class AnalysisControllerIntegrationTest {
                         org.hamcrest.Matchers.hasItem("QUALITY_SCORE_IS_DIAGNOSTIC_ONLY")))
                 .andExpect(jsonPath("$.data.historical_quality.warnings",
                         org.hamcrest.Matchers.hasItem("NOT_A_BUSINESS_PERFORMANCE_SCORE")));
-    }
-
-    @Test
-    void runEndpointBothFlagsTrueShouldEmitBothWithSameBasis() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        mockMvc.perform(post("/api/analysis/run")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"report_id\":\"missing-id\","
-                                + "\"include_historical_diagnostics\":true,"
-                                + "\"include_historical_quality\":true}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.data.historical_diagnostics.enabled").value(true))
-                .andExpect(jsonPath("$.data.historical_quality.enabled").value(true))
-                .andExpect(jsonPath("$.data.historical_diagnostics.basis.corpus_size").exists())
-                .andExpect(jsonPath("$.data.historical_quality.basis.corpus_size").exists());
     }
 
     @Test
