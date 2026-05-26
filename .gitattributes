@@ -1,0 +1,13 @@
+# Windows 批处理文件强制 CRLF 行尾，否则 cmd 会闪退
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 其他文本文件 normalize 即可
+*.java text
+*.js text
+*.jsx text
+*.md text
+*.xml text
+*.yml text
+*.yaml text
+*.json text
