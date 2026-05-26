@@ -32,6 +32,10 @@ dataAnalyze/build/
 dataAnalyze/CMakeCache.txt
 dataAnalyze/CMakeFiles/
 
+# CodeGraph (本地索引,跨机不共享)
+.codegraph/
+.cursor/
+
 # Local temp / runtime artifacts
 .tmp.json
 .tmp/
