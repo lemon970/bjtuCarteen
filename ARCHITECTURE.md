@@ -9,14 +9,14 @@
 - **Simulation 层**：`SimulationEngine` 负责事件调度，随机采样、学生画像、窗口选择、不变量校验、快照记录已拆到独立类。
 - **Report 层**：`SimulationReportRepository` 负责单报告 JSON 文件读写与 `report_id` 安全校验。
 - **Metrics 层**：等待体验、概率模型摘要、瓶颈诊断在运行结束后聚合，不保存完整等待明细。
-- **Analysis 层**：`ExternalAnalysisService` 封装 C++ binary 调用（`ProcessBuilder` + 30s 超时 + 缺失降级），输入为已写入的 `reports/<id>.json`；二进制缺失时由 `InternalStatisticsAnalyzer`(Java) 计算等价指标。
+- **Analysis 层**：`ExternalAnalysisService` 是 `AnalysisController` 的薄外观，委托给纯 Java 的 `InternalStatisticsAnalyzer` 计算 `confidence_intervals` / `bottleneck` / `headline_metrics`。
 
 前端：
 
 - `App.jsx`：保留全局状态、路由（hash）和 API 调用。`handleRun` 按 `decideRunMode` 在同步 `/run` 与异步 `/run/async` 之间分叉；异步路径通过 `useTaskPolling` 拿到终态后调 `/report/{id}` 取完整报告，再走 `setReport / navigate('display')` 与同步路径汇合。
 - `InputPage.jsx`：模型选择、参数输入和运行预估（Tailwind 卡片 + 渐变进度条）。header 提供"运行模式"下拉（auto / sync / async），auto 时由 `decideRunMode` 按估算到达人数与时长决定路径。
 - `DisplayPage.jsx`：KPI、等待体验、ECharts 趋势图、座位图、场景对比 Tab。
-- `AnalysisPage.jsx`：结论摘要、等待模型、`<AdvancedStatsPanel>`（C++ 高级统计）、打包决策、参数复盘。
+- `AnalysisPage.jsx`：结论摘要、等待模型、`<AdvancedStatsPanel>`（高级统计）、打包决策、参数复盘。
 - `utils/asyncRunDecision.js`：纯函数 `decideRunMode(form, userToggle)`，把 `auto` 翻译成 `sync` 或 `async`。
 - `utils/taskPoller.js`：纯 JS 状态机，承担分级 interval（1s → 2s → 5s）、连续错误熔断（默认 3 次）、硬超时（10 分钟）和 `stop()` 幂等。
 - `utils/useTaskPolling.js`：React hook 薄包装，按 `taskId` 起停 poller，暴露 `{ snapshot, error, isPolling }`。
@@ -38,11 +38,9 @@ flowchart LR
   I --> J["POST /api/analysis/run"]
   J --> K["AnalysisController"]
   K --> L["ExternalAnalysisService"]
-  L --> M["canteen-analyze.exe (mode=analyze)"]
-  M -->|binary missing| N["InternalStatisticsAnalyzer (Java fallback)"]
-  M -->|success| O["confidence_intervals / bottleneck / headline_metrics"]
+  L --> M["InternalStatisticsAnalyzer (Java)"]
+  M --> O["confidence_intervals / bottleneck / headline_metrics"]
   O --> P["前端 AdvancedStatsPanel"]
-  N --> P
 ```
 
 ## 关键接口
@@ -58,9 +56,9 @@ flowchart LR
 - `GET /api/simulation/scenarios`：读取预设模型目录。
 - `POST /api/simulation/scenarios/run`：批量运行模型。
 
-分析（由 C++ 后处理）：
+分析:
 
-- `POST /api/analysis/run`：单报告高级统计（C++ binary 缺失时回落到 `InternalStatisticsAnalyzer`）。
+- `POST /api/analysis/run`:单报告高级统计(由 `InternalStatisticsAnalyzer` 纯 Java 计算)。
 
 完整字段定义见 `API.md`。
 
@@ -71,5 +69,5 @@ flowchart LR
 - 默认响应不包含完整 `history`。
 - 前端不展示原始 JSON，只展示聚合指标和必要解释。
 - 后端核心仿真规则保持兼容，新增场景接口和分析接口不替代原 `/run` 接口。
-- 分析接口降级口径(由 `ExternalAnalysisService.runForReport` 决定): 报告不存在 → `code: 503`; C++ binary 缺失但报告存在 → `code: 0` + Java fallback 结果(`InternalStatisticsAnalyzer`); 二进制调用 / 解析 / 超时失败 → `code: 503`。**不抛异常**,确保 Java 端独立可运行。
+- 分析接口降级口径(由 `ExternalAnalysisService.runForReport` 决定): 报告 ID 非法 → `available: false` + `code: 503`; 报告不存在 → 同上;否则委托 `InternalStatisticsAnalyzer` 返回 `code: 0`。**不抛异常**,确保降级语义稳定。
 - 不在 Spring 容器中注册 `ObjectMapper` Bean（会触发 `@ConditionalOnMissingBean` 关闭默认 mapper），统一通过 `AppBeansConfig.createReportObjectMapper()` 静态方法获取。

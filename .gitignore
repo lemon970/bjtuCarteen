@@ -11,27 +11,6 @@ sun/dist/
 node_modules/
 sun/node_modules/
 
-# Visual Studio / MSBuild for dataAnalyze (C++)
-dataAnalyze/.vs/
-dataAnalyze/bin/
-dataAnalyze/Project3/x64/
-dataAnalyze/Project3/Debug/
-dataAnalyze/Project3/Release/
-*.vcxproj.user
-*.suo
-*.vsidx
-*.tlog
-*.obj
-*.ilk
-*.idb
-*.pdb
-*.ipch
-
-# CMake
-dataAnalyze/build/
-dataAnalyze/CMakeCache.txt
-dataAnalyze/CMakeFiles/
-
 # CodeGraph (本地索引,跨机不共享)
 .codegraph/
 .cursor/

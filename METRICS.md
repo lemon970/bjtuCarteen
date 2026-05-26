@@ -239,9 +239,9 @@ Overlapping class peaks:
 - Each window has `startMinute`, `endMinute`, and `multiplier`.
 - When windows overlap, their extra pressure is added together, allowing scenarios such as 12:10 and 12:20 waves overlapping.
 
-## Advanced statistics (C++ post-processing)
+## Advanced statistics (Java post-processing)
 
-由 `dataAnalyze/canteen-analyze.exe` 生成,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。这些字段不出现在 `simulation report` 自身,而是包装在分析响应的 `data` 对象中。C++ binary 缺失时由 Java `InternalStatisticsAnalyzer` 输出等价 schema(`computed_by: "java-internal"`)。
+由 `InternalStatisticsAnalyzer`(纯 Java)生成,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。这些字段不出现在 `simulation report` 自身,而是包装在分析响应的 `data` 对象中,标记 `computed_by: "java-internal"`。
 
 ### Confidence intervals
 
@@ -267,6 +267,6 @@ Overlapping class peaks:
 
 `headline_metrics` 子节点回显 `typical_wait_time_minutes` / `seat_utilization_rate` / `takeaway_rate` / `served_count` / `abandoned_count`,字段值与 summary 中同名字段一致,便于前端单一接入点渲染。
 
-详见 `dataAnalyze/AnalysisCore.h` 与 ADR `002-cpp-as-postprocessor.md`。
+实现见 `service/InternalStatisticsAnalyzer.java`;架构演进历史决策记录见 ADR `002-cpp-as-postprocessor.md`。
 
 

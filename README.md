@@ -10,7 +10,7 @@
 - 座位占用追踪：使用座位秒积分计算利用率，并提供座位状态图。
 - 打包决策解释：记录基础概率、偏好、座位压力、等待压力、队列压力和天气因子。
 - 轻量报告接口：默认不返回完整 history，避免 10^3 量级数据造成 JSON 膨胀。
-- 高级统计后处理：通过 C++ 子系统提供 Bootstrap 95% 置信区间和 Gini 瓶颈打分；C++ 缺失时由 Java `InternalStatisticsAnalyzer` 输出等价指标。
+- 高级统计后处理:由 `InternalStatisticsAnalyzer`(纯 Java)输出 Bootstrap 95% 置信区间和 Gini 瓶颈打分,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。
 - 同步 / 异步双路径：默认按估算到达人数与时长自动选择；长仿真走 `/run/async` + polling，避免 HTTP 长等待。详见 `USER_GUIDE.md` 的"运行模式"小节。
 
 ## 快速启动
@@ -47,14 +47,7 @@ npm install
 npm run build:backend     # 写入 ../src/main/resources/static/frontend/
 ```
 
-C++ 分析子系统(可选,Java fallback 已内置):
-
-```powershell
-cd dataAnalyze
-msbuild Project3.sln /p:Configuration=Release
-```
-
-构建产物 `canteen-analyze.exe` 应放置于 `dataAnalyze/bin/`,Spring Boot 通过 `ProcessBuilder` 调用。**未编译 exe 时**,后端会用 Java 内置的 `InternalStatisticsAnalyzer` 计算等价指标(置信区间、Gini 瓶颈、headline_metrics),前端高级统计模块照常工作,响应里会有 `computed_by: "java-internal"` 标记。
+高级统计后处理由 `InternalStatisticsAnalyzer`(纯 Java)生成,无需额外构建步骤。响应中带 `computed_by: "java-internal"` 标记。
 
 ## 场景模型接口
 
@@ -102,7 +95,7 @@ Content-Type: application/json
 
 ## 分析子系统
 
-后端通过 `AnalysisController → ExternalAnalysisService → C++ binary` 三级链路把 Java 报告交给 C++ 做高级统计后处理：
+后端通过 `AnalysisController → ExternalAnalysisService → InternalStatisticsAnalyzer` 三级链路把 Java 报告交给纯 Java 后处理:
 
 ```http
 POST /api/analysis/run
@@ -112,9 +105,9 @@ Content-Type: application/json
 ```
 
 返回 `data` 包含 `confidence_intervals.{wait_time_minutes,seat_utilization_rate}` / `bottleneck.{score,gini_coefficient,worst_window_id,sustained_peak_minutes}` / `headline_metrics` 三类字段。
-报告不存在 → 返回 503 + `available: false`；C++ binary 缺失但报告存在 → 返回 200 + Java fallback 实现的统计结果（由 `InternalStatisticsAnalyzer` 提供，标记 `computed_by: "java-internal"`）。前端 `<AdvancedStatsPanel>` 在两种情况下都能正常渲染。
+报告不存在 → 返回 503 + `available: false`;否则返回 200 + `InternalStatisticsAnalyzer` 计算结果(标记 `computed_by: "java-internal"`)。
 
-设计依据见 `docs/analysis/adr/002-cpp-as-postprocessor.md`。
+高级统计架构的历史决策记录见 `docs/analysis/adr/002-cpp-as-postprocessor.md`(收尾阶段已撤回 C++ 路径,改为纯 Java 实现)。
 
 ## 目录与归档说明
 
@@ -122,7 +115,6 @@ Content-Type: application/json
 src_24281231/
 ├── src/                     Java 后端
 ├── sun/                     React + Tailwind + ECharts 前端
-├── dataAnalyze/             C++ 统计后处理 CLI
 ├── reports/                 仿真报告（.gitignore，仅留 .gitkeep）
 └── examples/                请求示例
 

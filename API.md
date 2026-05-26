@@ -196,14 +196,14 @@ wait = serviceStartTime - queueEnterTime
 - `10-15` 分钟：明显拥堵。
 - `15+` 分钟：严重排队。
 
-## 7. 高级统计后处理（C++ 子系统）
+## 7. 高级统计后处理
 
-由 `AnalysisController` 提供，内部通过 `ProcessBuilder` 调用 `dataAnalyze/bin/canteen-analyze.exe`，30 秒超时。
+由 `AnalysisController` 提供,内部委托给 `InternalStatisticsAnalyzer`(纯 Java)。
 
 降级语义:
-- **报告不存在**(`reportId` 在 `reports/` 目录中找不到)→ 返回 `code: 503`，`data = { "available": false, "reason": "report not found: ..." }`
-- **C++ binary 缺失但报告存在** → 返回 `code: 0` + 由 `InternalStatisticsAnalyzer`(Java)计算的统计结果,响应中带 `computed_by: "java-internal"` 标记,**前端无需特殊处理**
-- **C++ binary 调用失败 / 解析失败 / 超时** → 返回 `code: 503`,`data` 标记 `available: false`
+- **报告 ID 非法**(未通过 `SimulationReportRepository.isSafeReportId`)→ 返回 `code: 503`,`data = { "available": false, "reason": "invalid report id" }`
+- **报告不存在**(`reportId` 在 `reports/` 目录中找不到)→ 返回 `code: 503`,`data = { "available": false, "reason": "report not found: ..." }`
+- **报告存在** → 返回 `code: 0` + 由 `InternalStatisticsAnalyzer` 计算的统计结果,响应中带 `computed_by: "java-internal"` 标记
 
 ### `POST /api/analysis/run`
 
@@ -219,8 +219,8 @@ wait = serviceStartTime - queueEnterTime
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `available` | boolean | 报告存在且分析可用(C++ 直接成功 或 Java fallback 成功)|
-| `computed_by` | string | `"cpp-canteen-analyze"`(C++ 路径)或 `"java-internal"`(binary 缺失时由 `InternalStatisticsAnalyzer` 计算)|
+| `available` | boolean | 报告存在且分析成功 |
+| `computed_by` | string | `"java-internal"`(由 `InternalStatisticsAnalyzer` 计算)|
 | `schema_version` | string | 分析结果 schema 版本,当前 `"1.0"` |
 | `source_report_id` | string | 回显报告 ID |
 | `confidence_intervals.wait_time_minutes` | object | `{ metric, alpha, sample_count, mean, lower, upper }` 等待时间 95% Bootstrap CI |
@@ -239,6 +239,6 @@ wait = serviceStartTime - queueEnterTime
 |---|---|
 | 0 | 成功 |
 | 400 | 参数缺失 / 非法 report_id / 场景数不足 |
-| 503 | 报告不存在 / C++ binary 调用失败 / 超时(30s)→ `available: false`(注:binary 缺失但报告存在时不再返回 503,会落到 Java fallback) |
+| 503 | 报告 ID 非法 / 报告不存在 → `available: false` |
 
-详见 `docs/analysis/adr/002-cpp-as-postprocessor.md`。
+高级统计架构的历史决策记录见 `docs/analysis/adr/002-cpp-as-postprocessor.md`(收尾阶段已撤回 C++ 路径,改为纯 Java 实现)。
