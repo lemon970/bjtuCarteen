@@ -11,11 +11,7 @@ import org.springframework.stereotype.Service;
 /**
  * 高级统计分析入口。委托给纯 Java 的 {@link InternalStatisticsAnalyzer},
  * 输出 {@code confidence_intervals} / {@code bottleneck} / {@code headline_metrics}
- * 三组字段。
- *
- * <p>历史上本类曾通过 {@code ProcessBuilder} 调用 C++ 子系统 {@code dataAnalyze/canteen-analyze.exe},
- * 二进制缺失时回落到 Java 实现。第二轮收尾时移除了 C++ 路径,保留 Java 实现作为唯一通路;
- * 类名沿用以减少前端契约改动,降级语义统一为"报告不存在 → unavailable;否则 → available"。
+ * 三组字段。报告不存在 → unavailable;否则 → available。
  */
 @Service
 public class ExternalAnalysisService {
