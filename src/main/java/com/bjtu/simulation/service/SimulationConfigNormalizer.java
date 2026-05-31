@@ -1,19 +1,32 @@
 package com.bjtu.simulation.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.bjtu.simulation.dto.QueueChoiceModel;
 import com.bjtu.simulation.dto.SimConfig;
+import com.bjtu.simulation.dto.WindowAttractivenessConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SimulationConfigNormalizer {
 
+    private static final Logger log = LoggerFactory.getLogger(SimulationConfigNormalizer.class);
+
     private static final double MAX_DURATION_HOURS = 16.0;
+
+    // RFC-009 §8.1 警告通道:PR-9B 阶段以 ThreadLocal 暴露给同线程内的调用方,便于测试断言。
+    // PR-9D 引入 window_choice_metrics / precheck.warnings 时,此通道由报告层接管。
+    private static final ThreadLocal<List<String>> LAST_WARNINGS = ThreadLocal.withInitial(ArrayList::new);
 
     public SimConfig normalize(SimConfig raw) {
         SimConfig config = raw == null ? new SimConfig() : raw;
+
+        LAST_WARNINGS.set(new ArrayList<>());
 
         if (config.getBaseConfig() == null) {
             config.setBaseConfig(new SimConfig.BaseConfig());
@@ -107,6 +120,95 @@ public class SimulationConfigNormalizer {
         if (config.getBaseConfig().getLargeTableRatio() < 0 || config.getBaseConfig().getLargeTableRatio() > 1) {
             throw new IllegalArgumentException("largeTableRatio must be in [0, 1]");
         }
+        validateQueueChoiceModel(config.getBaseConfig());
+    }
+
+    /**
+     * RFC-009 §8.1 配置校验规则。
+     *
+     * <ul>
+     *   <li>{@code popular_window_ratio + cold_window_ratio <= 1.0}</li>
+     *   <li>{@code popular_attractiveness >= normal_attractiveness >= cold_attractiveness}</li>
+     *   <li>所有 attractiveness 必须 > 0</li>
+     *   <li>{@code queue_choice_model = PREFERENCE_AWARE} 时缺失 window_attractiveness 自动补默认值并 warning</li>
+     *   <li>{@code popular + cold = 1.0}(无 NORMAL 窗口)合法但 warning {@code no_normal_windows}</li>
+     * </ul>
+     */
+    private void validateQueueChoiceModel(SimConfig.BaseConfig baseConfig) {
+        QueueChoiceModel model = baseConfig.getQueueChoiceModel();
+        if (model == null) {
+            baseConfig.setQueueChoiceModel(QueueChoiceModel.STATIC_SPLIT);
+            model = QueueChoiceModel.STATIC_SPLIT;
+        }
+        WindowAttractivenessConfig attr = baseConfig.getWindowAttractiveness();
+        if (model == QueueChoiceModel.STATIC_SPLIT) {
+            // STATIC_SPLIT 下不强制 attractiveness 存在;若用户传入了非默认值仍做基础校验,
+            // 防止后续切到 PREFERENCE_AWARE 时才发现配置非法。
+            if (attr != null) {
+                validateAttractivenessFields(attr);
+            }
+            return;
+        }
+
+        if (attr == null) {
+            attr = new WindowAttractivenessConfig();
+            baseConfig.setWindowAttractiveness(attr);
+            addWarning("window_attractiveness_missing_filled_default");
+            log.warn("queueChoiceModel={} but windowAttractiveness missing; filled with defaults", model);
+        }
+
+        validateAttractivenessFields(attr);
+
+        double sum = attr.getPopularWindowRatio() + attr.getColdWindowRatio();
+        if (sum > 1.0 + 1e-9) {
+            throw new IllegalArgumentException(
+                    "popularWindowRatio + coldWindowRatio must be <= 1.0 (got " + sum + ")");
+        }
+        if (Math.abs(sum - 1.0) <= 1e-9) {
+            addWarning("no_normal_windows");
+        }
+    }
+
+    private void validateAttractivenessFields(WindowAttractivenessConfig attr) {
+        if (attr.getPopularWindowRatio() < 0.0 || attr.getPopularWindowRatio() > 1.0) {
+            throw new IllegalArgumentException("popularWindowRatio must be in [0, 1]");
+        }
+        if (attr.getColdWindowRatio() < 0.0 || attr.getColdWindowRatio() > 1.0) {
+            throw new IllegalArgumentException("coldWindowRatio must be in [0, 1]");
+        }
+        if (!(attr.getPopularAttractiveness() > 0.0)
+                || !(attr.getNormalAttractiveness() > 0.0)
+                || !(attr.getColdAttractiveness() > 0.0)) {
+            throw new IllegalArgumentException(
+                    "attractiveness values must be > 0 (popular="
+                            + attr.getPopularAttractiveness()
+                            + ", normal=" + attr.getNormalAttractiveness()
+                            + ", cold=" + attr.getColdAttractiveness() + ")");
+        }
+        if (attr.getPopularAttractiveness() < attr.getNormalAttractiveness()) {
+            throw new IllegalArgumentException(
+                    "popularAttractiveness (" + attr.getPopularAttractiveness()
+                            + ") must be >= normalAttractiveness ("
+                            + attr.getNormalAttractiveness() + ")");
+        }
+        if (attr.getNormalAttractiveness() < attr.getColdAttractiveness()) {
+            throw new IllegalArgumentException(
+                    "normalAttractiveness (" + attr.getNormalAttractiveness()
+                            + ") must be >= coldAttractiveness ("
+                            + attr.getColdAttractiveness() + ")");
+        }
+    }
+
+    private static void addWarning(String code) {
+        LAST_WARNINGS.get().add(code);
+    }
+
+    /** RFC-009 PR-9B:暴露最近一次 normalize 收集到的 warning 编码,供测试与后续报告层使用。 */
+    public List<String> drainLastWarnings() {
+        List<String> snapshot = new ArrayList<>(LAST_WARNINGS.get());
+        // remove() 避免在线程池中长期占用 ThreadLocal 内存(下次 normalize() 入口也会重建)
+        LAST_WARNINGS.remove();
+        return Collections.unmodifiableList(snapshot);
     }
 
     private void normalizeMutableDefaults(SimConfig config) {

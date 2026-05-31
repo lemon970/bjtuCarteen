@@ -70,7 +70,6 @@ Two independent peaks are tracked:
 Associated fields:
 
 - `peakTimeMinutes`: first minute when `maxQueueSize` appears (单窗口口径)
-- `peakWindowId`: first window id that reached `maxQueueSize`
 - `totalPeakTimeMinutes` / `total_peak_time_minutes`: first minute when `maxTotalQueueSize` appears (总队列口径，独立于 `peakTimeMinutes`，避免单窗与全窗峰值时间被混用)
 
 ## Seat metrics
@@ -240,32 +239,34 @@ Overlapping class peaks:
 - Each window has `startMinute`, `endMinute`, and `multiplier`.
 - When windows overlap, their extra pressure is added together, allowing scenarios such as 12:10 and 12:20 waves overlapping.
 
-## Advanced statistics (C++ post-processing)
+## Advanced statistics (Java post-processing)
 
-由 `dataAnalyze/canteen-analyze.exe` 生成,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。这些字段不出现在 `simulation report` 自身,而是包装在分析响应的 `data` 对象中。
+由 `InternalStatisticsAnalyzer`(纯 Java)生成,通过 `POST /api/analysis/run` 暴露给前端 `<AdvancedStatsPanel>`。这些字段不出现在 `simulation report` 自身,而是包装在分析响应的 `data` 对象中,标记 `computed_by: "java-internal"`。
 
 ### Confidence intervals
 
-`confidence_intervals.{wait, utilization, takeaway_rate}` 各自包含:
+`confidence_intervals.{wait_time_minutes, seat_utilization_rate}` 各自包含:
 
-- `point`: 点估计值,与 summary 中对应字段一致
-- `lower` / `upper`: Bootstrap 95% 置信区间下/上界(默认 1000 次重抽样,`alpha = 0.05`)
+- `metric`: 指标名(回显),如 `"wait_time_minutes"`
 - `alpha`: 显著性水平,默认 `0.05`
+- `sample_count`: 参与 Bootstrap 的样本数
+- `mean`: 样本均值
+- `lower` / `upper`: Bootstrap 95% 置信区间下/上界(默认 1000 次重抽样,`alpha = 0.05`)
 
 ### Bottleneck score
 
-- `bottleneck_score`: 0~100 整数,综合反映窗口分配是否均衡 + 高峰是否持续
+- `bottleneck.score`: 0~100,综合反映窗口分配是否均衡 + 高峰是否持续
   - 公式:`50 * gini_of_window_queues + 50 * congested_minutes_ratio`
   - `gini_of_window_queues`:对 `windowServedCounts` 计算 Gini 系数(0=完全均衡,1=完全集中)
   - `congested_minutes_ratio`:`timeline` 中 `seatUtilizationRate >= 0.7` 的分钟数 / 总分钟数
-- `bottleneck_breakdown`: `{ gini, congested_minutes, peak_window }` 拆解项,便于解释
+- `bottleneck.gini_coefficient`: Gini 拆解项
+- `bottleneck.worst_window_id`: `windowServedCounts` 最大者的 0-based 索引
+- `bottleneck.sustained_peak_minutes`: `seatUtilizationRate >= 0.7` 的分钟计数
 
-### ANOVA(仅 cross-scenario)
+### Headline metrics
 
-- `anova.f_statistic` / `anova.p_value`:单因素方差分析结果
-- `anova.significant`:`p_value < 0.05` 时为 `true`
-- `anova.group_means`:每个场景的等待时间组均值
+`headline_metrics` 子节点回显 `typical_wait_time_minutes` / `seat_utilization_rate` / `takeaway_rate` / `served_count` / `abandoned_count`,字段值与 summary 中同名字段一致,便于前端单一接入点渲染。
 
-详见 `dataAnalyze/AnalysisCore.h` 与 ADR `002-cpp-as-postprocessor.md`。
+实现见 `service/InternalStatisticsAnalyzer.java`;架构演进历史决策记录见 ADR `002-cpp-as-postprocessor.md`。
 
 

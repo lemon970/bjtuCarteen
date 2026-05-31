@@ -117,8 +117,7 @@ class SimulationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.timeline[0].queueing_student_count").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].seat_utilization_rate").exists())
                 .andExpect(jsonPath("$.data.summary.timeline[0].table_snapshots").doesNotExist())
-                .andExpect(jsonPath("$.data.summary.avg_movement_time_minutes").exists())
-                .andExpect(jsonPath("$.data.summary.queue_theory_metrics.model_type").exists());
+                .andExpect(jsonPath("$.data.summary.avg_movement_time_minutes").exists());
     }
 
     // F1: 跨层契约 — 后端响应必须包含前端 normalizePoint (sun/src/utils/simulation.js:595-608)
@@ -233,82 +232,6 @@ class SimulationApiIntegrationTest {
     }
 
     @Test
-    void optimizeEndpointShouldRunExplicitBatchWithoutSearching() throws Exception {
-        String json = """
-                {
-                  "objective": "minimize avg_wait_time_minutes",
-                  "configs": [
-                    {
-                      "duration": 0.1,
-                      "arrivalRate": 30,
-                      "queueLimit": 10,
-                      "packProbability": 0.2,
-                      "seed": 903,
-                      "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
-                      "weatherConfig": {"weatherImpactFactor": 1.0},
-                      "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
-                    },
-                    {
-                      "duration": 0.1,
-                      "arrivalRate": 30,
-                      "queueLimit": 10,
-                      "packProbability": 0.5,
-                      "seed": 903,
-                      "baseConfig": {"windowCount": 3, "totalSeats": 20, "totalStudents": 0},
-                      "weatherConfig": {"weatherImpactFactor": 1.0},
-                      "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
-                    }
-                  ]
-                }
-                """;
-
-        mockMvc.perform(post("/api/simulation/optimize")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.mode").value("batch_compare"))
-                .andExpect(jsonPath("$.data.deprecated_optimization").value(true))
-                .andExpect(jsonPath("$.data.objective").value("minimize avg_wait_time_minutes"))
-                .andExpect(jsonPath("$.data.evaluated_configs").value(2))
-                .andExpect(jsonPath("$.data.results").isArray())
-                .andExpect(jsonPath("$.data.results[0].index").value(1))
-                .andExpect(jsonPath("$.data.results[0].config.base_config.window_count").value(2))
-                .andExpect(jsonPath("$.data.results[0].summary.arrived_count").exists())
-                .andExpect(jsonPath("$.data.results[0].summary.typical_wait_time_minutes").exists())
-                .andExpect(jsonPath("$.data.results[1].config.base_config.window_count").value(3))
-                .andExpect(jsonPath("$.data.top_configs").doesNotExist());
-    }
-
-    @Test
-    void optimizeEndpointShouldAcceptTypicalWaitObjective() throws Exception {
-        String json = """
-                {
-                  "objective": "minimize typical_wait_time_minutes",
-                  "configs": [
-                    {
-                      "duration": 0.1,
-                      "arrivalRate": 30,
-                      "queueLimit": 10,
-                      "packProbability": 0.2,
-                      "seed": 904,
-                      "baseConfig": {"windowCount": 2, "totalSeats": 20, "totalStudents": 0},
-                      "weatherConfig": {"weatherImpactFactor": 1.0},
-                      "randomBounds": {"arrivalInterval": 0, "serviceRange": [60, 120], "diningRange": [600, 900]}
-                    }
-                  ]
-                }
-                """;
-
-        mockMvc.perform(post("/api/simulation/optimize")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.objective").value("minimize typical_wait_time_minutes"))
-                .andExpect(jsonPath("$.data.results[0].objective_value").exists());
-    }
-
-    @Test
     void scenarioCatalogShouldExposeRunnablePresets() throws Exception {
         mockMvc.perform(get("/api/simulation/scenarios"))
                 .andExpect(status().isOk())
@@ -392,47 +315,6 @@ class SimulationApiIntegrationTest {
     }
 
     @Test
-    void reportListShouldReturnWrappedHistoryRecords() throws Exception {
-        mockMvc.perform(get("/api/simulation/report/list"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.count").exists())
-                .andExpect(jsonPath("$.data.reports").isArray());
-    }
-
-    @Test
-    void reportTimelineAndHistoryShouldSupportPagination() throws Exception {
-        String reportId = createReportAndGetId();
-
-        mockMvc.perform(get("/api/simulation/report/{id}/timeline", reportId)
-                        .param("page", "1")
-                        .param("page_size", "2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_id").value(reportId))
-                .andExpect(jsonPath("$.data.collection").value("timeline"))
-                .andExpect(jsonPath("$.data.page").value(1))
-                .andExpect(jsonPath("$.data.page_size").value(2))
-                .andExpect(jsonPath("$.data.total_items").exists())
-                .andExpect(jsonPath("$.data.total_pages").exists())
-                .andExpect(jsonPath("$.data.has_next").exists())
-                .andExpect(jsonPath("$.data.items").isArray())
-                .andExpect(jsonPath("$.data.items[0].time_seconds").exists());
-
-        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
-                        .param("page", "1")
-                        .param("page_size", "3"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.report_id").value(reportId))
-                .andExpect(jsonPath("$.data.collection").value("history"))
-                .andExpect(jsonPath("$.data.page").value(1))
-                .andExpect(jsonPath("$.data.page_size").value(3))
-                .andExpect(jsonPath("$.data.total_items").exists())
-                .andExpect(jsonPath("$.data.items").isArray());
-    }
-
-    @Test
     void fullReportShouldOmitHistoryByDefaultAndReturnItWhenRequested() throws Exception {
         String reportId = createReportAndGetId();
 
@@ -480,23 +362,6 @@ class SimulationApiIntegrationTest {
         int responseBytes = result.getResponse().getContentAsByteArray().length;
         org.junit.jupiter.api.Assertions.assertTrue(responseBytes < 2_000_000,
                 "1000-student default response should remain below 2 MB, actual=" + responseBytes);
-    }
-
-    @Test
-    void reportPageEndpointShouldRejectInvalidPagination() throws Exception {
-        String reportId = createReportAndGetId();
-
-        mockMvc.perform(get("/api/simulation/report/{id}/timeline", reportId)
-                        .param("page", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("page must be >= 1"));
-
-        mockMvc.perform(get("/api/simulation/report/{id}/history", reportId)
-                        .param("page_size", "5001"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("page_size must be in [1, 5000]"));
     }
 
     private String createReportAndGetId() throws Exception {

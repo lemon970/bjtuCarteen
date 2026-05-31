@@ -1,13 +1,15 @@
 import AdvancedStatsPanel from '../components/AdvancedStatsPanel'
+import BottleneckDiagnosisPanel from '../components/BottleneckDiagnosisPanel'
 import ChartPanel from '../components/ChartPanel'
 import InsightNarrative from '../components/InsightNarrative'
+import InterventionPanel from '../components/InterventionPanel'
 import MetricCard from '../components/MetricCard'
 import SeatUtilizationLine from '../components/charts/SeatUtilizationLine'
 import TrendChart from '../components/charts/TrendChart'
 import WaitTimePanel from '../components/WaitTimePanel'
 import { buildAnalysis, formatNumber, formatPercent, read } from '../utils/simulation'
 
-function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
+function AnalysisPage({ report, scenarioResults = [], payload, form, runFn, onLoadLatest }) {
   const summary = report?.summary || {}
   const config = report?.config || payload
   const base = config?.base_config || config?.baseConfig || {}
@@ -69,16 +71,20 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
 
       <WaitTimePanel summary={summary} />
 
+      <BottleneckDiagnosisPanel summary={summary} />
+
+      {form && runFn && <InterventionPanel form={form} report={report} runFn={runFn} />}
+
       <AdvancedStatsPanel reportId={reportId} />
 
       <section className="panel">
         <div className="panel-title">
           <div>
-            <h2>打包决策解释</h2>
-            <p>优先展示模型触发样本;强制窗口策略样本会标注为"不适用",避免误读。</p>
+            <h2>打包决策结论</h2>
+            <p>从 takeaway_rate_breakdown 派生:三种成因占比,主导项决定本次仿真的打包驱动来源。</p>
           </div>
         </div>
-        <DecisionTable decisions={read(summary, 'takeaway_decision_records', 'takeawayDecisionRecords') || []} />
+        <TakeawayDecisionConclusion summary={summary} />
       </section>
 
       <section className="panel">
@@ -120,68 +126,58 @@ function AnalysisPage({ report, scenarioResults = [], payload, onLoadLatest }) {
   )
 }
 
-function DecisionTable({ decisions }) {
-  const rows = prioritizeModelRows(Array.isArray(decisions) ? decisions : [])
-  if (!rows.length) {
-    return <div className="empty-state">暂无打包决策样本。</div>
+function TakeawayDecisionConclusion({ summary }) {
+  const breakdown = read(summary, 'takeaway_rate_breakdown', 'takeawayRateBreakdown') || {}
+  const initial = Number(read(breakdown, 'initial_intent_rate', 'initialIntentRate') ?? 0)
+  const flip = Number(read(breakdown, 'dynamic_flip_rate', 'dynamicFlipRate') ?? 0)
+  const forced = Number(read(breakdown, 'no_seat_forced_rate', 'noSeatForcedRate') ?? 0)
+  const observed = Number(read(breakdown, 'observed_rate', 'observedRate') ?? read(summary, 'takeaway_rate', 'takeawayRate') ?? 0)
+  const theoretical = Number(read(breakdown, 'theoretical_rate', 'theoreticalRate') ?? read(summary, 'theoretical_takeaway_rate', 'theoreticalTakeawayRate') ?? 0)
+  const total = initial + flip + forced
+
+  if (total <= 0) {
+    return <div className="empty-state">本次仿真未触发打包决策样本。</div>
   }
+
+  const items = [
+    { key: 'initial', label: '初始意图', value: initial, hint: '到达时即决定打包' },
+    { key: 'flip', label: '动态翻转', value: flip, hint: '完成服务后受天气/拥挤影响翻转' },
+    { key: 'forced', label: '无座强制', value: forced, hint: '堂食意图但无座位被迫打包' }
+  ]
+  const dominant = items.reduce((a, b) => (b.value > a.value ? b : a))
+  const dominantShare = total > 0 ? dominant.value / total : 0
+
+  const conclusionText = dominantShare >= 0.6
+    ? `主导成因:${dominant.label}(占比 ${formatPercent(dominantShare, 0)})。${dominant.hint}。`
+    : '三种成因占比较均衡,无单一主导项。'
+  const accuracyText = theoretical > 0
+    ? `实测打包率 ${formatPercent(observed, 1)},理论基准 ${formatPercent(theoretical, 1)},偏离 ${formatPercent(Math.abs(observed - theoretical) / theoretical, 0)}。`
+    : `实测打包率 ${formatPercent(observed, 1)}。`
+
   return (
-    <div className="overflow-auto rounded-xl border border-canvas-border">
-      <table className="table-base">
-        <thead>
-          <tr>
-            <th>路径</th>
-            <th>基础概率</th>
-            <th>最终概率</th>
-            <th>座位因子</th>
-            <th>等待因子</th>
-            <th>队列因子</th>
-            <th>随机数</th>
-            <th>结果</th>
-            <th>说明</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((item, index) => {
-            const reason = read(item, 'window_choice_reason', 'windowChoiceReason') || read(item, 'reason') || '-'
-            const isForced = String(reason).includes('强制') || String(reason).includes('窗口策略')
-            return (
-              <tr key={`${read(item, 'student_id', 'studentId')}-${index}`}>
-                <td className="whitespace-pre-wrap text-xs text-slate-600">{reason}</td>
-                <td className="font-numeric tabular-nums">{formatPercent(read(item, 'base_probability', 'baseProbability') ?? 0)}</td>
-                <td className="font-numeric tabular-nums">{formatPercent(read(item, 'final_probability', 'finalProbability') ?? 0)}</td>
-                <td className="font-numeric tabular-nums">{isForced ? '不适用' : formatNumber(read(item, 'seat_pressure_factor', 'seatPressureFactor') ?? 0, 3)}</td>
-                <td className="font-numeric tabular-nums">{isForced ? '不适用' : formatNumber(read(item, 'wait_pressure_factor', 'waitPressureFactor') ?? 0, 3)}</td>
-                <td className="font-numeric tabular-nums">{isForced ? '不适用' : formatNumber(read(item, 'queue_pressure_factor', 'queuePressureFactor') ?? 0, 3)}</td>
-                <td className="font-numeric tabular-nums">{formatNumber(read(item, 'random_roll', 'randomRoll') ?? 0, 3)}</td>
-                <td>
-                  <span className={`pill ${read(item, 'takeaway') ? 'bg-accent-amberSoft text-semantic-warning ring-semantic-warning/30' : 'bg-bjtu-50 text-bjtu-700 ring-bjtu-200'}`}>
-                    {read(item, 'takeaway') ? '打包' : '堂食'}
-                  </span>
-                </td>
-                <td className="whitespace-pre-wrap text-xs text-slate-600">{read(item, 'decision_reason', 'decisionReason') || '-'}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <p className="text-sm text-slate-700">{conclusionText} {accuracyText}</p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {items.map((item) => {
+          const share = total > 0 ? item.value / total : 0
+          const isDominant = item.key === dominant.key && dominantShare >= 0.6
+          return (
+            <div
+              key={item.key}
+              className={`rounded-xl border p-3 ${isDominant ? 'border-bjtu-300 bg-bjtu-50' : 'border-canvas-border bg-canvas-surface'}`}
+            >
+              <div className="flex items-baseline justify-between">
+                <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                <p className="font-numeric text-lg font-semibold tabular-nums text-bjtu-700">{formatPercent(share, 0)}</p>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{item.hint}</p>
+              <p className="mt-1 text-xs text-slate-400">绝对率 {formatPercent(item.value, 1)}</p>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
-}
-
-function prioritizeModelRows(decisions) {
-  const modelRows = decisions.filter((item) => {
-    const reason = String(read(item, 'window_choice_reason', 'windowChoiceReason') || read(item, 'reason') || '')
-    return !reason.includes('强制') && !reason.includes('窗口策略')
-  })
-  const factorMagnitude = (item) => (
-    Math.abs(read(item, 'seat_pressure_factor', 'seatPressureFactor') ?? 0) +
-    Math.abs(read(item, 'wait_pressure_factor', 'waitPressureFactor') ?? 0) +
-    Math.abs(read(item, 'queue_pressure_factor', 'queuePressureFactor') ?? 0)
-  )
-  const sortedModelRows = [...modelRows].sort((a, b) => factorMagnitude(b) - factorMagnitude(a))
-  const fallbackRows = decisions.filter((item) => !modelRows.includes(item))
-  return [...sortedModelRows, ...fallbackRows].slice(0, 8)
 }
 
 function ScenarioInsights({ results }) {

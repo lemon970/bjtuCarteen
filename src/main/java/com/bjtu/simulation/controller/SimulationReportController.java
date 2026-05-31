@@ -61,16 +61,6 @@ public class SimulationReportController {
         }
     }
 
-    @GetMapping("/report/list")
-    public ResponseEntity<ApiResponse<JsonNode>> getReportList() {
-        try {
-            return ResponseEntity.ok(ApiResponse.success(reportRepository.listReports()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, e.getMessage()));
-        }
-    }
-
     @GetMapping("/report/{id}")
     public ResponseEntity<ApiResponse<JsonNode>> getReportByIdWithOptions(
             @PathVariable("id") String reportId,
@@ -97,22 +87,6 @@ public class SimulationReportController {
         }
     }
 
-    @GetMapping("/report/{id}/timeline")
-    public ResponseEntity<ApiResponse<JsonNode>> getReportTimelinePage(
-            @PathVariable("id") String reportId,
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "page_size", defaultValue = "500") int pageSize) {
-        return getReportSummaryArrayPage(reportId, "timeline", page, pageSize);
-    }
-
-    @GetMapping("/report/{id}/history")
-    public ResponseEntity<ApiResponse<JsonNode>> getReportHistoryPage(
-            @PathVariable("id") String reportId,
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "page_size", defaultValue = "500") int pageSize) {
-        return getReportSummaryArrayPage(reportId, "history", page, pageSize);
-    }
-
     @GetMapping(value = "/report/{id}/csv", produces = "text/csv")
     public ResponseEntity<String> exportReportCsv(@PathVariable("id") String reportId) {
         if (!reportRepository.isSafeReportId(reportId)) {
@@ -136,49 +110,6 @@ public class SimulationReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .contentType(MediaType.TEXT_PLAIN)
                     .body(e.getMessage());
-        }
-    }
-
-    private ResponseEntity<ApiResponse<JsonNode>> getReportSummaryArrayPage(String reportId,
-                                                                           String collectionName,
-                                                                           int page,
-                                                                           int pageSize) {
-        if (!reportRepository.isSafeReportId(reportId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(400, "invalid report id"));
-        }
-        if (page < 1) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(400, "page must be >= 1"));
-        }
-        if (pageSize < 1 || pageSize > 5000) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(400, "page_size must be in [1, 5000]"));
-        }
-
-        try {
-            Optional<JsonNode> report = reportRepository.readById(reportId);
-            if (report.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error(404, "report not found"));
-            }
-
-            JsonNode source = report.get().path("summary").path(collectionName);
-            if (!source.isArray() && "history".equals(collectionName)) {
-                Optional<JsonNode> history = reportRepository.readHistoryById(reportId);
-                if (history.isPresent()) {
-                    source = history.get();
-                }
-            }
-            if (!source.isArray()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error(404, collectionName + " not found"));
-            }
-
-            return ResponseEntity.ok(ApiResponse.success(responseBuilder.buildArrayPage(reportId, collectionName, source, page, pageSize)));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(500, e.getMessage()));
         }
     }
 }

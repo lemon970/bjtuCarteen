@@ -1,6 +1,5 @@
 package com.bjtu.simulation.service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -10,14 +9,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.bjtu.simulation.config.AppBeansConfig;
 import com.bjtu.simulation.dto.SimConfig;
@@ -41,14 +36,6 @@ public class SimulationTaskService {
     private final ObjectMapper reportMapper;
     private final ConcurrentHashMap<String, SimulationTaskRecord> tasks = new ConcurrentHashMap<>();
     private final ExecutorService taskExecutor = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
-    // streamExecutor 改为有界线程池,避免无限制 SSE 并发吃光线程。
-    private final ThreadPoolExecutor streamExecutor = new ThreadPoolExecutor(
-            4,
-            16,
-            60L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(64),
-            new ThreadPoolExecutor.CallerRunsPolicy());
     private final LongSupplier clock;
     private final long retentionMillis;
     private final int maxTasks;
@@ -84,7 +71,6 @@ public class SimulationTaskService {
     @PreDestroy
     public void shutdown() {
         taskExecutor.shutdownNow();
-        streamExecutor.shutdownNow();
     }
 
     public SimulationTaskRecord submit(SimConfig config) {
@@ -170,24 +156,6 @@ public class SimulationTaskService {
         return summary;
     }
 
-    public SseEmitter stream(String taskId) {
-        SseEmitter emitter = new SseEmitter(10L * 60L * 1000L);
-        Optional<SimulationTaskRecord> maybeRecord = get(taskId);
-        if (maybeRecord.isEmpty()) {
-            try {
-                emitter.send(SseEmitter.event().name("error").data("task not found"));
-            } catch (IOException ignored) {
-                // The client is already gone.
-            }
-            emitter.complete();
-            return emitter;
-        }
-
-        SimulationTaskRecord record = maybeRecord.get();
-        streamExecutor.submit(() -> emitUntilComplete(emitter, record));
-        return emitter;
-    }
-
     private void runTask(SimulationTaskRecord record) {
         try {
             record.markRunning();
@@ -196,21 +164,6 @@ public class SimulationTaskService {
             record.markCompleted(report);
         } catch (Exception e) {
             record.markFailed(e);
-        }
-    }
-
-    private void emitUntilComplete(SseEmitter emitter, SimulationTaskRecord record) {
-        try {
-            while (true) {
-                emitter.send(SseEmitter.event().name("status").data(toSnapshot(record)));
-                if (record.isTerminal()) {
-                    emitter.complete();
-                    return;
-                }
-                Thread.sleep(500L);
-            }
-        } catch (Exception e) {
-            emitter.completeWithError(e);
         }
     }
 

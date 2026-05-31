@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.bjtu.simulation.dto.QueueTheoryMetrics;
 import com.bjtu.simulation.dto.SimConfig;
 import com.bjtu.simulation.dto.SimulationReport;
 import com.bjtu.simulation.dto.SimulationSummary;
@@ -26,28 +25,28 @@ public class SimulationRunService {
     private final SimulationConfigNormalizer configNormalizer;
     private final SimulationArrivalScheduler arrivalScheduler;
     private final SimulationTimelineBuilder timelineBuilder;
-    private final QueueTheoryMetricsCalculator queueTheoryMetricsCalculator;
     private final WaitTimeMetricsCalculator waitTimeMetricsCalculator;
+    private final BottleneckAnalyzer bottleneckAnalyzer;
 
     public SimulationRunService() {
         this(new SimulationConfigNormalizer(),
                 new SimulationArrivalScheduler(),
                 new SimulationTimelineBuilder(),
-                new QueueTheoryMetricsCalculator(),
-                new WaitTimeMetricsCalculator());
+                new WaitTimeMetricsCalculator(),
+                new BottleneckAnalyzer());
     }
 
     @Autowired
     public SimulationRunService(SimulationConfigNormalizer configNormalizer,
                                 SimulationArrivalScheduler arrivalScheduler,
                                 SimulationTimelineBuilder timelineBuilder,
-                                QueueTheoryMetricsCalculator queueTheoryMetricsCalculator,
-                                WaitTimeMetricsCalculator waitTimeMetricsCalculator) {
+                                WaitTimeMetricsCalculator waitTimeMetricsCalculator,
+                                BottleneckAnalyzer bottleneckAnalyzer) {
         this.configNormalizer = configNormalizer;
         this.arrivalScheduler = arrivalScheduler;
         this.timelineBuilder = timelineBuilder;
-        this.queueTheoryMetricsCalculator = queueTheoryMetricsCalculator;
         this.waitTimeMetricsCalculator = waitTimeMetricsCalculator;
+        this.bottleneckAnalyzer = bottleneckAnalyzer;
     }
 
     public SimulationReport run(SimConfig inputConfig) {
@@ -63,6 +62,8 @@ public class SimulationRunService {
         engine.runAll();
 
         SimulationSummary summary = buildSummary(config, engine);
+        summary.setWindowChoiceMetrics(engine.buildWindowChoiceMetrics());
+        summary.setBottleneckDiagnosis(bottleneckAnalyzer.analyze(summary, config));
         return new SimulationReport(
                 REPORT_VERSION,
                 reportId,
@@ -90,7 +91,6 @@ public class SimulationRunService {
         int takeawayWindowCount = engine.getTakeawayWindowCount();
         int normalWindowServedCount = engine.getNormalWindowServedCount();
         int takeawayWindowServedCount = engine.getTakeawayWindowServedCount();
-        QueueTheoryMetrics queueTheoryMetrics = queueTheoryMetricsCalculator.build(config, windowCount);
         WaitTimeMetrics waitTimeMetrics = waitTimeMetricsCalculator.build(
                 engine.getWaitTimeSamples(),
                 engine.getMaxTotalQueueSize(),
@@ -135,7 +135,6 @@ public class SimulationRunService {
                 engine.getMovementSampleCount(),
                 engine.getPeakTime() / 60,
                 engine.getTotalPeakTime() / 60,
-                engine.getPeakWindowId(),
                 engine.getMaxQueueSizeEver(),
                 engine.getMaxTotalQueueSize(),
                 SimulationMath.round3(engine.getAvgTotalQueueSize()),
@@ -163,7 +162,6 @@ public class SimulationRunService {
                 arrivalSamples,
                 takeawayDecisionRecords,
                 buildProbabilityModel(config, arrivalSamples, takeawayDecisionRecords.size()),
-                queueTheoryMetrics,
                 engine.getGroupCount(),
                 engine.getGroupedStudentCount(),
                 SimulationMath.rate(engine.getGroupedStudentCount(), engine.getGroupCount()),

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import ChartPanel from '../components/ChartPanel'
-import HistoryTable from '../components/HistoryTable'
 import MetricCard from '../components/MetricCard'
 import QueueBarChart from '../components/charts/QueueBarChart'
 import ScenarioCompareTabs from '../components/ScenarioCompareTabs'
@@ -15,7 +14,7 @@ import { csvExportUrl } from '../api/simulationApi'
 import { formatNumber, formatPercent, normalizePoint, read } from '../utils/simulation'
 import { useEcharts } from '../utils/useEcharts'
 
-function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading, onLoadHistory, onLoadLatest }) {
+function DisplayPage({ report, scenarioResults = [], onLoadLatest }) {
   const summary = report?.summary || {}
   const config = report?.config || {}
   const reportId = read(report, 'report_id', 'reportId') || ''
@@ -184,19 +183,6 @@ function DisplayPage({ report, scenarioResults = [], historyPage, historyLoading
       <ChartPanel title="窗口服务量" description="蓝色为普通窗口,琥珀色为打包窗口,识别窗口结构是否均衡。">
         <QueueBarChart windowServedCounts={windowServed} windowTypes={windowTypes} />
       </ChartPanel>
-
-      <section className="panel">
-        <div className="panel-title">
-          <div>
-            <h2>事件快照</h2>
-            <p>事件历史按分页读取,避免一次性传输大 JSON。</p>
-          </div>
-          <button type="button" className="btn-secondary" onClick={() => onLoadHistory(1)} disabled={!reportId || historyLoading}>
-            {historyLoading ? '读取中…' : '读取事件快照'}
-          </button>
-        </div>
-        <HistoryTable page={historyPage} onPage={onLoadHistory} loading={historyLoading} />
-      </section>
     </div>
   )
 }

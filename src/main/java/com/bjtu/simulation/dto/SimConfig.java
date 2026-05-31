@@ -130,6 +130,16 @@ public class SimConfig {
         @DecimalMax(value = "1.0", message = "largeTableRatio must be in [0, 1]")
         private double largeTableRatio = 0.8;
 
+        // RFC-009: 队列选择模型派发开关。默认 STATIC_SPLIT 保留现行均匀 windowPreference 抽样。
+        @JsonAlias("queue_choice_model")
+        private QueueChoiceModel queueChoiceModel = QueueChoiceModel.STATIC_SPLIT;
+
+        // RFC-009: 窗口吸引力配置块。STATIC_SPLIT 下整体被忽略;PREFERENCE_AWARE 时
+        // 用作 windowPreference 加权抽样权重(详见 RFC-009 §4)。null 视为缺失。
+        @Valid
+        @JsonAlias("window_attractiveness")
+        private WindowAttractivenessConfig windowAttractiveness;
+
         public int getWindowCount() {
             return windowCount;
         }
@@ -192,6 +202,22 @@ public class SimConfig {
 
         public void setLargeTableRatio(double largeTableRatio) {
             this.largeTableRatio = largeTableRatio;
+        }
+
+        public QueueChoiceModel getQueueChoiceModel() {
+            return queueChoiceModel;
+        }
+
+        public void setQueueChoiceModel(QueueChoiceModel queueChoiceModel) {
+            this.queueChoiceModel = queueChoiceModel;
+        }
+
+        public WindowAttractivenessConfig getWindowAttractiveness() {
+            return windowAttractiveness;
+        }
+
+        public void setWindowAttractiveness(WindowAttractivenessConfig windowAttractiveness) {
+            this.windowAttractiveness = windowAttractiveness;
         }
     }
 

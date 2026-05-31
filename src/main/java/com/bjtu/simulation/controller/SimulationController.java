@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.bjtu.simulation.dto.ApiResponse;
 import com.bjtu.simulation.dto.SimConfig;
@@ -65,7 +64,7 @@ public class SimulationController {
         this.responseBuilder = new ReportResponseBuilder(mapper, reportRepository);
     }
 
-    @PostMapping({"/run", "/start"})
+    @PostMapping("/run")
     public ResponseEntity<ApiResponse<JsonNode>> startWithOptions(
             @Valid @RequestBody(required = false) SimConfig inputConfig,
             @RequestParam(name = "include_history", defaultValue = "false") boolean includeHistory) {
@@ -86,10 +85,5 @@ public class SimulationController {
         return taskService.get(taskId)
                 .map(task -> ResponseEntity.ok(ApiResponse.<JsonNode>success(taskService.toSnapshot(task))))
                 .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<JsonNode>error(404, "task not found")));
-    }
-
-    @GetMapping("/task/{id}/stream")
-    public SseEmitter streamTask(@PathVariable("id") String taskId) {
-        return taskService.stream(taskId);
     }
 }

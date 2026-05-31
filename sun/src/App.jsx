@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { loadLatestReport, loadReportHistory, loadScenarioCatalog, runScenarioBatch, runSimulation } from './api/simulationApi'
+import {
+  getReportById,
+  getTaskStatus,
+  loadLatestReport,
+  loadScenarioCatalog,
+  runScenarioBatch,
+  runSimulation,
+  runSimulationAsync
+} from './api/simulationApi'
 import AppLayout from './components/AppLayout'
-import { DEFAULT_FORM } from './constants'
+import {
+  ASYNC_HARD_TIMEOUT_MS,
+  ASYNC_POLL_INTERVALS_MS,
+  ASYNC_POLL_MAX_CONSECUTIVE_ERRORS,
+  DEFAULT_FORM
+} from './constants'
 import AnalysisPage from './pages/AnalysisPage'
 import DisplayPage from './pages/DisplayPage'
 import InputPage from './pages/InputPage'
+import { decideRunMode } from './utils/asyncRunDecision'
 import { applyPayloadToForm, buildPayload, read } from './utils/simulation'
+import { useTaskPolling } from './utils/useTaskPolling'
 
 function currentHashPage() {
   const key = window.location.hash.replace('#/', '') || 'input'
@@ -20,10 +35,10 @@ function App() {
   const [scenarioCatalog, setScenarioCatalog] = useState(null)
   const [selectedScenarioIds, setSelectedScenarioIds] = useState(['lunch_peak_pressure'])
   const [scenarioResults, setScenarioResults] = useState([])
-  const [historyPage, setHistoryPage] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [runMode, setRunMode] = useState('auto')
+  const [activeTaskId, setActiveTaskId] = useState(null)
 
   const payload = useMemo(() => buildPayload(form), [form])
   const reportId = read(report, 'report_id', 'reportId') || ''
@@ -76,28 +91,89 @@ function App() {
 
   const handleRun = async (event) => {
     event.preventDefault()
+    const mode = decideRunMode(form, runMode)
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     setScenarioResults([])
+    setActiveTaskId(null)
+
+    if (mode === 'sync') {
+      try {
+        const data = await runSimulation(payload)
+        setReport(data)
+        setForm(applyPayloadToForm(data.config || payload))
+        setMessage(`仿真完成，报告编号：${read(data, 'report_id', 'reportId')}`)
+        navigate('display')
+      } catch (error) {
+        setMessage(`仿真失败：${error.message}`)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
-      const data = await runSimulation(payload)
-      setReport(data)
-      setForm(applyPayloadToForm(data.config || payload))
-      setMessage(`仿真完成，报告编号：${read(data, 'report_id', 'reportId')}`)
-      navigate('display')
+      const snapshot = await runSimulationAsync(payload)
+      setActiveTaskId(read(snapshot, 'task_id', 'taskId'))
+      setMessage('已提交仿真任务，正在等待后端执行…')
     } catch (error) {
-      setMessage(`仿真失败：${error.message}`)
-    } finally {
+      setMessage(`仿真提交失败：${error.message}`)
       setLoading(false)
     }
   }
+
+  const handleAsyncTerminal = async (snapshot) => {
+    const reportIdFromTask = read(snapshot, 'report_id', 'reportId')
+    if (snapshot.status === 'FAILED') {
+      setMessage(`仿真失败：${snapshot.error_message || '后端未返回错误信息'}`)
+      setActiveTaskId(null)
+      setLoading(false)
+      return
+    }
+    if (snapshot.status !== 'COMPLETED' || !snapshot.report_available || !reportIdFromTask) {
+      setMessage('仿真任务结束但报告不可用')
+      setActiveTaskId(null)
+      setLoading(false)
+      return
+    }
+    try {
+      const data = await getReportById(reportIdFromTask)
+      setReport(data)
+      setForm(applyPayloadToForm(data.config || payload))
+      setMessage(`仿真完成，报告编号：${reportIdFromTask}`)
+      navigate('display')
+    } catch (error) {
+      setMessage(`报告读取失败：${error.message}`)
+    } finally {
+      setActiveTaskId(null)
+      setLoading(false)
+    }
+  }
+
+  const handleAsyncError = (info) => {
+    if (info?.reason === 'timeout') {
+      setMessage(`仿真等待超时（10 分钟），后端任务可能仍在执行。task_id：${activeTaskId || '未知'}`)
+    } else {
+      setMessage('仿真状态轮询连续失败，已停止刷新。')
+    }
+    setActiveTaskId(null)
+    setLoading(false)
+  }
+
+  useTaskPolling({
+    taskId: activeTaskId,
+    fetcher: getTaskStatus,
+    intervals: ASYNC_POLL_INTERVALS_MS,
+    hardTimeoutMs: ASYNC_HARD_TIMEOUT_MS,
+    maxConsecutiveErrors: ASYNC_POLL_MAX_CONSECUTIVE_ERRORS,
+    onTerminal: handleAsyncTerminal,
+    onError: handleAsyncError
+  })
 
   const handleRunScenarioBatch = async () => {
     const ids = selectedScenarioIds.length ? selectedScenarioIds : (scenarioCatalog || []).map((item) => item.id)
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     try {
       const data = await runScenarioBatch(ids)
       const results = data?.results || []
@@ -121,7 +197,6 @@ function App() {
   const handleLoadLatest = async () => {
     setLoading(true)
     setMessage('')
-    setHistoryPage(null)
     try {
       const data = await loadLatestReport()
       setReport(data)
@@ -137,21 +212,6 @@ function App() {
       setMessage(`读取失败：${error.message}`)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleLoadHistory = async (page = 1) => {
-    if (!reportId) {
-      return
-    }
-    setHistoryLoading(true)
-    try {
-      const data = await loadReportHistory(reportId, page)
-      setHistoryPage(data)
-    } catch (error) {
-      setMessage(`历史快照读取失败：${error.message}`)
-    } finally {
-      setHistoryLoading(false)
     }
   }
 
@@ -188,6 +248,8 @@ function App() {
           onRun={handleRun}
           onLoadLatest={handleLoadLatest}
           onFileUpload={handleFileUpload}
+          runMode={runMode}
+          onRunModeChange={setRunMode}
         />
       )}
 
@@ -195,15 +257,22 @@ function App() {
         <DisplayPage
           report={report}
           scenarioResults={scenarioResults}
-          historyPage={historyPage}
-          historyLoading={historyLoading}
-          onLoadHistory={handleLoadHistory}
           onLoadLatest={handleLoadLatest}
         />
       )}
 
       {activePage === 'analysis' && (
-        <AnalysisPage report={report} scenarioResults={scenarioResults} payload={payload} onLoadLatest={handleLoadLatest} />
+        <AnalysisPage
+          report={report}
+          scenarioResults={scenarioResults}
+          payload={payload}
+          onLoadLatest={handleLoadLatest}
+          form={form}
+          runFn={async (mutatedForm) => {
+            const mutatedPayload = buildPayload(mutatedForm)
+            return await runSimulation(mutatedPayload)
+          }}
+        />
       )}
     </AppLayout>
   )

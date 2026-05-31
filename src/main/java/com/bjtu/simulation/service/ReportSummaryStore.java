@@ -279,16 +279,6 @@ public class ReportSummaryStore {
         return outcome;
     }
 
-    /** 占位:第一版禁用,需 phase 2/3 显式启用。 */
-    public void compactSummaryStore() {
-        throw new UnsupportedOperationException("compactSummaryStore is disabled in phase 1");
-    }
-
-    /** 占位:危险操作,第一版禁用。 */
-    public void fullResetSummaryStore() {
-        throw new UnsupportedOperationException("fullResetSummaryStore is disabled in phase 1");
-    }
-
     // ---- helpers ----
 
     private void moveToQuarantine(Path file, RepairOutcome outcome) {
@@ -312,12 +302,11 @@ public class ReportSummaryStore {
             source = mapper.createObjectNode();
             summary.set("source", source);
         }
-        String prevStatus = source.path("source_status").asText("unverified");
-        String newStatus = check.status;
-        if ("missing".equals(newStatus) && "present".equals(prevStatus)) {
-            newStatus = "deleted"; // 主动观测到 present → missing 的转移
-        }
-        source.put("source_status", newStatus);
+        // verify 不再自动把 present→missing 升级成 deleted。
+        // 源文件不存在 → 一律标 missing;deleted 留给未来明确的"主动删除"流程
+        // (例如配套清理脚本写一个删除事件,verify 才能确定性地把状态置 deleted)。
+        // 这避免了"用户手动备份移走源文件"被误判为已删除。
+        source.put("source_status", check.status);
         source.put("source_status_checked_at_epoch_millis", System.currentTimeMillis());
         if (check.status.equals("stale")) {
             ObjectNode precheck = (ObjectNode) summary.path("precheck");

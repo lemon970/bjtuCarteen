@@ -15,10 +15,9 @@ import org.springframework.stereotype.Service;
 import com.bjtu.simulation.config.AppBeansConfig;
 
 /**
- * Java fallback for the C++ {@code canteen-analyze} binary. Produces statistics
- * that match the C++ output schema (confidence_intervals / bottleneck /
- * headline_metrics / monte_carlo / anova) so the frontend renders the same UI
- * regardless of which engine ran.
+ * 高级统计分析的 Java 实现。基于 SimulationReport 的全等待时间样本与窗口排队序列,
+ * 输出 confidence_intervals / bottleneck / headline_metrics / monte_carlo / anova
+ * 五组字段,供前端 AdvancedStatsPanel 渲染。
  */
 @Service
 public class InternalStatisticsAnalyzer {
@@ -49,19 +48,6 @@ public class InternalStatisticsAnalyzer {
         root.set("confidence_intervals", buildConfidenceIntervals(summary));
         root.set("bottleneck", buildBottleneck(summary));
         root.set("headline_metrics", buildHeadlineMetrics(summary));
-        return root;
-    }
-
-    public ObjectNode batchAnalyze(List<JsonNode> reports) {
-        ObjectNode root = mapper.createObjectNode();
-        root.put("schema_version", SCHEMA_VERSION);
-        root.put("computed_by", "java-internal");
-        root.put("report_count", reports == null ? 0 : reports.size());
-        if (reports == null || reports.isEmpty()) {
-            return root;
-        }
-        root.set("monte_carlo", buildMonteCarlo(reports));
-        root.set("anova", buildAnova(reports));
         return root;
     }
 

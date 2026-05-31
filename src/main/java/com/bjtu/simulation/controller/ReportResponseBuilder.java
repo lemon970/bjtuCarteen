@@ -5,40 +5,13 @@ import java.util.Optional;
 import com.bjtu.simulation.service.SimulationReportRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 class ReportResponseBuilder {
-    private final ObjectMapper mapper;
     private final SimulationReportRepository reportRepository;
 
     ReportResponseBuilder(ObjectMapper mapper, SimulationReportRepository reportRepository) {
-        this.mapper = mapper;
         this.reportRepository = reportRepository;
-    }
-
-    ObjectNode buildArrayPage(String reportId, String collectionName, JsonNode source, int page, int pageSize) {
-        int totalItems = source.size();
-        int totalPages = totalItems == 0 ? 0 : (int) Math.ceil((double) totalItems / pageSize);
-        int fromIndex = Math.min((page - 1) * pageSize, totalItems);
-        int toIndex = Math.min(fromIndex + pageSize, totalItems);
-
-        ArrayNode items = mapper.createArrayNode();
-        for (int i = fromIndex; i < toIndex; i++) {
-            items.add(source.get(i));
-        }
-
-        ObjectNode data = mapper.createObjectNode();
-        data.put("report_id", reportId);
-        data.put("collection", collectionName);
-        data.put("page", page);
-        data.put("page_size", pageSize);
-        data.put("total_items", totalItems);
-        data.put("total_pages", totalPages);
-        data.put("has_next", page < totalPages);
-        data.put("has_previous", page > 1 && totalPages > 0);
-        data.set("items", items);
-        return data;
     }
 
     String buildCsv(JsonNode report, JsonNode history, String reportId) {

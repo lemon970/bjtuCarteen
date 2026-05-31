@@ -62,7 +62,6 @@ class SimulationControllerTest {
         assertEquals(first.path("dine_in_count").asInt(), second.path("dine_in_count").asInt());
         assertEquals(first.path("takeaway_count").asInt(), second.path("takeaway_count").asInt());
         assertEquals(first.path("max_queue_size").asInt(), second.path("max_queue_size").asInt());
-        assertEquals(first.path("peak_window_id").asInt(), second.path("peak_window_id").asInt());
     }
 
     @Test
@@ -121,16 +120,9 @@ class SimulationControllerTest {
     }
 
     @Test
-    void historyReportEndpointsShouldReturnListAndReportById() {
+    void historyReportEndpointsShouldReturnReportById() {
         JsonNode report = runAndGetReport(baseConfig());
         String reportId = report.path("report_id").asText();
-
-        ResponseEntity<ApiResponse<JsonNode>> list = reportController.getReportList();
-        assertEquals(HttpStatus.OK, list.getStatusCode());
-        assertNotNull(list.getBody());
-        assertEquals(0, list.getBody().getCode());
-        assertTrue(list.getBody().getData().path("count").asInt() >= 1);
-        assertTrue(list.getBody().getData().path("reports").isArray());
 
         ResponseEntity<ApiResponse<JsonNode>> found = reportController.getReportByIdWithOptions(reportId, false);
         assertEquals(HttpStatus.OK, found.getStatusCode());

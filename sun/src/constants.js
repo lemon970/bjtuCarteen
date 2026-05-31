@@ -2,7 +2,21 @@ export const API_BASE = '/api/simulation'
 export const MAX_STUDENTS = 1000
 export const MAX_SEATS = 1000
 export const MAX_RENDERED_SEATS = 360
-export const HISTORY_PAGE_SIZE = 20
+
+export const ASYNC_RUN_THRESHOLDS = {
+  estimatedArrivals: 8000,
+  durationHours: 4
+}
+
+export const ASYNC_POLL_INTERVALS_MS = [
+  { count: 30, intervalMs: 1000 },
+  { count: 30, intervalMs: 2000 },
+  { count: Infinity, intervalMs: 5000 }
+]
+
+export const ASYNC_HARD_TIMEOUT_MS = 10 * 60 * 1000
+
+export const ASYNC_POLL_MAX_CONSECUTIVE_ERRORS = 3
 
 export const ROUTES = [
   { key: 'input', label: '信息输入', description: '选择模型并调整参数' },

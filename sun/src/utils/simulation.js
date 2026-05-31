@@ -165,26 +165,58 @@ function compactSeatCells(cells, totalSeats, occupiedSeats) {
     return source
   }
 
+  // Pre-aggregate from the original source so summarize* can report真实 totals
+  // (而非抽样后的 360 计数)。聚合在 source 全集上完成,与抽样无关。
+  const sourceSummary = aggregateSourceSummary(source)
+
   const renderedCount = Math.min(MAX_RENDERED_SEATS, source.length)
-  const occupiedRatio = safeTotal === 0 ? 0 : clamp(toNumber(occupiedSeats, 0) / safeTotal, 0, 1)
-  const renderedOccupied = Math.round(renderedCount * occupiedRatio)
+  // 稳定步长抽样:同一 source.length 在不同帧映射到相同源索引,降低视觉闪烁。
   const step = source.length / renderedCount
 
   return Array.from({ length: renderedCount }, (_, index) => {
-    const sampled = source[Math.min(source.length - 1, Math.floor(index * step))] || {}
+    const sourceIndex = Math.min(source.length - 1, Math.floor(index * step))
+    const sampled = source[sourceIndex] || {}
+    // 关键修复:保留 source cell 的真实字段(area / status / occupied /
+    // table_id / row / column / group_id 等),不再覆盖。
     return {
       ...sampled,
-      seat_id: read(sampled, 'seat_id', 'seatId') ?? index,
-      row: Math.floor(index / 20),
-      column: index % 20,
-      area: read(sampled, 'area') || ['A', 'B', 'C', 'D'][Math.floor(index / 90) % 4],
-      status: index < renderedOccupied ? 'OCCUPIED' : 'FREE',
-      occupied: index < renderedOccupied,
-      group_id: index < renderedOccupied ? read(sampled, 'group_id', 'groupId') || '' : '',
       sampled: true,
-      total_seats: safeTotal
+      sample_source_index: sourceIndex,
+      sample_source_length: source.length,
+      sample_rendered_count: renderedCount,
+      total_seats: safeTotal,
+      _source_summary: sourceSummary
     }
   })
+}
+
+function aggregateSourceSummary(sourceCells) {
+  const cellsSummary = { occupied: 0, reserved: 0, cleaning: 0, free: 0, grouped: 0, total: 0 }
+  const areaMap = new Map()
+  for (const cell of sourceCells) {
+    cellsSummary.total += 1
+    const status = String(read(cell, 'status') || '').toUpperCase()
+    const isOccupied = status === 'OCCUPIED' || read(cell, 'occupied') === true
+    const isReserved = !isOccupied && (status === 'RESERVED' || read(cell, 'reserved') === true)
+    const isCleaning = !isOccupied && !isReserved && status === 'CLEANING'
+    if (isOccupied) cellsSummary.occupied += 1
+    else if (isReserved) cellsSummary.reserved += 1
+    else if (isCleaning) cellsSummary.cleaning += 1
+    else cellsSummary.free += 1
+    if (isOccupied && read(cell, 'group_id', 'groupId')) cellsSummary.grouped += 1
+
+    const area = read(cell, 'area') || 'A'
+    const bucket = areaMap.get(area) || { area, total: 0, occupied: 0, cleaning: 0 }
+    bucket.total += 1
+    if (isOccupied) bucket.occupied += 1
+    if (isCleaning) bucket.cleaning += 1
+    areaMap.set(area, bucket)
+  }
+  const areas = [...areaMap.values()].map((bucket) => ({
+    ...bucket,
+    utilization: bucket.total === 0 ? 0 : bucket.occupied / bucket.total
+  }))
+  return { cells: cellsSummary, areas }
 }
 
 export function buildSeatTables(point, fallbackCells = []) {
@@ -347,8 +379,15 @@ export function summarizeGroupsOnFrame(tables) {
 }
 
 export function summarizeSeatAreas(cells) {
+  const list = Array.isArray(cells) ? cells : []
+  // 抽样后的 cells 数组每个元素都附带 _source_summary;若存在则使用预聚合,
+  // 避免把抽样后的 360 条当作真实总数报告。
+  const preAggregated = list.length > 0 ? list[0] && list[0]._source_summary : null
+  if (preAggregated && Array.isArray(preAggregated.areas)) {
+    return preAggregated.areas.map((area) => ({ ...area }))
+  }
   const areaMap = new Map()
-  for (const cell of Array.isArray(cells) ? cells : []) {
+  for (const cell of list) {
     const area = read(cell, 'area') || 'A'
     const current = areaMap.get(area) || { area, total: 0, occupied: 0, cleaning: 0 }
     current.total += 1
@@ -368,8 +407,13 @@ export function summarizeSeatAreas(cells) {
 }
 
 export function summarizeSeatCells(cells) {
+  const list = Array.isArray(cells) ? cells : []
+  const preAggregated = list.length > 0 ? list[0] && list[0]._source_summary : null
+  if (preAggregated && preAggregated.cells) {
+    return { ...preAggregated.cells }
+  }
   const summary = { occupied: 0, reserved: 0, cleaning: 0, free: 0, grouped: 0, total: 0 }
-  for (const cell of Array.isArray(cells) ? cells : []) {
+  for (const cell of list) {
     summary.total += 1
     const status = String(read(cell, 'status') || '').toUpperCase()
     if (status === 'OCCUPIED' || read(cell, 'occupied') === true) {
@@ -500,6 +544,7 @@ export function buildPayload(form) {
   if (Number.isFinite(seed)) {
     payload.seed = Math.trunc(seed)
   }
+
   return payload
 }
 
