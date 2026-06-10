@@ -23,6 +23,9 @@ sun/node_modules/
 .tmp.json
 .tmp/
 .DS_Store
+java/jdk/
+java/_extract*/
+java/*.zip
 .superpowers/brainstorm/629-1779612385/state/server.pid
 .superpowers/brainstorm/629-1779612385/content/waiting.html
 .superpowers/brainstorm/629-1779612385/state/server-info

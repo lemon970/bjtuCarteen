@@ -8,14 +8,12 @@ echo   北交大餐厅仿真系统 - 一键启动器
 echo ==========================================
 echo.
 
-REM === 1. 检查 Java ===
-where java >nul 2>&1
+REM === 1. 准备 Java ===
+call "%~dp0setup-java.bat"
 if errorlevel 1 (
     echo [错误] 未检测到 Java 运行时。
     echo.
-    echo 本系统需要 JDK 17 及以上版本。
-    echo 下载: https://adoptium.net/temurin/releases/
-    echo 安装时请勾选 "Set JAVA_HOME variable" 与 "Add to PATH"。
+    echo 本系统需要 JDK 17 及以上版本,或源码包内置 java\temurin-jdk17-windows-x64.zip。
     echo.
     pause
     popd
